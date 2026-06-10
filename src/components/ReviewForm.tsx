@@ -36,7 +36,7 @@ export default function ReviewForm() {
   };
 
   return (
-    <section id="reviews" style={{ padding: "120px var(--page-pad)", borderTop: "1px solid var(--border)" }}>
+    <section id="reviews" style={{ padding: "var(--py) var(--page-pad)", borderTop: "1px solid var(--border)" }}>
       <div style={{ maxWidth: 1440, margin: "0 auto", display: "grid", gridTemplateColumns: "var(--reviews-cols)", gap: "var(--reviews-gap)" }}>
         <div>
           <div className="eyebrow" style={{ marginBottom: 14 }}>Ваша думка важлива</div>
@@ -58,7 +58,7 @@ export default function ReviewForm() {
             </div>
           ) : (
             <>
-              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12, marginBottom: 12 }}>
+              <div style={{ display: "grid", gridTemplateColumns: "var(--form-2col)", gap: 12, marginBottom: 12 }}>
                 <input className="form-input" placeholder="Ім'я" value={name} onChange={(e) => setName(e.target.value)} />
                 <input className="form-input" placeholder="Телефон або email" value={contact} onChange={(e) => setContact(e.target.value)} />
               </div>

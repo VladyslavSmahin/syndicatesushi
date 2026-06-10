@@ -1,21 +1,24 @@
 "use client";
 
-import { PhotoSlot } from "./icons";
+import HeroPromoSlider from "./HeroPromoSlider";
 import { CONTACTS, TEXTS } from "@/data/site";
+import type { Promo } from "@/lib/types";
 
 export default function Hero({
   onCtaOrder,
   onCtaMenu,
+  onPromoOrder,
 }: {
   onCtaOrder: () => void;
   onCtaMenu: () => void;
+  onPromoOrder: (p: Promo) => void;
 }) {
   return (
     <section
       id="hero"
       style={{
         position: "relative",
-        padding: "180px var(--page-pad) 120px",
+        padding: "var(--hero-pt) var(--page-pad) var(--py)",
         background: "linear-gradient(135deg, #4A2E1A 0%, #2A1A10 35%, #1A130D 65%, #0D0B09 100%)",
         overflow: "hidden",
       }}
@@ -59,7 +62,7 @@ export default function Hero({
           >
             {TEXTS.tagline}
           </p>
-          <p style={{ fontSize: 14, fontWeight: 300, color: "var(--text-primary)", maxWidth: 420, lineHeight: 1.7, marginBottom: 48, opacity: 0.8 }}>
+          <p style={{ fontSize: 16, fontWeight: 400, color: "var(--text-primary)", maxWidth: 440, lineHeight: 1.7, marginBottom: 48, opacity: 0.92 }}>
             {TEXTS.heroLead}
           </p>
           <div style={{ display: "flex", gap: 14, flexWrap: "wrap" }}>
@@ -68,18 +71,8 @@ export default function Hero({
           </div>
         </div>
 
-        {/* right — hero photo */}
-        <div style={{ position: "relative", height: "var(--hero-h)" }}>
-          <div
-            style={{
-              position: "absolute", top: "50%", left: "50%", transform: "translate(-50%, -50%)",
-              width: 540, height: 540, borderRadius: "50%",
-              background: "radial-gradient(circle, rgba(192,190,200,0.08) 0%, transparent 65%)",
-              pointerEvents: "none",
-            }}
-          />
-          <PhotoSlot h="var(--hero-h)" photo="/assets/dish-salmon-pair.png" />
-        </div>
+        {/* right — вертикальний промо-слайдер */}
+        <HeroPromoSlider onOrder={onPromoOrder} />
       </div>
     </section>
   );

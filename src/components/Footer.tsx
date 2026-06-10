@@ -31,7 +31,7 @@ function FooterCol({ title, items }: { title: string; items: { label: string; cb
 
 export default function Footer({ onNavClick }: { onNavClick: (cat: NavCategory) => void }) {
   return (
-    <footer style={{ background: "var(--bg-dark)", borderTop: "1px solid var(--border)", padding: "80px var(--page-pad) 40px" }}>
+    <footer style={{ background: "var(--bg-dark)", borderTop: "1px solid var(--border)", padding: "var(--py) var(--page-pad) 40px" }}>
       <div style={{ maxWidth: 1440, margin: "0 auto" }}>
         <div style={{ display: "grid", gridTemplateColumns: "var(--footer-cols)", gap: "var(--footer-gap)", marginBottom: 64 }}>
           <div>

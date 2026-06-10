@@ -3,7 +3,6 @@
 import { useState } from "react";
 import Header from "./Header";
 import Hero from "./Hero";
-import PromoBanners from "./PromoBanners";
 import Hits from "./Hits";
 import FullMenu from "./FullMenu";
 import ReviewForm from "./ReviewForm";
@@ -11,6 +10,8 @@ import MapSection from "./MapSection";
 import Footer from "./Footer";
 import CartDrawer from "./CartDrawer";
 import ProductModal from "./ProductModal";
+import MobileMenu from "./MobileMenu";
+import MobileCategoryBar from "./MobileCategoryBar";
 import { MENU } from "@/data/site";
 import { useCart } from "@/features/cart/CartContext";
 import type { Product, NavCategory, Promo } from "@/lib/types";
@@ -24,6 +25,7 @@ export default function HomeClient() {
   const [cartOpen, setCartOpen] = useState(false);
   const [modalItem, setModalItem] = useState<Product | null>(null);
   const [navFilter, setNavFilter] = useState<NavFilter | null>(null);
+  const [menuOpen, setMenuOpen] = useState(false);
 
   const scrollTo = (id: string) => {
     const el = document.getElementById(id);
@@ -55,21 +57,31 @@ export default function HomeClient() {
 
   return (
     <>
-      <Header onCartOpen={() => setCartOpen(true)} onNavClick={handleNavClick} />
-      <Hero onCtaOrder={() => setCartOpen(true)} onCtaMenu={() => scrollTo("menu")} />
-      <PromoBanners onOrder={handlePromoOrder} />
+      <Header
+        onCartOpen={() => setCartOpen(true)}
+        onNavClick={handleNavClick}
+        menuOpen={menuOpen}
+        onMenuToggle={() => setMenuOpen((v) => !v)}
+      />
+      <Hero
+        onCtaOrder={() => setCartOpen(true)}
+        onCtaMenu={() => scrollTo("menu")}
+        onPromoOrder={handlePromoOrder}
+      />
       <Hits onAdd={add} onCardClick={setModalItem} />
       <FullMenu
         onAdd={add}
         onCardClick={setModalItem}
-        activeFilterFromNav={navFilter}
-        clearNavFilter={() => setNavFilter(null)}
+        navFilter={navFilter}
+        setNavFilter={setNavFilter}
       />
       <ReviewForm />
       <MapSection />
       <Footer onNavClick={handleNavClick} />
       <CartDrawer isOpen={cartOpen} onClose={() => setCartOpen(false)} />
       <ProductModal item={modalItem} onClose={() => setModalItem(null)} onAdd={add} />
+      <MobileMenu open={menuOpen} onClose={() => setMenuOpen(false)} onNavClick={handleNavClick} />
+      <MobileCategoryBar active={navFilter} onNavClick={handleNavClick} />
     </>
   );
 }

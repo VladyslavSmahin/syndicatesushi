@@ -28,9 +28,9 @@ function ContactRow({
 
 export default function MapSection() {
   return (
-    <section id="map" style={{ padding: "120px var(--page-pad)", borderTop: "1px solid var(--border)" }}>
+    <section id="map" style={{ padding: "var(--py) var(--page-pad)", borderTop: "1px solid var(--border)" }}>
       <div style={{ maxWidth: 1440, margin: "0 auto" }}>
-        <div style={{ marginBottom: 48 }}>
+        <div style={{ marginBottom: "var(--head-mb)" }}>
           <div className="eyebrow" style={{ marginBottom: 14 }}>Де нас знайти</div>
           <h2 style={{ fontFamily: "var(--font-display)", fontSize: "var(--h2-size)", fontWeight: 700, lineHeight: 1, color: "var(--text-primary)" }}>
             Наше розташування
@@ -38,18 +38,13 @@ export default function MapSection() {
         </div>
 
         <div style={{ display: "grid", gridTemplateColumns: "var(--map-cols)", gap: 1, background: "var(--border)", border: "1px solid var(--border)" }}>
-          <div
-            style={{
-              background: "repeating-linear-gradient(45deg, #131110, #131110 14px, #0E0C0A 14px, #0E0C0A 28px)",
-              minHeight: 380, position: "relative", display: "flex", alignItems: "center", justifyContent: "center",
-            }}
-          >
-            <div style={{ textAlign: "center", color: "var(--text-secondary)" }}>
-              <Icon.Pin width="40" height="40" style={{ color: "var(--accent)", marginBottom: 12 }} />
-              <div style={{ fontFamily: "var(--font-display)", fontStyle: "italic", fontSize: 22, color: "var(--text-primary)", marginBottom: 6 }}>Карта</div>
-              <div style={{ fontSize: 10, letterSpacing: 2.5, textTransform: "uppercase" }}>Тут буде Google Maps</div>
-            </div>
-          </div>
+          <iframe
+            title="Google Maps — Sushi Syndicate"
+            src={`https://www.google.com/maps?q=${encodeURIComponent(CONTACTS.mapQuery)}&z=16&output=embed`}
+            loading="lazy"
+            referrerPolicy="no-referrer-when-downgrade"
+            style={{ width: "100%", minHeight: 380, height: "100%", border: 0, display: "block", filter: "grayscale(0.2) contrast(1.05)" }}
+          />
 
           <div style={{ background: "var(--bg-card)", padding: "48px 40px", display: "flex", flexDirection: "column", justifyContent: "space-between", gap: 24 }}>
             <ContactRow icon={<Icon.Pin width="20" height="20" />} label="Адреса" value={CONTACTS.address} />

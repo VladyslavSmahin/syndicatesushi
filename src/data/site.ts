@@ -13,8 +13,10 @@ const A = (name: string) => `/assets/${name}`;
 export const CONTACTS = {
   phone: "+38 (050) 000-00-00",
   hours: "11:00 — 22:00",
-  address: "м. Тульчин, Вінницька область",
+  address: "вул. Незалежності, 7, м. Тульчин",
   addressShort: "Тульчин · Доставка та самовивіз",
+  // запит для вбудованої Google-карти (без API-ключа)
+  mapQuery: "вул. Незалежності, 7, Тульчин, Вінницька область, Україна",
   instagram: "#",
   telegram: "#",
   facebook: "#",
@@ -56,7 +58,7 @@ export const PROMOS: Promo[] = [
 // Решта пунктів навігації — динамічні категорії з categoriesStore.
 export const NAV_SPECIALS: NavCategory[] = [
   { id: "novynky", label: "Новинки", filter: { badge: "НОВЕ" } },
-  { id: "aktsii", label: "Акції", scrollTo: "promos" },
+  { id: "aktsii", label: "Акції", scrollTo: "hero" },
 ];
 
 export const INGREDIENT_FILTERS = [

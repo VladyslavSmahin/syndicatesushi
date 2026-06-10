@@ -30,9 +30,9 @@ export default function PromoBanners({ onOrder }: { onOrder: (p: Promo) => void 
   const next = () => setIdx((i) => (i + 1) % total);
 
   return (
-    <section id="promos" style={{ padding: "120px var(--page-pad) 80px" }}>
+    <section id="promos" style={{ padding: "var(--py) var(--page-pad)" }}>
       <div style={{ maxWidth: 1440, margin: "0 auto" }}>
-        <div style={{ display: "flex", alignItems: "flex-end", justifyContent: "space-between", marginBottom: 48, gap: 16, flexWrap: "wrap" }}>
+        <div style={{ display: "flex", alignItems: "flex-end", justifyContent: "space-between", marginBottom: "var(--head-mb)", gap: 16, flexWrap: "wrap" }}>
           <div>
             <div className="eyebrow" style={{ marginBottom: 14 }}>Спеціально для вас</div>
             <h2 style={{ fontFamily: "var(--font-display)", fontSize: "var(--h2-size)", fontWeight: 700, lineHeight: 1, color: "var(--text-primary)" }}>

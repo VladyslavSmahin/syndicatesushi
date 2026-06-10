@@ -44,7 +44,7 @@ export default function MenuCard({
         <h3 style={{ fontFamily: "var(--font-display)", fontSize: 18, fontWeight: 600, color: "var(--text-primary)", lineHeight: 1.15, marginBottom: 6 }}>
           {item.name}
         </h3>
-        <p style={{ fontSize: 10.5, fontWeight: 300, color: "var(--text-secondary)", lineHeight: 1.45, marginBottom: 14, flex: 1, letterSpacing: 0.2 }}>
+        <p style={{ fontSize: 12, fontWeight: 400, color: "var(--text-secondary)", lineHeight: 1.5, marginBottom: 14, flex: 1, letterSpacing: 0.2 }}>
           {item.desc}
         </p>
       </div>
@@ -54,7 +54,7 @@ export default function MenuCard({
           <div style={{ fontFamily: "var(--font-body)", fontSize: 18, fontWeight: 500, color: "var(--text-primary)", lineHeight: 1, whiteSpace: "nowrap" }}>
             {item.price} <span style={{ fontSize: 11, fontWeight: 400, color: "var(--text-secondary)" }}>грн</span>
           </div>
-          <div style={{ fontSize: 10, fontWeight: 300, color: "var(--text-secondary)", letterSpacing: 0.8, marginTop: 4, whiteSpace: "nowrap" }}>
+          <div style={{ fontSize: 11, fontWeight: 400, color: "var(--text-secondary)", letterSpacing: 0.8, marginTop: 4, whiteSpace: "nowrap" }}>
             {item.weight}
           </div>
         </div>
