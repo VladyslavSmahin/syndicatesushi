@@ -8,6 +8,8 @@ import {
 } from "@/features/admin/stores";
 import { useCategories } from "@/features/admin/categoriesStore";
 import { useAdminAuth } from "@/features/admin/AdminAuthContext";
+import BulkPriceTool from "@/components/admin/BulkPriceTool";
+import { logPriceChange } from "@/features/admin/priceHistory";
 import type { Badge } from "@/lib/types";
 import s from "@/components/admin/admin.module.css";
 
@@ -40,8 +42,14 @@ export default function ProductsPage() {
 
   const save = () => {
     if (!draft || !draft.name.trim()) return;
-    if (editing) productsStore.update(editing.id, draft);
-    else productsStore.add(draft);
+    if (editing) {
+      if (draft.price !== editing.price) {
+        logPriceChange("single", editing.name, [{ productId: editing.id, name: editing.name, from: editing.price, to: draft.price }]);
+      }
+      productsStore.update(editing.id, draft);
+    } else {
+      productsStore.add(draft);
+    }
     close();
   };
 
@@ -81,6 +89,8 @@ export default function ProductsPage() {
         Товари. Інгредієнти призначаються як окремі сутності (не текст) — саме за ними
         працює фільтр на сайті. «Склад» — окреме описове поле для відображення.
       </p>
+
+      <BulkPriceTool />
 
       <div className={s.card}>
         <div className={s.cardHead}>

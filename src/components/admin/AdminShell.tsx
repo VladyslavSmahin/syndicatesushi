@@ -14,6 +14,7 @@ const NAV: { group: string; items: { href: string; label: string }[] }[] = [
       { href: "/admin/categories", label: "Категорії" },
       { href: "/admin/products", label: "Товари" },
       { href: "/admin/ingredients", label: "Інгредієнти" },
+      { href: "/admin/price-history", label: "Історія цін" },
     ],
   },
   {
