@@ -1,0 +1,36 @@
+# Конфіг Supabase CLI. project_id заповніть після створення проєкту
+# (Dashboard → Project Settings → Reference ID) або перегенеруйте `supabase init`.
+project_id = "sushi-syndicate"
+
+[api]
+enabled = true
+port = 54321
+schemas = ["public"]
+extra_search_path = ["public", "extensions"]
+max_rows = 1000
+
+[db]
+port = 54322
+shadow_port = 54320
+major_version = 15
+
+[studio]
+enabled = true
+port = 54323
+
+[auth]
+enabled = true
+site_url = "http://localhost:3000"
+additional_redirect_urls = ["http://localhost:3000", "http://localhost:3001"]
+jwt_expiry = 3600
+enable_signup = true
+
+# Вхід лише через Google (білий список перевіряється тригером handle_new_user)
+[auth.external.google]
+enabled = true
+client_id = "env(SUPABASE_AUTH_GOOGLE_CLIENT_ID)"
+secret = "env(SUPABASE_AUTH_GOOGLE_SECRET)"
+
+[storage]
+enabled = true
+# bucket для фото товарів створюється міграцією/через Dashboard

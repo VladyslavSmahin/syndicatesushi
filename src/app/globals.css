@@ -1,0 +1,184 @@
+:root {
+  --bg-primary: #0D0B09;
+  --bg-card: #131110;
+  --bg-dark: #0E0C0A;
+  --bg-elevated: #1A1714;
+  --accent: #C0BEC8;
+  --accent-hover: #D0CED8;
+  --accent-active: #A8A6B0;
+  --text-primary: #EDEAE4;
+  --text-secondary: #5A5550;
+  --text-tertiary: #4A4A4A;
+  --border: #1C1A18;
+  --border-light: #2A2826;
+  --gold: #C9A84C;
+  --badge-new: #E8A547;
+  /* шрифти підключені через next/font (layout.tsx) */
+  --font-display: var(--font-cormorant), Georgia, serif;
+  --font-body: var(--font-jost), system-ui, sans-serif;
+
+  /* ===== Адаптивні токени розкладки ===== */
+  /* Інлайн-стилі компонентів посилаються на ці змінні, а медіазапроси нижче
+     змінюють їх під планшет/мобільний — так зберігаємо вигляд прототипу й
+     отримуємо адаптивність без переписування кожного компонента. */
+  --page-pad: 48px;       /* горизонтальні відступи секцій */
+  --hero-cols: 1.1fr 0.9fr;
+  --hero-h1: 96px;
+  --hero-h: 520px;
+  --h2-size: 56px;
+  --menu-cols: repeat(4, 1fr);
+  --promo-cols: repeat(3, 1fr);
+  --reviews-cols: 1fr 1.2fr;
+  --reviews-gap: 100px;
+  --map-cols: 1.6fr 1fr;
+  --footer-cols: 1.4fr 1fr 1fr 1.2fr;
+  --footer-gap: 60px;
+  --modal-cols: 450px 1fr;
+  --header-h: 96px;
+}
+
+*, *::before, *::after { box-sizing: border-box; }
+html { scroll-behavior: smooth; }
+body {
+  margin: 0; padding: 0;
+  background: var(--bg-primary);
+  color: var(--text-primary);
+  font-family: var(--font-body);
+  font-weight: 300;
+  -webkit-font-smoothing: antialiased;
+  overflow-x: hidden;
+}
+::selection { background: var(--accent); color: var(--bg-primary); }
+
+::-webkit-scrollbar { width: 8px; height: 8px; }
+::-webkit-scrollbar-track { background: var(--bg-primary); }
+::-webkit-scrollbar-thumb { background: var(--border-light); }
+::-webkit-scrollbar-thumb:hover { background: var(--text-secondary); }
+
+/* utility */
+.font-display { font-family: var(--font-display); }
+.font-body { font-family: var(--font-body); }
+.eyebrow { font-size: 10px; font-weight: 300; letter-spacing: 3px; text-transform: uppercase; color: var(--text-secondary); }
+
+.btn-primary {
+  background: var(--accent); color: #0A0908;
+  border: none; padding: 16px 36px;
+  font-family: var(--font-body); font-size: 11px; font-weight: 500;
+  letter-spacing: 3px; text-transform: uppercase;
+  cursor: pointer; transition: all 0.25s ease;
+}
+.btn-primary:hover { background: var(--accent-hover); box-shadow: 0 0 24px rgba(192,190,200,0.15); }
+.btn-primary:active { background: var(--accent-active); }
+.btn-primary:disabled { background: var(--border-light); color: var(--text-secondary); cursor: not-allowed; }
+
+.btn-secondary {
+  background: transparent; color: var(--text-primary);
+  border: 1px solid #444444; padding: 16px 36px;
+  font-family: var(--font-body); font-size: 11px; font-weight: 400;
+  letter-spacing: 3px; text-transform: uppercase;
+  cursor: pointer; transition: all 0.25s ease;
+}
+.btn-secondary:hover { background: var(--bg-elevated); border-color: var(--accent); }
+.btn-secondary:active { background: var(--bg-primary); border-color: var(--accent); }
+
+.btn-gold {
+  background: var(--gold); color: #1A1208;
+  border: none; padding: 14px 28px;
+  font-family: var(--font-body); font-size: 10px; font-weight: 500;
+  letter-spacing: 3px; text-transform: uppercase;
+  cursor: pointer; transition: all 0.25s ease;
+}
+.btn-gold:hover { background: #D4B65E; }
+
+@keyframes fadeUp { from { opacity: 0; transform: translateY(16px); } to { opacity: 1; transform: translateY(0); } }
+.fade-up { animation: fadeUp 0.5s ease both; }
+@keyframes slideInRight { from { transform: translateX(100%); } to { transform: translateX(0); } }
+.slide-in { animation: slideInRight 0.35s cubic-bezier(0.4,0,0.2,1) both; }
+@keyframes slideInLeft { from { transform: translateX(-100%); } to { transform: translateX(0); } }
+.slide-in-left { animation: slideInLeft 0.3s cubic-bezier(0.4,0,0.2,1) both; }
+@keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+.fade-in { animation: fadeIn 0.25s ease both; }
+@keyframes modalPop { from { opacity: 0; transform: scale(0.96) translateY(8px); } to { opacity: 1; transform: scale(1) translateY(0); } }
+.modal-pop { animation: modalPop 0.3s cubic-bezier(0.4,0,0.2,1) both; }
+
+.menu-card { transition: transform 0.3s ease, border-color 0.3s ease; }
+.menu-card:hover { transform: translateY(-4px); border-color: var(--border-light); }
+
+.nav-link {
+  padding: 8px 14px;
+  font-size: 10px; font-weight: 300; letter-spacing: 2.5px;
+  text-transform: uppercase; color: var(--text-secondary);
+  text-decoration: none; cursor: pointer; transition: color 0.2s; white-space: nowrap;
+}
+.nav-link:hover { color: var(--text-primary); }
+
+.chip {
+  padding: 9px 18px; border-radius: 16px;
+  font-family: var(--font-body); font-size: 11px; font-weight: 400;
+  letter-spacing: 1.5px; text-transform: uppercase;
+  background: var(--bg-card); border: 1px solid var(--border-light);
+  color: var(--text-secondary); cursor: pointer; transition: all 0.2s ease; white-space: nowrap;
+}
+.chip:hover { color: var(--text-primary); border-color: #3A3833; }
+.chip.active { background: var(--bg-elevated); border-color: var(--accent); color: var(--accent); }
+
+.form-input {
+  width: 100%; background: var(--bg-card); border: 1px solid var(--border-light);
+  color: var(--text-primary); font-family: var(--font-body); font-size: 13px; font-weight: 300;
+  padding: 16px 18px; outline: none; transition: border-color 0.2s;
+}
+.form-input:focus { border-color: var(--accent); }
+.form-input::placeholder { color: var(--text-secondary); }
+textarea.form-input { resize: vertical; min-height: 120px; font-family: var(--font-body); }
+
+.star { cursor: pointer; transition: color 0.2s, transform 0.2s; }
+.star:hover { transform: scale(1.1); }
+
+/* показувати лише на десктопі / лише на мобільному */
+.desktop-only { display: initial; }
+.mobile-only { display: none; }
+/* бургер-кнопка: flex-центрування, прихована на десктопі */
+.burger { display: none; align-items: center; justify-content: center; }
+
+/* ============================================================
+   АДАПТИВ — змінюємо токени розкладки на менших екранах
+   ============================================================ */
+@media (max-width: 1100px) {
+  :root {
+    --hero-h1: 72px;
+    --h2-size: 46px;
+    --menu-cols: repeat(3, 1fr);
+    --reviews-gap: 56px;
+  }
+}
+
+@media (max-width: 860px) {
+  :root {
+    --page-pad: 24px;
+    --hero-cols: 1fr;
+    --hero-h1: 60px;
+    --hero-h: 320px;
+    --h2-size: 40px;
+    --menu-cols: repeat(2, 1fr);
+    --promo-cols: 1fr;
+    --reviews-cols: 1fr;
+    --map-cols: 1fr;
+    --footer-cols: 1fr 1fr;
+    --footer-gap: 40px;
+    --modal-cols: 1fr;
+    --header-h: 72px;
+  }
+  .desktop-only { display: none !important; }
+  .mobile-only { display: initial; }
+  .burger { display: flex; }
+}
+
+@media (max-width: 520px) {
+  :root {
+    --page-pad: 16px;
+    --hero-h1: 48px;
+    --h2-size: 32px;
+    --menu-cols: 1fr;
+    --footer-cols: 1fr;
+  }
+}

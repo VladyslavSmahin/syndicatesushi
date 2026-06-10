@@ -1,0 +1,23 @@
+# dependencies
+node_modules
+
+# next.js
+.next
+out
+next-env.d.ts
+*.tsbuildinfo
+
+# env / secrets
+.env
+.env*.local
+
+# os
+.DS_Store
+
+# розпакований прототип (референс, у репозиторій не потрібен — великі бандли)
+_prototype_extracted
+
+# supabase (локальні тимчасові дані CLI)
+supabase/.branches
+supabase/.temp
+supabase/.env
