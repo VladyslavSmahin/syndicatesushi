@@ -74,7 +74,6 @@ export default function FullMenu({
     <section id="menu" style={{ padding: "var(--py) var(--page-pad)", borderTop: "1px solid var(--border)" }}>
       <div style={{ maxWidth: 1440, margin: "0 auto" }}>
         <div style={{ marginBottom: "var(--head-mb)" }}>
-          <div className="eyebrow" style={{ marginBottom: 14 }}>Наш асортимент</div>
           <div style={{ display: "flex", alignItems: "baseline", justifyContent: "space-between", flexWrap: "wrap", gap: 24 }}>
             <h2 style={{ fontFamily: "var(--font-display)", fontSize: "var(--h2-size)", fontWeight: 700, lineHeight: 1, color: "var(--text-primary)" }}>
               {title}

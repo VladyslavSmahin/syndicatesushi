@@ -29,12 +29,9 @@ export default function Hits({
     <section id="hits" style={{ padding: "var(--py) var(--page-pad)", borderTop: "1px solid var(--border)" }}>
       <div style={{ maxWidth: 1440, margin: "0 auto" }}>
         <div style={{ display: "flex", alignItems: "flex-end", justifyContent: "space-between", marginBottom: "var(--head-mb)", gap: 16, flexWrap: "wrap" }}>
-          <div>
-            <div className="eyebrow" style={{ marginBottom: 14 }}>Найпопулярніше</div>
-            <h2 style={{ fontFamily: "var(--font-display)", fontSize: "var(--h2-size)", fontWeight: 700, lineHeight: 1, color: "var(--text-primary)" }}>
-              Хіти меню
-            </h2>
-          </div>
+          <h2 style={{ fontFamily: "var(--font-display)", fontSize: "var(--h2-size)", fontWeight: 700, lineHeight: 1, color: "var(--text-primary)" }}>
+            Хіти меню
+          </h2>
           {!isMobile && (
             <div style={{ display: "flex", gap: 8 }}>
               <ArrowBtn dir="left" onClick={prev} />
@@ -45,7 +42,7 @@ export default function Hits({
 
         <div style={{ display: "grid", gridTemplateColumns: "var(--menu-cols)", gap: 20 }}>
           {visible.map((item) => (
-            <MenuCard key={item.id} item={item} onAdd={onAdd} onClick={() => onCardClick(item)} />
+            <MenuCard key={item.id} item={item} onAdd={onAdd} onClick={() => onCardClick(item)} compact />
           ))}
         </div>
 

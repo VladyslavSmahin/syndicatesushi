@@ -35,10 +35,10 @@
   --footer-gap: 60px;
   --modal-cols: 450px 1fr;
   --header-h: 96px;
-  --py: 120px;          /* вертикальні відступи секцій */
-  --hero-pt: 180px;     /* верхній відступ hero (під фіксованою шапкою) */
+  --py: 60px;           /* вертикальні відступи секцій */
+  --hero-pt: 150px;     /* верхній відступ hero (під фіксованою шапкою) */
   --form-2col: 1fr 1fr; /* двоколонкові поля форм → 1fr на мобільному */
-  --head-mb: 48px;      /* відступ під заголовком секції */
+  --head-mb: 32px;      /* відступ під заголовком секції */
   --logo-h: 48px;       /* висота лого у шапці */
 }
 
@@ -184,10 +184,10 @@ textarea.form-input { resize: vertical; min-height: 120px; font-family: var(--fo
     --footer-gap: 40px;
     --modal-cols: 1fr;
     --header-h: 72px;
-    --py: 72px;
+    --py: 36px;
     --hero-pt: 120px;
     --form-2col: 1fr;
-    --head-mb: 32px;
+    --head-mb: 16px;
   }
   .desktop-only { display: none !important; }
   .mobile-only { display: initial; }
@@ -201,9 +201,9 @@ textarea.form-input { resize: vertical; min-height: 120px; font-family: var(--fo
     --h2-size: 32px;
     --menu-cols: repeat(2, 1fr);   /* 2 картки в ряд на телефоні */
     --footer-cols: 1fr;
-    --py: 56px;
+    --py: 28px;
     --hero-pt: 104px;
-    --head-mb: 24px;
+    --head-mb: 12px;
   }
   /* ховаємо декоративне hero-фото на маленьких екранах */
   .hero-photo { display: none !important; }
