@@ -77,7 +77,7 @@ export default function HomeClient() {
       />
       <ReviewForm />
       <MapSection />
-      <Footer onNavClick={handleNavClick} />
+      <Footer />
       <CartDrawer isOpen={cartOpen} onClose={() => setCartOpen(false)} />
       <ProductModal item={modalItem} onClose={() => setModalItem(null)} onAdd={add} />
       <MobileMenu open={menuOpen} onClose={() => setMenuOpen(false)} onNavClick={handleNavClick} />

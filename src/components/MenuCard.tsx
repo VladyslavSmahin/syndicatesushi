@@ -23,7 +23,7 @@ export default function MenuCard({
 
   return (
     <div
-      className="menu-card"
+      className="menu-card fade-up"
       onClick={onClick}
       style={{
         background: "var(--bg-card)",

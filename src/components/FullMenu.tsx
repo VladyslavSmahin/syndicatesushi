@@ -10,6 +10,7 @@ import type { Product, NavCategory } from "@/lib/types";
 type NavFilter = NonNullable<NavCategory["filter"]>;
 
 const PAGE_SIZE = 6;
+const INGREDIENTS = INGREDIENT_FILTERS.filter((f) => f !== "Всі");
 
 export default function FullMenu({
   onAdd,
@@ -24,12 +25,15 @@ export default function FullMenu({
 }) {
   const isMobile = useIsMobile();
   const cats = useCategories();
-  const [ingFilter, setIngFilter] = useState("Всі");
+  const [selected, setSelected] = useState<string[]>([]); // обрані інгредієнти (мультивибір)
   const [visibleCount, setVisibleCount] = useState(PAGE_SIZE);
   const [sheetOpen, setSheetOpen] = useState(false);
 
   // при зміні категорії скидаємо інгредієнт-фільтр
-  useEffect(() => { setIngFilter("Всі"); }, [navFilter]);
+  useEffect(() => { setSelected([]); }, [navFilter]);
+
+  const toggle = (ing: string) =>
+    setSelected((prev) => (prev.includes(ing) ? prev.filter((x) => x !== ing) : [...prev, ing]));
 
   const items = useMemo(() => {
     let list = MENU;
@@ -37,33 +41,31 @@ export default function FullMenu({
       if (navFilter.category) list = list.filter((m) => m.category === navFilter.category);
       else if (navFilter.badge) list = list.filter((m) => m.badge === navFilter.badge);
     }
-    if (ingFilter !== "Всі") {
-      list = list.filter((m) => m.ingredients.includes(ingFilter.toLowerCase()));
+    if (selected.length) {
+      // товар має містити ВСІ обрані інгредієнти
+      list = list.filter((m) => selected.every((s) => m.ingredients.includes(s.toLowerCase())));
     }
     return list;
-  }, [ingFilter, navFilter]);
+  }, [selected, navFilter]);
 
-  // скидаємо пагінацію при зміні фільтрів
-  useEffect(() => { setVisibleCount(PAGE_SIZE); }, [ingFilter, navFilter]);
+  useEffect(() => { setVisibleCount(PAGE_SIZE); }, [selected, navFilter]);
 
   const shown = items.slice(0, visibleCount);
   const hasMore = visibleCount < items.length;
 
-  // заголовок секції відображає обрану категорію
   const title = navFilter?.category
     ? cats.find((c) => c.slug === navFilter.category)?.name ?? "Меню"
     : navFilter?.badge === "НОВЕ"
       ? "Новинки"
       : "Повне меню";
 
-  const chips = (
+  const Chips = (
     <div style={{ display: "flex", flexWrap: "wrap", gap: 10 }}>
-      {INGREDIENT_FILTERS.map((f) => (
-        <button
-          key={f}
-          onClick={() => { setIngFilter(f); setSheetOpen(false); }}
-          className={`chip ${ingFilter === f ? "active" : ""}`}
-        >
+      <button onClick={() => setSelected([])} className={`chip ${selected.length === 0 ? "active" : ""}`}>
+        Всі
+      </button>
+      {INGREDIENTS.map((f) => (
+        <button key={f} onClick={() => toggle(f)} className={`chip ${selected.includes(f) ? "active" : ""}`}>
           {f}
         </button>
       ))}
@@ -94,7 +96,7 @@ export default function FullMenu({
         </div>
 
         {/* чіпи інгредієнтів — інлайн лише на десктопі; на мобільному в FAB-листі */}
-        {!isMobile && <div style={{ marginBottom: 48 }}>{chips}</div>}
+        {!isMobile && <div style={{ marginBottom: 40 }}>{Chips}</div>}
 
         {items.length === 0 ? (
           <div style={{ padding: "60px 0", textAlign: "center", color: "var(--text-secondary)" }}>
@@ -134,27 +136,40 @@ export default function FullMenu({
             }}
           >
             <FilterIcon />
-            {ingFilter === "Всі" ? "Фільтр" : ingFilter}
+            Фільтр{selected.length ? ` · ${selected.length}` : ""}
           </button>
 
           {sheetOpen && (
             <>
+              {/* клік по фону закриває лист */}
               <div className="fade-in" onClick={() => setSheetOpen(false)}
                 style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.6)", zIndex: 120 }} />
               <div
                 style={{
                   position: "fixed", left: 0, right: 0, bottom: 0, zIndex: 121,
                   background: "var(--bg-card)", borderTop: "1px solid var(--border-light)",
-                  borderRadius: "16px 16px 0 0", padding: "20px 20px 28px",
+                  borderRadius: "16px 16px 0 0", padding: "20px 20px 24px",
                   animation: "fadeUp 0.25s ease both",
                 }}
               >
                 <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 18 }}>
-                  <span style={{ fontFamily: "var(--font-display)", fontSize: 20, fontWeight: 700, color: "var(--text-primary)" }}>Фільтр за інгредієнтами</span>
+                  <span style={{ fontFamily: "var(--font-display)", fontSize: 20, fontWeight: 700, color: "var(--text-primary)" }}>
+                    Фільтр за інгредієнтами
+                  </span>
                   <button onClick={() => setSheetOpen(false)} aria-label="Закрити"
-                    style={{ width: 36, height: 36, border: "1px solid var(--border-light)", background: "transparent", color: "var(--text-primary)", cursor: "pointer" }}>×</button>
+                    style={{ width: 36, height: 36, border: "1px solid var(--border-light)", background: "transparent", color: "var(--text-primary)", cursor: "pointer", fontSize: 18 }}>×</button>
                 </div>
-                {chips}
+
+                {Chips}
+
+                <div style={{ display: "flex", gap: 10, marginTop: 20 }}>
+                  <button className="btn-secondary" style={{ flex: "0 0 auto" }} onClick={() => setSelected([])}>
+                    Скинути
+                  </button>
+                  <button className="btn-primary" style={{ flex: 1 }} onClick={() => setSheetOpen(false)}>
+                    Готово{items.length ? ` · ${items.length}` : ""}
+                  </button>
+                </div>
               </div>
             </>
           )}

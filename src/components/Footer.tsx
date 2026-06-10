@@ -2,7 +2,6 @@
 
 import { Icon } from "./icons";
 import { CONTACTS, TEXTS } from "@/data/site";
-import type { NavCategory } from "@/lib/types";
 
 function FooterCol({ title, items }: { title: string; items: { label: string; cb?: () => void }[] }) {
   return (
@@ -29,7 +28,7 @@ function FooterCol({ title, items }: { title: string; items: { label: string; cb
   );
 }
 
-export default function Footer({ onNavClick }: { onNavClick: (cat: NavCategory) => void }) {
+export default function Footer() {
   return (
     <footer style={{ background: "var(--bg-dark)", borderTop: "1px solid var(--border)", padding: "var(--py) var(--page-pad) 40px" }}>
       <div style={{ maxWidth: 1440, margin: "0 auto" }}>
@@ -42,16 +41,6 @@ export default function Footer({ onNavClick }: { onNavClick: (cat: NavCategory) 
               {TEXTS.footerTagline}
             </p>
           </div>
-
-          <FooterCol
-            title="Меню"
-            items={[
-              { label: "Роли", cb: () => onNavClick({ id: "roly", label: "Роли", filter: { category: "роли" } }) },
-              { label: "Сети", cb: () => onNavClick({ id: "sety", label: "Сети", filter: { category: "сети" } }) },
-              { label: "Новинки", cb: () => onNavClick({ id: "novynky", label: "Новинки", filter: { badge: "НОВЕ" } }) },
-              { label: "Акції", cb: () => onNavClick({ id: "aktsii", label: "Акції", scrollTo: "hero" }) },
-            ]}
-          />
 
           <FooterCol title="Інформація" items={[{ label: "Доставка і оплата" }, { label: "Про нас" }, { label: "Контакти" }]} />
 
