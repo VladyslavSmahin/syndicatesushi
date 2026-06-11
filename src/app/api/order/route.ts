@@ -31,7 +31,6 @@ export async function POST(req: Request) {
 
   const { delivery, name, phone, address, comment, promo, items } = body;
 
-  // мінімальна валідація
   if (!name?.trim() || !phone?.trim() || !Array.isArray(items) || items.length === 0) {
     return NextResponse.json({ ok: false, error: "missing_fields" }, { status: 400 });
   }
@@ -39,11 +38,34 @@ export async function POST(req: Request) {
     return NextResponse.json({ ok: false, error: "address_required" }, { status: 400 });
   }
 
-  const subtotal = items.reduce((s, i) => s + i.price * i.qty, 0);
-
   const supabase = createAdminClient();
 
-  // ---- Промокод (валідація + знижка) ----
+  // ---- Авторитетні ціни з БД (захист від підміни ціни на клієнті) ----
+  const ids = [...new Set(items.map((i) => i.id).filter((id) => UUID_RE.test(id)))];
+  const fromDb = new Map<string, { name: string; price: number }>();
+  if (ids.length) {
+    const { data: prods } = await supabase
+      .from("products")
+      .select("id, name, price, is_available, deleted_at")
+      .in("id", ids);
+    for (const p of prods ?? []) {
+      if (p.is_available && !p.deleted_at) fromDb.set(p.id, { name: p.name, price: Number(p.price) });
+    }
+  }
+
+  const lineItems = items.map((i) => {
+    const db = fromDb.get(i.id);
+    const qty = Math.max(1, Math.floor(Number(i.qty) || 1));
+    return {
+      productId: db ? i.id : null,
+      name: db?.name ?? i.name,
+      price: db ? db.price : Math.max(0, Number(i.price) || 0),
+      qty,
+    };
+  });
+  const subtotal = lineItems.reduce((s, i) => s + i.price * i.qty, 0);
+
+  // ---- Промокод (валідація + знижка на сервері) ----
   let promoCodeId: string | null = null;
   let discount = 0;
   const code = promo?.trim().toUpperCase();
@@ -64,7 +86,7 @@ export async function POST(req: Request) {
     }
   }
 
-  const deliveryCost = 0; // поки безкоштовно
+  const deliveryCost = 0;
   const total = Math.max(0, subtotal - discount + deliveryCost);
 
   // ---- Запис замовлення в БД (service role обходить RLS) ----
@@ -90,23 +112,17 @@ export async function POST(req: Request) {
     if (error) throw error;
     orderId = order.id;
 
-    const rows = items.map((i) => ({
-      order_id: orderId,
-      product_id: UUID_RE.test(i.id) ? i.id : null,
-      product_name: i.name,
-      price: i.price,
-      quantity: i.qty,
-    }));
-    const { error: itemsErr } = await supabase.from("order_items").insert(rows);
+    const { error: itemsErr } = await supabase.from("order_items").insert(
+      lineItems.map((i) => ({ order_id: orderId, product_id: i.productId, product_name: i.name, price: i.price, quantity: i.qty }))
+    );
     if (itemsErr) throw itemsErr;
     dbSaved = true;
   } catch (e) {
-    // не втрачаємо замовлення — лог + Telegram нижче все одно спрацює
     console.error("order insert failed:", (e as Error).message);
   }
 
-  // ---- Сповіщення в Telegram ----
-  const lines = items.map((i) => `• ${esc(i.name)} × ${i.qty} — ${i.price * i.qty} грн`);
+  // ---- Сповіщення в Telegram (за авторитетними цінами) ----
+  const lines = lineItems.map((i) => `• ${esc(i.name)} × ${i.qty} — ${i.price * i.qty} грн`);
   const msg = [
     "🍣 <b>НОВЕ ЗАМОВЛЕННЯ</b>",
     "",

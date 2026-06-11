@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { sendTelegramMessage, esc } from "@/lib/telegram";
+import { createAdminClient } from "@/lib/supabase/admin";
 
 interface ReviewBody {
   name: string;
@@ -21,8 +22,20 @@ export async function POST(req: Request) {
     return NextResponse.json({ ok: false, error: "missing_fields" }, { status: 400 });
   }
 
-  // TODO (після Supabase): запис у таблицю reviews зі статусом pending.
-  const stars = rating > 0 ? "⭐".repeat(Math.min(5, rating)) : "—";
+  const r = Number(rating);
+  const ratingVal = r >= 1 && r <= 5 ? Math.floor(r) : null;
+
+  // Запис у БД зі статусом pending (модерація в адмінці)
+  try {
+    const { error } = await createAdminClient().from("reviews").insert({
+      author_name: name.trim(), contact: contact.trim(), rating: ratingVal, text: text.trim(), status: "pending",
+    });
+    if (error) console.error("review insert failed:", error.message);
+  } catch (e) {
+    console.error("review insert failed:", (e as Error).message);
+  }
+
+  const stars = ratingVal ? "⭐".repeat(ratingVal) : "—";
 
   const msg = [
     "📝 <b>НОВИЙ ВІДГУК</b>",
