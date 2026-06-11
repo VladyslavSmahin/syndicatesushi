@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { sendTelegramMessage, esc } from "@/lib/telegram";
 import { createAdminClient } from "@/lib/supabase/admin";
+import { rateLimit, clientIp } from "@/lib/rateLimit";
 
 interface ReviewBody {
   name: string;
@@ -10,6 +11,11 @@ interface ReviewBody {
 }
 
 export async function POST(req: Request) {
+  const rl = rateLimit(`review:${clientIp(req)}`, 4, 60_000); // 4 відгуки / хв з IP
+  if (!rl.ok) {
+    return NextResponse.json({ ok: false, error: "rate_limited" }, { status: 429, headers: { "Retry-After": String(rl.retryAfter) } });
+  }
+
   let body: ReviewBody;
   try {
     body = await req.json();
