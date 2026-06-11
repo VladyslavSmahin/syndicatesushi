@@ -333,3 +333,77 @@ export async function dbSetPromoCodeActive(id: string, value: boolean) {
 export async function dbDeletePromoCode(id: string) {
   await createClient().from("promo_codes").delete().eq("id", id);
 }
+
+// ---------- Замовлення ----------
+export type OrderStatus = "new" | "confirmed" | "done" | "canceled";
+export interface DbOrderItem { name: string; price: number; quantity: number; }
+export interface DbOrder {
+  id: string; customerName: string; phone: string; deliveryType: "delivery" | "pickup";
+  address: string | null; comment: string | null; status: OrderStatus;
+  subtotal: number; discount: number; deliveryCost: number; total: number;
+  createdAt: string; items: DbOrderItem[];
+}
+
+export function useDbOrders() {
+  const supabase = useMemo(() => createClient(), []);
+  const [orders, setOrders] = useState<DbOrder[]>([]);
+  const [loading, setLoading] = useState(true);
+  const refetch = useCallback(async () => {
+    setLoading(true);
+    const { data, error } = await supabase
+      .from("orders")
+      .select("id, customer_name, phone, delivery_type, address, comment, status, subtotal, discount, delivery_cost, total, created_at, items:order_items(product_name, price, quantity)")
+      .order("created_at", { ascending: false });
+    if (error) console.error("orders:", error.message);
+    else setOrders((data ?? []).map((o) => ({
+      id: o.id, customerName: o.customer_name, phone: o.phone, deliveryType: o.delivery_type as "delivery" | "pickup",
+      address: o.address, comment: o.comment, status: o.status as OrderStatus,
+      subtotal: Number(o.subtotal), discount: Number(o.discount), deliveryCost: Number(o.delivery_cost), total: Number(o.total),
+      createdAt: o.created_at,
+      items: ((o.items ?? []) as { product_name: string; price: number; quantity: number }[])
+        .map((it) => ({ name: it.product_name, price: Number(it.price), quantity: it.quantity })),
+    })));
+    setLoading(false);
+  }, [supabase]);
+  useEffect(() => { refetch(); }, [refetch]);
+  return { orders, loading, refetch };
+}
+
+export async function dbSetOrderStatus(id: string, status: OrderStatus) {
+  await createClient().from("orders").update({ status }).eq("id", id);
+}
+
+// ---------- Відгуки ----------
+export type ReviewStatus = "pending" | "approved" | "rejected";
+export interface DbReview {
+  id: string; authorName: string; contact: string; rating: number | null; text: string;
+  status: ReviewStatus; createdAt: string;
+}
+
+export function useDbReviews() {
+  const supabase = useMemo(() => createClient(), []);
+  const [reviews, setReviews] = useState<DbReview[]>([]);
+  const [loading, setLoading] = useState(true);
+  const refetch = useCallback(async () => {
+    setLoading(true);
+    const { data, error } = await supabase
+      .from("reviews")
+      .select("id, author_name, contact, rating, text, status, created_at")
+      .order("created_at", { ascending: false });
+    if (error) console.error("reviews:", error.message);
+    else setReviews((data ?? []).map((r) => ({
+      id: r.id, authorName: r.author_name, contact: r.contact, rating: r.rating, text: r.text,
+      status: r.status as ReviewStatus, createdAt: r.created_at,
+    })));
+    setLoading(false);
+  }, [supabase]);
+  useEffect(() => { refetch(); }, [refetch]);
+  return { reviews, loading, refetch };
+}
+
+export async function dbSetReviewStatus(id: string, status: ReviewStatus) {
+  await createClient().from("reviews").update({ status }).eq("id", id);
+}
+export async function dbDeleteReview(id: string) {
+  await createClient().from("reviews").delete().eq("id", id);
+}
