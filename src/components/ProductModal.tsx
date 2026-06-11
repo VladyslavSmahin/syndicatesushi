@@ -86,6 +86,27 @@ export default function ProductModal({
             </p>
           </div>
 
+          {item.portion && item.portion.weight > 0 && (
+            <div style={{ marginBottom: 24 }}>
+              <div className="eyebrow" style={{ marginBottom: 10, fontSize: 9 }}>
+                Харчова цінність порції ({item.portion.weight} г)
+              </div>
+              <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
+                {[
+                  { l: "Ккал", v: item.portion.kcal },
+                  { l: "Білки", v: `${item.portion.protein} г` },
+                  { l: "Жири", v: `${item.portion.fat} г` },
+                  { l: "Вугл.", v: `${item.portion.carbs} г` },
+                ].map((n) => (
+                  <div key={n.l} style={{ flex: "1 1 80px", minWidth: 72, padding: "10px 12px", background: "var(--bg-elevated)", border: "1px solid var(--border)", textAlign: "center" }}>
+                    <div style={{ fontFamily: "var(--font-display)", fontSize: 18, fontWeight: 700, color: "var(--text-primary)", lineHeight: 1 }}>{n.v}</div>
+                    <div style={{ fontSize: 9, letterSpacing: 1.5, textTransform: "uppercase", color: "var(--text-secondary)", marginTop: 6 }}>{n.l}</div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
           <div style={{ marginBottom: 32, paddingTop: 24, borderTop: "1px solid var(--border)" }}>
             <p style={{ fontSize: 13, fontWeight: 300, color: "var(--text-secondary)", lineHeight: 1.7, fontStyle: "italic" }}>
               {item.fullDesc}

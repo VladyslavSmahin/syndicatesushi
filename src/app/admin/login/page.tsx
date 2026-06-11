@@ -1,17 +1,24 @@
 "use client";
 
-import { useEffect } from "react";
-import { useRouter } from "next/navigation";
-import { useAdminAuth } from "@/features/admin/AdminAuthContext";
+import { useState } from "react";
+import { createClient } from "@/lib/supabase/client";
 import s from "@/components/admin/admin.module.css";
 
 export default function LoginPage() {
-  const { user, loginWithGoogle } = useAdminAuth();
-  const router = useRouter();
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState("");
 
-  useEffect(() => {
-    if (user) router.replace("/admin");
-  }, [user, router]);
+  const signIn = async () => {
+    setBusy(true);
+    setError("");
+    const supabase = createClient();
+    const { error } = await supabase.auth.signInWithOAuth({
+      provider: "google",
+      options: { redirectTo: `${window.location.origin}/auth/callback?next=/admin` },
+    });
+    if (error) { setError("Не вдалося почати вхід. Спробуйте ще раз."); setBusy(false); }
+    // інакше браузер перейде на сторінку Google
+  };
 
   return (
     <div className={s.login}>
@@ -25,17 +32,16 @@ export default function LoginPage() {
           Адмінпанель
         </div>
 
-        <button className={s.googleBtn} onClick={loginWithGoogle}>
+        <button className={s.googleBtn} onClick={signIn} disabled={busy}>
           <GoogleIcon />
-          Увійти через Google
+          {busy ? "Перенаправлення…" : "Увійти через Google"}
         </button>
+
+        {error && <p className={s.error} style={{ marginTop: 14 }}>{error}</p>}
 
         <p className={s.hint} style={{ marginTop: 22 }}>
           Доступ лише для співробітників з білого списку. Якщо ваш email не додано —
           зверніться до адміністратора.
-        </p>
-        <p className={s.hint} style={{ marginTop: 12, opacity: 0.6 }}>
-          ДЕМО-режим: вхід імітується (без реального Google).
         </p>
       </div>
     </div>

@@ -1,16 +1,40 @@
 "use client";
 
-import { useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
+import { createClient } from "@/lib/supabase/client";
 import { useAdminAuth, type Role } from "@/features/admin/AdminAuthContext";
 import s from "@/components/admin/admin.module.css";
 
-export default function StaffPage() {
-  const { user, staff, addStaff, removeStaff, updateStaffRole } = useAdminAuth();
-  const isAdmin = user?.role === "admin";
+interface StaffRow {
+  id: string;
+  email: string;
+  role: Role;
+  created_at: string;
+}
 
+export default function StaffPage() {
+  const { user } = useAdminAuth();
+  const isAdmin = user?.role === "admin";
+  const supabase = useMemo(() => createClient(), []);
+
+  const [rows, setRows] = useState<StaffRow[]>([]);
+  const [loading, setLoading] = useState(true);
   const [email, setEmail] = useState("");
   const [role, setRole] = useState<Role>("editor");
   const [error, setError] = useState("");
+
+  const load = useCallback(async () => {
+    setLoading(true);
+    const { data, error } = await supabase
+      .from("allowed_staff")
+      .select("id, email, role, created_at")
+      .order("created_at", { ascending: true });
+    if (error) setError(error.message);
+    else setRows((data as StaffRow[]) ?? []);
+    setLoading(false);
+  }, [supabase]);
+
+  useEffect(() => { if (isAdmin) load(); }, [isAdmin, load]);
 
   if (!isAdmin) {
     return (
@@ -23,39 +47,49 @@ export default function StaffPage() {
     );
   }
 
-  const handleAdd = (e: React.FormEvent) => {
+  const handleAdd = async (e: React.FormEvent) => {
     e.preventDefault();
-    const res = addStaff(email, role);
-    if (!res.ok) { setError(res.error ?? "Помилка"); return; }
-    setEmail("");
-    setError("");
+    const eml = email.trim().toLowerCase();
+    if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(eml)) { setError("Невірний email"); return; }
+    const { error } = await supabase.from("allowed_staff").insert({ email: eml, role });
+    if (error) { setError(error.code === "23505" ? "Такий email вже додано" : error.message); return; }
+    setEmail(""); setError("");
+    load();
+  };
+
+  const updateRole = async (id: string, newRole: Role) => {
+    const { error } = await supabase.from("allowed_staff").update({ role: newRole }).eq("id", id);
+    if (error) setError(error.message); else load();
+  };
+
+  const remove = async (id: string) => {
+    const { error } = await supabase.from("allowed_staff").delete().eq("id", id);
+    if (error) setError(error.message); else load();
   };
 
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 20 }}>
       <p className={s.hint}>
-        Додайте email співробітника у білий список — він зможе увійти через Google
-        під цим email. Видалення з списку миттєво відкликає доступ.
+        Білий список — email співробітників, які можуть увійти через Google. Видалення з списку
+        відкликає доступ (профіль і дані захищені RLS).
         <br />
-        <b>Роль «editor»</b> може все, крім видалення. <b>Роль «admin»</b> — повний доступ.
+        <b>editor</b> — може все, крім видалення. <b>admin</b> — повний доступ.
+        <br />
+        <span style={{ opacity: 0.7 }}>
+          Примітка: роль застосовується при першому вході користувача. Якщо акаунт уже входив до
+          додавання — попросіть увійти ще раз.
+        </span>
       </p>
 
       {/* Add form */}
       <form className={s.card} onSubmit={handleAdd}>
-        <div className={s.cardHead}>
-          <div className={s.cardTitle}>Додати співробітника</div>
-        </div>
+        <div className={s.cardHead}><div className={s.cardTitle}>Додати співробітника</div></div>
         <div style={{ padding: 22 }}>
           <div className={s.formRow}>
             <div className={s.field} style={{ flex: 1, minWidth: 220 }}>
               <span className={s.fieldLabel}>Email (Google-акаунт)</span>
-              <input
-                className={s.input}
-                type="email"
-                placeholder="employee@gmail.com"
-                value={email}
-                onChange={(e) => { setEmail(e.target.value); setError(""); }}
-              />
+              <input className={s.input} type="email" placeholder="employee@gmail.com" value={email}
+                onChange={(e) => { setEmail(e.target.value); setError(""); }} />
             </div>
             <div className={s.field}>
               <span className={s.fieldLabel}>Роль</span>
@@ -72,47 +106,32 @@ export default function StaffPage() {
 
       {/* Table */}
       <div className={s.card}>
-        <div className={s.cardHead}>
-          <div className={s.cardTitle}>Білий список ({staff.length})</div>
-        </div>
+        <div className={s.cardHead}><div className={s.cardTitle}>Білий список ({rows.length})</div></div>
         <div className={s.tableWrap}>
           <table className={s.table}>
             <thead>
-              <tr>
-                <th>Email</th>
-                <th>Роль</th>
-                <th>Додано</th>
-                <th style={{ textAlign: "right" }}>Дії</th>
-              </tr>
+              <tr><th>Email</th><th>Роль</th><th>Додано</th><th style={{ textAlign: "right" }}>Дії</th></tr>
             </thead>
             <tbody>
-              {staff.map((m) => {
+              {loading ? (
+                <tr><td colSpan={4} style={{ color: "var(--text-secondary)", padding: 20 }}>Завантаження…</td></tr>
+              ) : rows.map((m) => {
                 const isSelf = m.email === user?.email;
                 return (
                   <tr key={m.id}>
                     <td>{m.email} {isSelf && <span className={s.hint} style={{ fontSize: 11 }}>(ви)</span>}</td>
                     <td>
-                      <select
-                        className={s.input}
-                        style={{ width: "auto", padding: "6px 10px" }}
-                        value={m.role}
-                        disabled={isSelf}
-                        onChange={(e) => updateStaffRole(m.id, e.target.value as Role)}
-                      >
+                      <select className={s.input} style={{ width: "auto", padding: "6px 10px" }}
+                        value={m.role} disabled={isSelf}
+                        onChange={(e) => updateRole(m.id, e.target.value as Role)}>
                         <option value="editor">editor</option>
                         <option value="admin">admin</option>
                       </select>
                     </td>
-                    <td style={{ color: "var(--text-secondary)" }}>
-                      {new Date(m.addedAt).toLocaleDateString("uk-UA")}
-                    </td>
+                    <td style={{ color: "var(--text-secondary)" }}>{new Date(m.created_at).toLocaleDateString("uk-UA")}</td>
                     <td>
                       <div className={s.rowActions}>
-                        <button
-                          className={`${s.btn} ${s.btnDanger} ${s.btnSmall}`}
-                          disabled={isSelf}
-                          onClick={() => removeStaff(m.id)}
-                        >
+                        <button className={`${s.btn} ${s.btnDanger} ${s.btnSmall}`} disabled={isSelf} onClick={() => remove(m.id)}>
                           Прибрати
                         </button>
                       </div>

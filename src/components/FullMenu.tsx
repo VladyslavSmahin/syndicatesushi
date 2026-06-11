@@ -2,15 +2,14 @@
 
 import { useEffect, useMemo, useState } from "react";
 import MenuCard from "./MenuCard";
-import { MENU, INGREDIENT_FILTERS } from "@/data/site";
-import { useCategories } from "@/features/admin/categoriesStore";
+import { usePublicCatalog, usePublicCategories, usePublicSubcategories } from "@/features/publicData";
 import { useIsMobile } from "@/features/useIsMobile";
 import type { Product, NavCategory } from "@/lib/types";
 
 type NavFilter = NonNullable<NavCategory["filter"]>;
 
 const PAGE_SIZE = 6;
-const INGREDIENTS = INGREDIENT_FILTERS.filter((f) => f !== "Всі");
+const cap = (n: string) => n.charAt(0).toUpperCase() + n.slice(1);
 
 export default function FullMenu({
   onAdd,
@@ -24,31 +23,43 @@ export default function FullMenu({
   setNavFilter: (f: NavFilter | null) => void;
 }) {
   const isMobile = useIsMobile();
-  const cats = useCategories();
+  const catalog = usePublicCatalog();
+  const cats = usePublicCategories();
+  // список інгредієнтів для фільтра — динамічно з каталогу (унікальні назви)
+  const INGREDIENTS = useMemo(() => {
+    const set = new Set<string>();
+    for (const m of catalog) for (const i of m.ingredients) set.add(i);
+    return [...set].sort((a, b) => a.localeCompare(b, "uk")).map(cap);
+  }, [catalog]);
+  // підкатегорії активної категорії (напр. типи ролів для «роли»)
+  const subcats = usePublicSubcategories(navFilter?.category);
   const [selected, setSelected] = useState<string[]>([]); // обрані інгредієнти (мультивибір)
+  const [selectedSub, setSelectedSub] = useState<string | null>(null); // обрана підкатегорія
   const [visibleCount, setVisibleCount] = useState(PAGE_SIZE);
   const [sheetOpen, setSheetOpen] = useState(false);
+  const [filtersOpen, setFiltersOpen] = useState(false); // десктоп: розкриті чипи інгредієнтів
 
-  // при зміні категорії скидаємо інгредієнт-фільтр
-  useEffect(() => { setSelected([]); }, [navFilter]);
+  // при зміні категорії скидаємо інгредієнт-фільтр і підкатегорію
+  useEffect(() => { setSelected([]); setSelectedSub(null); }, [navFilter]);
 
   const toggle = (ing: string) =>
     setSelected((prev) => (prev.includes(ing) ? prev.filter((x) => x !== ing) : [...prev, ing]));
 
   const items = useMemo(() => {
-    let list = MENU;
+    let list = catalog;
     if (navFilter) {
       if (navFilter.category) list = list.filter((m) => m.category === navFilter.category);
       else if (navFilter.badge) list = list.filter((m) => m.badge === navFilter.badge);
     }
+    if (selectedSub) list = list.filter((m) => m.subcategory === selectedSub);
     if (selected.length) {
       // товар має містити ВСІ обрані інгредієнти
       list = list.filter((m) => selected.every((s) => m.ingredients.includes(s.toLowerCase())));
     }
     return list;
-  }, [selected, navFilter]);
+  }, [catalog, selected, selectedSub, navFilter]);
 
-  useEffect(() => { setVisibleCount(PAGE_SIZE); }, [selected, navFilter]);
+  useEffect(() => { setVisibleCount(PAGE_SIZE); }, [selected, selectedSub, navFilter]);
 
   const shown = items.slice(0, visibleCount);
   const hasMore = visibleCount < items.length;
@@ -73,9 +84,9 @@ export default function FullMenu({
   );
 
   return (
-    <section id="menu" style={{ padding: "var(--py) var(--page-pad)", borderTop: "1px solid var(--border)" }}>
+    <section id="menu" style={{ padding: "32px var(--page-pad) var(--py)", borderTop: "1px solid var(--border)" }}>
       <div style={{ maxWidth: 1440, margin: "0 auto" }}>
-        <div style={{ marginBottom: "var(--head-mb)" }}>
+        <div style={{ marginBottom: 20 }}>
           <div style={{ display: "flex", alignItems: "baseline", justifyContent: "space-between", flexWrap: "wrap", gap: 24 }}>
             <h2 style={{ fontFamily: "var(--font-display)", fontSize: "var(--h2-size)", fontWeight: 700, lineHeight: 1, color: "var(--text-primary)" }}>
               {title}
@@ -95,8 +106,42 @@ export default function FullMenu({
           </div>
         </div>
 
-        {/* чіпи інгредієнтів — інлайн лише на десктопі; на мобільному в FAB-листі */}
-        {!isMobile && <div style={{ marginBottom: 40 }}>{Chips}</div>}
+        {/* десктоп: кнопка «Фільтри» зліва — чипи інгредієнтів сховані, відкриваються по кліку.
+            На мобільному фільтри в FAB-листі. */}
+        {!isMobile && (
+          <div style={{ marginBottom: subcats.length ? 16 : 24 }}>
+            <button
+              onClick={() => setFiltersOpen((v) => !v)}
+              className={`chip square ${selected.length ? "active" : ""}`}
+              style={{ display: "inline-flex", alignItems: "center", gap: 8 }}
+            >
+              <FilterIcon />
+              Фільтри{selected.length ? ` · ${selected.length}` : ""}
+            </button>
+            {filtersOpen && <div style={{ marginTop: 14 }}>{Chips}</div>}
+          </div>
+        )}
+
+        {/* навігація по підкатегоріях активної категорії (напр. типи ролів) */}
+        {subcats.length > 0 && (
+          <div className="subcat-row" style={{ marginBottom: 28 }}>
+            <button
+              onClick={() => setSelectedSub(null)}
+              className={`chip square ${selectedSub === null ? "active" : ""}`}
+            >
+              Всі
+            </button>
+            {subcats.map((sc) => (
+              <button
+                key={sc.id}
+                onClick={() => setSelectedSub(sc.slug)}
+                className={`chip square ${selectedSub === sc.slug ? "active" : ""}`}
+              >
+                {sc.name}
+              </button>
+            ))}
+          </div>
+        )}
 
         {items.length === 0 ? (
           <div style={{ padding: "60px 0", textAlign: "center", color: "var(--text-secondary)" }}>

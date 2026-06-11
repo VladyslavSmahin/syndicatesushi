@@ -9,8 +9,8 @@ interface CartContextValue {
   total: number;
   /** додати товар; price можна перевизначити (напр. акційна ціна) */
   add: (product: Product, priceOverride?: number) => void;
-  changeQty: (id: number, delta: number) => void;
-  remove: (id: number) => void;
+  changeQty: (id: string, delta: number) => void;
+  remove: (id: string) => void;
   clear: () => void;
 }
 
@@ -56,7 +56,7 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
     });
   }, []);
 
-  const changeQty = useCallback((id: number, delta: number) => {
+  const changeQty = useCallback((id: string, delta: number) => {
     setItems((prev) =>
       prev
         .map((i) => (i.id === id ? { ...i, qty: i.qty + delta } : i))
@@ -64,7 +64,7 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
     );
   }, []);
 
-  const remove = useCallback((id: number) => {
+  const remove = useCallback((id: string) => {
     setItems((prev) => prev.filter((i) => i.id !== id));
   }, []);
 

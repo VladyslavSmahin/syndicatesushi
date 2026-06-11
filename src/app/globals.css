@@ -130,6 +130,27 @@ body {
 .chip:hover { color: var(--text-primary); border-color: #3A3833; }
 .chip.active { background: var(--bg-elevated); border-color: var(--accent); color: var(--accent); }
 
+/* квадратний варіант чипа — для навігації по підкатегоріях (ролах) */
+.chip.square { border-radius: 4px; }
+
+/* приховати стрілки-спінери у number-інпутів */
+.no-spin::-webkit-outer-spin-button,
+.no-spin::-webkit-inner-spin-button { -webkit-appearance: none; margin: 0; }
+.no-spin { -moz-appearance: textfield; appearance: textfield; }
+
+/* ряд підкатегорій: переноситься на десктопі, горизонтальний скрол на мобільному */
+.subcat-row {
+  display: flex; flex-wrap: wrap; gap: 10px;
+}
+@media (max-width: 768px) {
+  .subcat-row {
+    flex-wrap: nowrap; overflow-x: auto; -webkit-overflow-scrolling: touch;
+    padding-bottom: 4px; scrollbar-width: none;
+  }
+  .subcat-row::-webkit-scrollbar { display: none; }
+  .subcat-row > .chip { flex: 0 0 auto; }
+}
+
 .form-input {
   width: 100%; background: var(--bg-card); border: 1px solid var(--border-light);
   color: var(--text-primary); font-family: var(--font-body); font-size: 13px; font-weight: 300;

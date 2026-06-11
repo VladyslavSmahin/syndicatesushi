@@ -3,8 +3,19 @@
 
 export type Badge = "ХІТ" | "НОВЕ" | "";
 
+/** Харчова цінність порції (сума по інгредієнтах з урахуванням грамовки). */
+export interface Portion {
+  /** сумарна вага, г */
+  weight: number;
+  kcal: number;
+  protein: number;
+  fat: number;
+  carbs: number;
+}
+
 export interface Product {
-  id: number;
+  /** ідентифікатор товару (рядок — узгоджено з адмін-сховищем / майбутніми uuid Supabase) */
+  id: string;
   name: string;
   /** короткий опис на картці */
   desc: string;
@@ -17,26 +28,29 @@ export interface Product {
   weight: string;
   /** напр. "8 шт" */
   pieces: string;
+  /** бейдж картки; «ХІТ» також додає товар у блок «Хіти меню» */
   badge: Badge;
   /** основна категорія (slug) */
   category: string;
+  /** підкатегорія в межах категорії (slug); напр. тип ролу. Опційно. */
+  subcategory?: string;
   /** інгредієнти для фільтрації (нижній регістр) */
   ingredients: string[];
-  /** показувати у блоці «Хіти меню» */
-  isHit: boolean;
   /** шлях до фото або null (плейсхолдер) */
   photo: string | null;
+  /** розрахована харчова цінність порції (якщо вказана грамовка інгредієнтів) */
+  portion?: Portion;
 }
 
 export interface Promo {
-  id: number;
+  id: string;
   bannerImage: string;
   label: string;
   title: string;
   price: number;
   oldPrice: number;
-  /** id товару з меню, який додається в кошик */
-  linkedItemId: number;
+  /** id товару з каталогу, який додається в кошик */
+  linkedItemId: string;
 }
 
 export interface NavCategory {
@@ -47,7 +61,7 @@ export interface NavCategory {
 }
 
 export interface CartItem {
-  id: number;
+  id: string;
   name: string;
   price: number;
   qty: number;

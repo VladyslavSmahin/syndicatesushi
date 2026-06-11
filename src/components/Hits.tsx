@@ -3,7 +3,7 @@
 import { useMemo, useState } from "react";
 import ArrowBtn from "./ArrowBtn";
 import MenuCard from "./MenuCard";
-import { MENU } from "@/data/site";
+import { usePublicCatalog } from "@/features/publicData";
 import { useIsMobile } from "@/features/useIsMobile";
 import type { Product } from "@/lib/types";
 
@@ -15,7 +15,9 @@ export default function Hits({
   onCardClick: (item: Product) => void;
 }) {
   const isMobile = useIsMobile();
-  const hits = useMemo(() => MENU.filter((m) => m.isHit), []);
+  const catalog = usePublicCatalog();
+  // «Хіт» = товар з бейджем «ХІТ» (єдине джерело — бейдж у картці товару)
+  const hits = useMemo(() => catalog.filter((m) => m.badge === "ХІТ"), [catalog]);
   const perPage = 4;
   const pages = Math.ceil(hits.length / perPage);
   const [page, setPage] = useState(0);

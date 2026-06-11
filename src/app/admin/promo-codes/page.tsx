@@ -1,12 +1,14 @@
 "use client";
 
 import { useState } from "react";
-import { usePromoCodes, promoCodesStore, type PromoCode } from "@/features/admin/stores";
+import {
+  useDbPromoCodes, dbCreatePromoCode, dbSetPromoCodeActive, dbDeletePromoCode,
+} from "@/features/admin/db";
 import { useAdminAuth } from "@/features/admin/AdminAuthContext";
 import s from "@/components/admin/admin.module.css";
 
 export default function PromoCodesPage() {
-  const codes = usePromoCodes();
+  const { codes, loading, refetch } = useDbPromoCodes();
   const { user } = useAdminAuth();
   const isAdmin = user?.role === "admin";
 
@@ -15,14 +17,19 @@ export default function PromoCodesPage() {
   const [value, setValue] = useState(10);
   const [error, setError] = useState("");
 
-  const add = (e: React.FormEvent) => {
+  const add = async (e: React.FormEvent) => {
     e.preventDefault();
     const c = code.trim().toUpperCase();
     if (!c) return;
     if (codes.some((x) => x.code.toUpperCase() === c)) { setError("Такий код вже існує"); return; }
-    promoCodesStore.add({ code: c, discountType, value, isActive: true });
+    const err = await dbCreatePromoCode({ code: c, discountType, value });
+    if (err) { setError(err); return; }
     setCode(""); setValue(10); setError("");
+    refetch();
   };
+
+  const toggle = async (id: string, val: boolean) => { await dbSetPromoCodeActive(id, val); refetch(); };
+  const remove = async (id: string) => { await dbDeletePromoCode(id); refetch(); };
 
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 20 }}>
@@ -48,7 +55,7 @@ export default function PromoCodesPage() {
             </div>
             <div className={s.field}>
               <span className={s.fieldLabel}>{discountType === "percent" ? "Відсоток" : "Сума, грн"}</span>
-              <input className={s.input} type="number" style={{ width: 120 }} value={value} onChange={(e) => setValue(Number(e.target.value))} />
+              <input className={`${s.input} no-spin`} type="number" style={{ width: 120 }} value={value} onChange={(e) => setValue(Number(e.target.value))} />
             </div>
             <button className={s.btn} type="submit" disabled={!code.trim()}>Додати</button>
           </div>
@@ -62,20 +69,20 @@ export default function PromoCodesPage() {
           <table className={s.table}>
             <thead><tr><th>Код</th><th>Знижка</th><th>Активний</th><th style={{ textAlign: "right" }}>Дії</th></tr></thead>
             <tbody>
-              {codes.map((c) => (
+              {loading ? (
+                <tr><td colSpan={4} style={{ padding: 20, color: "var(--text-secondary)" }}>Завантаження…</td></tr>
+              ) : codes.map((c) => (
                 <tr key={c.id}>
                   <td style={{ fontFamily: "var(--font-display)", fontSize: 15, fontWeight: 600, letterSpacing: 1 }}>{c.code}</td>
                   <td>{c.discountType === "percent" ? `${c.value}%` : `${c.value} грн`}</td>
                   <td>
                     <button className={`${s.pill} ${c.isActive ? s.pillOn : s.pillOff}`} style={{ cursor: "pointer", border: "none" }}
-                      onClick={() => promoCodesStore.update(c.id, { isActive: !c.isActive })}>
-                      {c.isActive ? "Так" : "Ні"}
-                    </button>
+                      onClick={() => toggle(c.id, !c.isActive)}>{c.isActive ? "Так" : "Ні"}</button>
                   </td>
                   <td>
                     <div className={s.rowActions}>
                       {isAdmin ? (
-                        <button className={`${s.btn} ${s.btnDanger} ${s.btnSmall}`} onClick={() => promoCodesStore.remove(c.id)}>Видалити</button>
+                        <button className={`${s.btn} ${s.btnDanger} ${s.btnSmall}`} onClick={() => remove(c.id)}>Видалити</button>
                       ) : <span className={s.hint} style={{ fontSize: 11 }}>—</span>}
                     </div>
                   </td>

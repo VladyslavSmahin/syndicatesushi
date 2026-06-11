@@ -2,59 +2,61 @@
 
 import { useState } from "react";
 import Modal from "./Modal";
-import { useProducts, productsStore, useIngredients } from "@/features/admin/stores";
-import { logPriceChange } from "@/features/admin/priceHistory";
+import { dbUpdatePrice, type DbProduct, type DbIngredient } from "@/features/admin/db";
+import { dbLogPriceChange } from "@/features/admin/priceHistory";
 import s from "./admin.module.css";
 
 type Mode = "amount" | "percent";
 
-interface Row {
-  id: string;
-  name: string;
-  oldPrice: number;
-  newPrice: number;
-}
+interface Row { id: string; name: string; oldPrice: number; newPrice: number; }
 
-export default function BulkPriceTool() {
-  const products = useProducts();
-  const ingredients = useIngredients();
-
-  const [ingId, setIngId] = useState(ingredients[0]?.id ?? "");
+export default function BulkPriceTool({
+  products,
+  ingredients,
+  onApplied,
+}: {
+  products: DbProduct[];
+  ingredients: DbIngredient[];
+  onApplied: () => void;
+}) {
+  const [ingId, setIngId] = useState("");
   const [mode, setMode] = useState<Mode>("amount");
   const [value, setValue] = useState(10);
   const [rows, setRows] = useState<Row[] | null>(null);
+  const [applying, setApplying] = useState(false);
 
+  const effectiveIngId = ingId || ingredients[0]?.id || "";
   const calcNew = (old: number) => {
     const raw = mode === "amount" ? old + value : old * (1 + value / 100);
     return Math.max(0, Math.round(raw));
   };
 
   const preview = () => {
-    if (!ingId) return;
-    const affected = products
-      .filter((p) => p.ingredientIds.includes(ingId))
-      .map((p) => ({ id: p.id, name: p.name, oldPrice: p.price, newPrice: calcNew(p.price) }));
-    setRows(affected);
+    if (!effectiveIngId) return;
+    setRows(products
+      .filter((p) => p.ingredientIds.includes(effectiveIngId))
+      .map((p) => ({ id: p.id, name: p.name, oldPrice: p.price, newPrice: calcNew(p.price) })));
   };
 
   const nudge = (id: string, delta: number) =>
     setRows((rs) => rs!.map((r) => (r.id === id ? { ...r, newPrice: Math.max(0, r.newPrice + delta) } : r)));
-
   const setRowPrice = (id: string, v: number) =>
     setRows((rs) => rs!.map((r) => (r.id === id ? { ...r, newPrice: Math.max(0, v) } : r)));
-
   const removeRow = (id: string) => setRows((rs) => rs!.filter((r) => r.id !== id));
 
-  const apply = () => {
+  const apply = async () => {
     const changed = rows!.filter((r) => r.newPrice !== r.oldPrice);
-    changed.forEach((r) => productsStore.update(r.id, { price: r.newPrice }));
+    setApplying(true);
+    await Promise.all(changed.map((r) => dbUpdatePrice(r.id, r.newPrice)));
+    setApplying(false);
     const sign = value >= 0 ? "+" : "";
-    const label = `${ingName} ${sign}${value}${mode === "amount" ? " грн" : "%"}`;
-    logPriceChange("bulk", label, changed.map((r) => ({ productId: r.id, name: r.name, from: r.oldPrice, to: r.newPrice })));
+    await dbLogPriceChange("bulk", `${ingName} ${sign}${value}${mode === "amount" ? " грн" : "%"}`,
+      changed.map((r) => ({ productId: r.id, name: r.name, from: r.oldPrice, to: r.newPrice })));
     setRows(null);
+    onApplied();
   };
 
-  const ingName = ingredients.find((i) => i.id === ingId)?.name ?? "";
+  const ingName = ingredients.find((i) => i.id === effectiveIngId)?.name ?? "";
 
   return (
     <div className={s.card}>
@@ -69,7 +71,7 @@ export default function BulkPriceTool() {
         <div className={s.formRow}>
           <div className={s.field} style={{ flex: 1, minWidth: 180 }}>
             <span className={s.fieldLabel}>Інгредієнт</span>
-            <select className={s.input} value={ingId} onChange={(e) => setIngId(e.target.value)}>
+            <select className={s.input} value={effectiveIngId} onChange={(e) => setIngId(e.target.value)}>
               {ingredients.map((i) => <option key={i.id} value={i.id}>{i.name}</option>)}
             </select>
           </div>
@@ -82,9 +84,9 @@ export default function BulkPriceTool() {
           </div>
           <div className={s.field}>
             <span className={s.fieldLabel}>{mode === "amount" ? "Сума, грн" : "Відсоток"}</span>
-            <input className={s.input} type="number" style={{ width: 120 }} value={value} onChange={(e) => setValue(Number(e.target.value))} />
+            <input className={`${s.input} no-spin`} type="number" style={{ width: 120 }} value={value} onChange={(e) => setValue(Number(e.target.value))} />
           </div>
-          <button className={s.btn} onClick={preview} disabled={!ingId}>Переглянути</button>
+          <button className={s.btn} onClick={preview} disabled={!effectiveIngId}>Переглянути</button>
         </div>
       </div>
 
@@ -95,8 +97,8 @@ export default function BulkPriceTool() {
           footer={
             <>
               <button className={`${s.btn} ${s.btnGhost}`} onClick={() => setRows(null)}>Скасувати</button>
-              <button className={s.btn} onClick={apply} disabled={rows.length === 0}>
-                Застосувати ({rows.length})
+              <button className={s.btn} onClick={apply} disabled={rows.length === 0 || applying}>
+                {applying ? "Застосування…" : `Застосувати (${rows.length})`}
               </button>
             </>
           }
@@ -117,13 +119,8 @@ export default function BulkPriceTool() {
                       <td>
                         <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
                           <button className={`${s.btn} ${s.btnGhost} ${s.btnSmall}`} style={{ padding: "6px 10px" }} onClick={() => nudge(r.id, -5)}>−</button>
-                          <input
-                            className={s.input}
-                            type="number"
-                            style={{ width: 84, padding: "7px 8px", textAlign: "center" }}
-                            value={r.newPrice}
-                            onChange={(e) => setRowPrice(r.id, Number(e.target.value))}
-                          />
+                          <input className={`${s.input} no-spin`} type="number" style={{ width: 84, padding: "7px 8px", textAlign: "center" }}
+                            value={r.newPrice} onChange={(e) => setRowPrice(r.id, Number(e.target.value))} />
                           <button className={`${s.btn} ${s.btnGhost} ${s.btnSmall}`} style={{ padding: "6px 10px" }} onClick={() => nudge(r.id, +5)}>+</button>
                           <span style={{ color: "var(--accent)", fontSize: 12 }}>
                             {r.newPrice > r.oldPrice ? `+${r.newPrice - r.oldPrice}` : r.newPrice < r.oldPrice ? `${r.newPrice - r.oldPrice}` : "—"}

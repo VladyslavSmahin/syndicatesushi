@@ -3,7 +3,7 @@
 import { useEffect } from "react";
 import { Icon } from "./icons";
 import { CONTACTS, NAV_SPECIALS, ASSET_ICONS } from "@/data/site";
-import { useCategories } from "@/features/admin/categoriesStore";
+import { usePublicCategories } from "@/features/publicData";
 import type { NavCategory } from "@/lib/types";
 
 export default function MobileMenu({
@@ -15,7 +15,7 @@ export default function MobileMenu({
   onClose: () => void;
   onNavClick: (cat: NavCategory) => void;
 }) {
-  const cats = useCategories({ navOnly: true });
+  const cats = usePublicCategories({ navOnly: true });
 
   useEffect(() => {
     document.body.style.overflow = open ? "hidden" : "";

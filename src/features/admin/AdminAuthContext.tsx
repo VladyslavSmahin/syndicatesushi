@@ -1,21 +1,16 @@
 "use client";
 
-// ДЕМО-авторизація адмінки (без бекенда).
-// На етапі Supabase замінюється на реальний Supabase Auth (Google) + білий список
-// у таблиці allowed_staff + роль у profiles. Тут — лише імітація для перегляду UX.
+// Реальна авторизація адмінки через Supabase Auth (Google OAuth).
+// Роль береться з таблиці profiles (її заповнює тригер handle_new_user лише для
+// email із білого списку allowed_staff). Якщо профілю немає — доступу немає (denied).
 
-import { createContext, useContext, useEffect, useState, useCallback } from "react";
+import { createContext, useContext, useEffect, useState, useCallback, useMemo } from "react";
+import { createClient } from "@/lib/supabase/client";
 
 export type Role = "admin" | "editor";
 
-export interface StaffMember {
+export interface CurrentUser {
   id: string;
-  email: string;
-  role: Role;
-  addedAt: string;
-}
-
-interface CurrentUser {
   email: string;
   name: string;
   role: Role;
@@ -23,82 +18,64 @@ interface CurrentUser {
 
 interface AdminAuthValue {
   user: CurrentUser | null;
-  /** ДЕМО-логін через Google (імітація) */
-  loginWithGoogle: () => void;
-  logout: () => void;
-  /** ДЕМО-перемикач ролі для перегляду обмежень editor */
-  setRole: (r: Role) => void;
-  staff: StaffMember[];
-  addStaff: (email: string, role: Role) => { ok: boolean; error?: string };
-  removeStaff: (id: string) => void;
-  updateStaffRole: (id: string, role: Role) => void;
+  /** ще завантажуємо сесію/роль */
+  loading: boolean;
+  /** залогінений у Google, але email не в білому списку (немає profile) */
+  denied: string | null;
+  logout: () => Promise<void>;
 }
 
 const Ctx = createContext<AdminAuthValue | null>(null);
 
-const USER_KEY = "ss_admin_user_v1";
-const STAFF_KEY = "ss_staff_v1";
-
-const OWNER: CurrentUser = { email: "owner@sushisyndicate.ua", name: "Власник", role: "admin" };
-
-const DEFAULT_STAFF: StaffMember[] = [
-  { id: "1", email: "owner@sushisyndicate.ua", role: "admin", addedAt: new Date().toISOString() },
-];
-
 export function AdminAuthProvider({ children }: { children: React.ReactNode }) {
+  const supabase = useMemo(() => createClient(), []);
   const [user, setUser] = useState<CurrentUser | null>(null);
-  const [staff, setStaff] = useState<StaffMember[]>(DEFAULT_STAFF);
-  const [hydrated, setHydrated] = useState(false);
+  const [denied, setDenied] = useState<string | null>(null);
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    try {
-      const u = localStorage.getItem(USER_KEY);
-      if (u) setUser(JSON.parse(u));
-      const s = localStorage.getItem(STAFF_KEY);
-      if (s) setStaff(JSON.parse(s));
-    } catch {
-      /* ignore */
-    }
-    setHydrated(true);
-  }, []);
+    let active = true;
 
-  useEffect(() => {
-    if (!hydrated) return;
-    try {
-      if (user) localStorage.setItem(USER_KEY, JSON.stringify(user));
-      else localStorage.removeItem(USER_KEY);
-      localStorage.setItem(STAFF_KEY, JSON.stringify(staff));
-    } catch {
-      /* ignore */
-    }
-  }, [user, staff, hydrated]);
+    const resolve = async (session: { user: { id: string; email?: string; user_metadata?: Record<string, unknown> } } | null) => {
+      if (!session?.user) {
+        if (active) { setUser(null); setDenied(null); setLoading(false); }
+        return;
+      }
+      const au = session.user;
+      // роль із profiles (заповнюється тригером лише для білого списку)
+      const { data } = await supabase.from("profiles").select("role").eq("id", au.id).maybeSingle();
+      if (!active) return;
+      if (data?.role) {
+        setUser({
+          id: au.id,
+          email: au.email ?? "",
+          name: (au.user_metadata?.full_name as string) ?? (au.user_metadata?.name as string) ?? au.email ?? "",
+          role: data.role as Role,
+        });
+        setDenied(null);
+      } else {
+        setUser(null);
+        setDenied(au.email ?? "невідомий email");
+      }
+      setLoading(false);
+    };
 
-  const loginWithGoogle = useCallback(() => setUser(OWNER), []);
-  const logout = useCallback(() => setUser(null), []);
-  const setRole = useCallback((role: Role) => setUser((u) => (u ? { ...u, role } : u)), []);
+    supabase.auth.getSession().then(({ data }) => resolve(data.session));
+    const { data: sub } = supabase.auth.onAuthStateChange((_event, session) => {
+      setLoading(true);
+      resolve(session);
+    });
 
-  const addStaff = useCallback(
-    (email: string, role: Role) => {
-      const e = email.trim().toLowerCase();
-      if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(e)) return { ok: false, error: "Невірний email" };
-      if (staff.some((m) => m.email.toLowerCase() === e)) return { ok: false, error: "Такий email вже додано" };
-      setStaff((prev) => [...prev, { id: crypto.randomUUID(), email: e, role, addedAt: new Date().toISOString() }]);
-      return { ok: true };
-    },
-    [staff]
-  );
+    return () => { active = false; sub.subscription.unsubscribe(); };
+  }, [supabase]);
 
-  const removeStaff = useCallback((id: string) => setStaff((prev) => prev.filter((m) => m.id !== id)), []);
-  const updateStaffRole = useCallback(
-    (id: string, role: Role) => setStaff((prev) => prev.map((m) => (m.id === id ? { ...m, role } : m))),
-    []
-  );
+  const logout = useCallback(async () => {
+    await supabase.auth.signOut();
+    setUser(null);
+    setDenied(null);
+  }, [supabase]);
 
-  return (
-    <Ctx.Provider value={{ user, loginWithGoogle, logout, setRole, staff, addStaff, removeStaff, updateStaffRole }}>
-      {children}
-    </Ctx.Provider>
-  );
+  return <Ctx.Provider value={{ user, loading, denied, logout }}>{children}</Ctx.Provider>;
 }
 
 export function useAdminAuth() {

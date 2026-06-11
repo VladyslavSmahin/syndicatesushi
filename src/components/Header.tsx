@@ -4,7 +4,7 @@ import { useEffect, useState } from "react";
 import { Icon } from "./icons";
 import { CONTACTS, NAV_SPECIALS, ASSET_ICONS } from "@/data/site";
 import { useCart } from "@/features/cart/CartContext";
-import { useCategories } from "@/features/admin/categoriesStore";
+import { usePublicCategories } from "@/features/publicData";
 import type { NavCategory } from "@/lib/types";
 
 function BrandMark() {
@@ -40,7 +40,7 @@ export default function Header({
   onMenuToggle: () => void;
 }) {
   const { count } = useCart();
-  const cats = useCategories({ navOnly: true });
+  const cats = usePublicCategories({ navOnly: true });
   const [scrolled, setScrolled] = useState(false);
 
   useEffect(() => {

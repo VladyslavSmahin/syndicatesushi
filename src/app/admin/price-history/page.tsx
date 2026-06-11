@@ -1,11 +1,12 @@
 "use client";
 
-import { usePriceHistory, revertPriceChange, type PriceHistoryEntry } from "@/features/admin/priceHistory";
+import { useDbPriceHistory, dbRevertPriceChange, type PriceHistoryEntry } from "@/features/admin/priceHistory";
 import s from "@/components/admin/admin.module.css";
 
 export default function PriceHistoryPage() {
-  const history = usePriceHistory();
-  const sorted = [...history].sort((a, b) => b.at.localeCompare(a.at));
+  const { history, loading, refetch } = useDbPriceHistory();
+
+  const revert = async (entry: PriceHistoryEntry) => { await dbRevertPriceChange(entry); refetch(); };
 
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 20 }}>
@@ -14,7 +15,9 @@ export default function PriceHistoryPage() {
         Будь-яку зміну можна відкотити: цінам повернуться попередні значення.
       </p>
 
-      {sorted.length === 0 ? (
+      {loading ? (
+        <div className={s.card}><div className={s.placeholder}><p className={s.hint}>Завантаження…</p></div></div>
+      ) : history.length === 0 ? (
         <div className={s.card}>
           <div className={s.placeholder}>
             <div className={s.placeholderTitle}>Поки порожньо</div>
@@ -22,13 +25,13 @@ export default function PriceHistoryPage() {
           </div>
         </div>
       ) : (
-        sorted.map((entry) => <Entry key={entry.id} entry={entry} />)
+        history.map((entry) => <Entry key={entry.id} entry={entry} onRevert={() => revert(entry)} />)
       )}
     </div>
   );
 }
 
-function Entry({ entry }: { entry: PriceHistoryEntry }) {
+function Entry({ entry, onRevert }: { entry: PriceHistoryEntry; onRevert: () => void }) {
   const date = new Date(entry.at).toLocaleString("uk-UA", { day: "2-digit", month: "2-digit", year: "numeric", hour: "2-digit", minute: "2-digit" });
   return (
     <div className={s.card}>
@@ -43,9 +46,7 @@ function Entry({ entry }: { entry: PriceHistoryEntry }) {
         {entry.reverted ? (
           <span className={`${s.pill} ${s.pillOff}`}>Відкочено</span>
         ) : (
-          <button className={`${s.btn} ${s.btnGhost} ${s.btnSmall}`} onClick={() => revertPriceChange(entry)}>
-            Відкотити
-          </button>
+          <button className={`${s.btn} ${s.btnGhost} ${s.btnSmall}`} onClick={onRevert}>Відкотити</button>
         )}
       </div>
       <div className={s.tableWrap}>

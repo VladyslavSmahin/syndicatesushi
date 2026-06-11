@@ -1,23 +1,33 @@
 "use client";
 
 import Link from "next/link";
-import { useCategories } from "@/features/admin/categoriesStore";
-import { useProducts, usePromos } from "@/features/admin/stores";
+import { useEffect, useMemo, useState } from "react";
+import { createClient } from "@/lib/supabase/client";
+import { useDbProducts, useDbCategories, useDbPromos } from "@/features/admin/db";
 import { useAdminAuth } from "@/features/admin/AdminAuthContext";
 import s from "@/components/admin/admin.module.css";
 
 export default function DashboardPage() {
-  const cats = useCategories();
-  const products = useProducts();
-  const promos = usePromos();
-  const { user, staff } = useAdminAuth();
+  const { categories: cats } = useDbCategories();
+  const { products: allProducts } = useDbProducts();
+  const products = allProducts.filter((p) => !p.deletedAt);
+  const { promos } = useDbPromos();
+  const { user } = useAdminAuth();
+  const supabase = useMemo(() => createClient(), []);
+  const [staffCount, setStaffCount] = useState<number | null>(null);
+
+  useEffect(() => {
+    if (user?.role !== "admin") return;
+    supabase.from("allowed_staff").select("id", { count: "exact", head: true })
+      .then(({ count }) => setStaffCount(count ?? 0));
+  }, [supabase, user?.role]);
 
   const stats = [
     { num: cats.length, label: "Категорії", href: "/admin/categories" },
     { num: products.length, label: "Товари", href: "/admin/products" },
-    { num: products.filter((m) => m.isHit).length, label: "Хіти", href: "/admin/products" },
+    { num: products.filter((m) => m.badge === "ХІТ").length, label: "Хіти", href: "/admin/products" },
     { num: promos.length, label: "Акції", href: "/admin/promos" },
-    { num: staff.length, label: "Співробітники", href: "/admin/staff" },
+    { num: staffCount ?? "—", label: "Співробітники", href: "/admin/staff" },
   ];
 
   return (

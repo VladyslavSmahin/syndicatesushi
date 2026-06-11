@@ -10,6 +10,9 @@ next-env.d.ts
 # env / secrets
 .env
 .env*.local
+# google oauth client secret files
+client_secret*.json
+*.apps.googleusercontent.com.json
 
 # os
 .DS_Store

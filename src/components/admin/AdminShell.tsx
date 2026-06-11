@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
-import { useAdminAuth, type Role } from "@/features/admin/AdminAuthContext";
+import { useAdminAuth } from "@/features/admin/AdminAuthContext";
 import s from "./admin.module.css";
 
 const NAV: { group: string; items: { href: string; label: string }[] }[] = [
@@ -12,7 +12,9 @@ const NAV: { group: string; items: { href: string; label: string }[] }[] = [
     items: [
       { href: "/admin", label: "Огляд" },
       { href: "/admin/categories", label: "Категорії" },
+      { href: "/admin/subcategories", label: "Підкатегорії" },
       { href: "/admin/products", label: "Товари" },
+      { href: "/admin/deleted", label: "Кошик" },
       { href: "/admin/ingredients", label: "Інгредієнти" },
       { href: "/admin/price-history", label: "Історія цін" },
     ],
@@ -38,23 +40,46 @@ const NAV: { group: string; items: { href: string; label: string }[] }[] = [
 ];
 
 export default function AdminShell({ children }: { children: React.ReactNode }) {
-  const { user, logout, setRole } = useAdminAuth();
+  const { user, loading, denied, logout } = useAdminAuth();
   const pathname = usePathname();
   const router = useRouter();
   const [navOpen, setNavOpen] = useState(false);
 
   const isLogin = pathname === "/admin/login";
 
-  // guard: не залогінений → на /admin/login
-  useEffect(() => {
-    if (!isLogin && user === null) router.replace("/admin/login");
-  }, [isLogin, user, router]);
-
   useEffect(() => { setNavOpen(false); }, [pathname]);
+
+  const signOut = async () => { await logout(); router.replace("/admin/login"); };
 
   // сторінка логіну — без оболонки
   if (isLogin) return <>{children}</>;
-  // поки немає юзера (редірект у процесі) — нічого не рендеримо
+
+  // завантаження сесії/ролі
+  if (loading) {
+    return (
+      <div className={s.login}>
+        <div className={s.loginCard}><p className={s.hint}>Завантаження…</p></div>
+      </div>
+    );
+  }
+
+  // залогінений у Google, але email не в білому списку
+  if (denied) {
+    return (
+      <div className={s.login}>
+        <div className={s.loginCard}>
+          <div className={s.placeholderTitle} style={{ marginBottom: 8 }}>Немає доступу</div>
+          <p className={s.hint} style={{ marginBottom: 18 }}>
+            Акаунт <b>{denied}</b> не входить у білий список співробітників.
+            Зверніться до адміністратора, щоб вас додали.
+          </p>
+          <button className={`${s.btn} ${s.btnGhost}`} onClick={signOut}>Вийти</button>
+        </div>
+      </div>
+    );
+  }
+
+  // немає сесії (middleware перенаправить) — нічого не рендеримо
   if (!user) return null;
 
   const title =
@@ -89,7 +114,7 @@ export default function AdminShell({ children }: { children: React.ReactNode }) 
 
         <div style={{ marginTop: "auto", paddingTop: 16 }}>
           <Link href="/" className={s.navItem}>← На сайт</Link>
-          <button className={s.navItem} style={{ width: "100%", textAlign: "left", background: "transparent" }} onClick={logout}>
+          <button className={s.navItem} style={{ width: "100%", textAlign: "left", background: "transparent" }} onClick={signOut}>
             Вийти
           </button>
         </div>
@@ -105,19 +130,11 @@ export default function AdminShell({ children }: { children: React.ReactNode }) 
           </div>
 
           <div className={s.userBox}>
-            {/* ДЕМО: перемикач ролі, щоб побачити обмеження editor */}
-            <div className={s.roleSwitch} title="Демо: перемкнути роль">
-              {(["admin", "editor"] as Role[]).map((r) => (
-                <button
-                  key={r}
-                  className={`${s.roleBtn} ${user.role === r ? s.roleBtnActive : ""}`}
-                  onClick={() => setRole(r)}
-                >
-                  {r}
-                </button>
-              ))}
+            <div style={{ display: "flex", flexDirection: "column", alignItems: "flex-end", lineHeight: 1.3 }}>
+              <span style={{ fontSize: 13, color: "var(--text-primary)" }}>{user.name}</span>
+              <span className={`${s.pill} ${user.role === "admin" ? s.pillAdmin : s.pillEditor}`}>{user.role}</span>
             </div>
-            <div className={s.avatar}>{user.name.charAt(0)}</div>
+            <div className={s.avatar}>{user.name.charAt(0).toUpperCase()}</div>
           </div>
         </div>
 

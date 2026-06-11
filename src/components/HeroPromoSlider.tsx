@@ -1,19 +1,21 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState, type CSSProperties } from "react";
-import { PROMOS } from "@/data/site";
+import { usePublicPromos } from "@/features/publicData";
 import type { Promo } from "@/lib/types";
 
 const AUTO_MS = 5000;        // авто-перемикання кожні 5с
 const AFTER_MANUAL_MS = 5000; // після ручного — пауза (≥ 3с) до авто
 
 export default function HeroPromoSlider({ onOrder }: { onOrder: (p: Promo) => void }) {
+  const PROMOS = usePublicPromos();
   const [current, setCurrent] = useState(0);
   const timer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const len = PROMOS.length;
 
   const schedule = useCallback((delay: number) => {
     if (timer.current) clearTimeout(timer.current);
+    if (!len) return;
     timer.current = setTimeout(() => {
       setCurrent((c) => (c + 1) % len);
       schedule(AUTO_MS);
@@ -38,6 +40,8 @@ export default function HeroPromoSlider({ onOrder }: { onOrder: (p: Promo) => vo
     if (o < -len / 2) o += len;
     return o;
   };
+
+  if (!len) return null; // немає активних акцій — слайдер не показуємо
 
   const styleFor = (o: number): CSSProperties => {
     const base: CSSProperties = {
