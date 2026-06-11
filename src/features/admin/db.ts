@@ -5,6 +5,7 @@
 
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { createClient } from "@/lib/supabase/client";
+import { parseDeliverySettings, DEFAULT_DELIVERY, type DeliverySettings } from "@/lib/delivery";
 import type { Badge } from "@/lib/types";
 
 // ---------- Типи ----------
@@ -406,4 +407,25 @@ export async function dbSetReviewStatus(id: string, status: ReviewStatus) {
 }
 export async function dbDeleteReview(id: string) {
   await createClient().from("reviews").delete().eq("id", id);
+}
+
+// ---------- Налаштування доставки (settings, key='delivery') ----------
+export function useDbDelivery() {
+  const supabase = useMemo(() => createClient(), []);
+  const [delivery, setDelivery] = useState<DeliverySettings>(DEFAULT_DELIVERY);
+  const [loading, setLoading] = useState(true);
+  const refetch = useCallback(async () => {
+    setLoading(true);
+    const { data, error } = await supabase.from("settings").select("value").eq("key", "delivery").maybeSingle();
+    if (error) console.error("delivery settings:", error.message);
+    else setDelivery(parseDeliverySettings(data?.value));
+    setLoading(false);
+  }, [supabase]);
+  useEffect(() => { refetch(); }, [refetch]);
+  return { delivery, loading, refetch };
+}
+
+export async function dbSaveDelivery(settings: DeliverySettings): Promise<string | undefined> {
+  const { error } = await createClient().from("settings").upsert({ key: "delivery", value: settings }, { onConflict: "key" });
+  return error?.message;
 }

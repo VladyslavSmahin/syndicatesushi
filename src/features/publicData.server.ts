@@ -2,6 +2,7 @@ import "server-only";
 import { createClient } from "@/lib/supabase/server";
 import type { Product, Badge, Portion, Promo } from "@/lib/types";
 import type { PublicData, PubCategory, PubSubcategory } from "@/features/publicData";
+import { parseDeliverySettings } from "@/lib/delivery";
 
 const num = (v: unknown) => (v == null ? 0 : Number(v));
 const r1 = (n: number) => Math.round(n * 10) / 10;
@@ -51,7 +52,7 @@ function mapProduct(p: ProductRow): Product {
 export async function fetchPublicData(): Promise<PublicData> {
   const supabase = await createClient();
 
-  const [catsRes, subsRes, prodsRes, promosRes] = await Promise.all([
+  const [catsRes, subsRes, prodsRes, promosRes, deliveryRes] = await Promise.all([
     supabase.from("categories").select("id, name, slug, sort_order, show_in_nav, is_active").order("sort_order"),
     supabase.from("subcategories").select("id, name, slug, sort_order, category:categories(slug)").eq("is_active", true).order("sort_order"),
     supabase
@@ -61,6 +62,7 @@ export async function fetchPublicData(): Promise<PublicData> {
       .eq("is_available", true)
       .order("sort_order"),
     supabase.from("promos").select("id, label, title, promo_price, old_price, banner_image_path, product:products(id)").eq("is_active", true).order("sort_order"),
+    supabase.from("settings").select("value").eq("key", "delivery").maybeSingle(),
   ]);
 
   if (catsRes.error) console.error("categories fetch:", catsRes.error.message);
@@ -89,5 +91,7 @@ export async function fetchPublicData(): Promise<PublicData> {
     };
   });
 
-  return { catalog, categories, subcategories, promos };
+  const delivery = parseDeliverySettings(deliveryRes.data?.value);
+
+  return { catalog, categories, subcategories, promos, delivery };
 }

@@ -35,7 +35,10 @@ const NAV: { group: string; items: { href: string; label: string }[] }[] = [
   },
   {
     group: "Система",
-    items: [{ href: "/admin/staff", label: "Співробітники" }],
+    items: [
+      { href: "/admin/settings", label: "Доставка" },
+      { href: "/admin/staff", label: "Співробітники" },
+    ],
   },
 ];
 

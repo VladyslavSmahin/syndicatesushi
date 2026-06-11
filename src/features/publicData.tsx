@@ -6,6 +6,7 @@
 
 import { createContext, useContext } from "react";
 import type { Product, Promo } from "@/lib/types";
+import { DEFAULT_DELIVERY, type DeliverySettings } from "@/lib/delivery";
 
 export interface PubCategory {
   id: string;
@@ -29,9 +30,10 @@ export interface PublicData {
   categories: PubCategory[];
   subcategories: PubSubcategory[];
   promos: Promo[];
+  delivery: DeliverySettings;
 }
 
-const Ctx = createContext<PublicData>({ catalog: [], categories: [], subcategories: [], promos: [] });
+const Ctx = createContext<PublicData>({ catalog: [], categories: [], subcategories: [], promos: [], delivery: DEFAULT_DELIVERY });
 
 export function PublicDataProvider({ value, children }: { value: PublicData; children: React.ReactNode }) {
   return <Ctx.Provider value={value}>{children}</Ctx.Provider>;
@@ -53,4 +55,8 @@ export function usePublicSubcategories(categorySlug?: string): PubSubcategory[] 
 
 export function usePublicPromos(): Promo[] {
   return useContext(Ctx).promos;
+}
+
+export function usePublicDelivery(): DeliverySettings {
+  return useContext(Ctx).delivery;
 }

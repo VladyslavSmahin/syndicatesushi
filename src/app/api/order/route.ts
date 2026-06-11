@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { sendTelegramMessage, esc } from "@/lib/telegram";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { rateLimit, clientIp } from "@/lib/rateLimit";
+import { quoteDelivery, parseDeliverySettings } from "@/lib/delivery";
 
 interface IncomingItem {
   id: string;        // uuid товару з каталогу
@@ -17,6 +18,8 @@ interface OrderBody {
   address?: string;
   comment?: string;
   promo?: string;
+  lat?: number;
+  lng?: number;
   items: IncomingItem[];
 }
 
@@ -92,7 +95,19 @@ export async function POST(req: Request) {
     }
   }
 
-  const deliveryCost = 0;
+  // ---- Вартість доставки (перерахунок на сервері з координат + налаштувань) ----
+  let deliveryCost = 0;
+  if (delivery === "delivery") {
+    const { data: ds } = await supabase.from("settings").select("value").eq("key", "delivery").maybeSingle();
+    const settings = parseDeliverySettings(ds?.value);
+    if (typeof body.lat === "number" && typeof body.lng === "number") {
+      const q = quoteDelivery(settings, body.lat, body.lng, subtotal);
+      deliveryCost = q.free ? 0 : q.price;
+    } else {
+      deliveryCost = settings.basePrice; // адреса без координат — базова ціна
+    }
+  }
+
   const total = Math.max(0, subtotal - discount + deliveryCost);
 
   // ---- Запис замовлення в БД (service role обходить RLS) ----
@@ -143,6 +158,7 @@ export async function POST(req: Request) {
     ...lines,
     "",
     discount ? `Сума: ${subtotal} грн · Знижка: −${discount} грн` : null,
+    deliveryCost > 0 ? `🚚 <b>Доставка:</b> ${deliveryCost} грн` : null,
     `💰 <b>Разом:</b> ${total} грн`,
     !dbSaved ? "\n⚠️ <i>Замовлення не збереглося в БД — перевірте адмінку</i>" : null,
   ]
