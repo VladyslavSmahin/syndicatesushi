@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useRef, useState, type CSSProperties } from "react";
 import { Icon } from "./icons";
 import { useCart } from "@/features/cart/CartContext";
-import { usePublicDelivery, usePublicCatalog } from "@/features/publicData";
+import { usePublicDelivery, usePublicCatalog, useGloss } from "@/features/publicData";
 import { quoteDelivery } from "@/lib/delivery";
 import type { Product, CartItem } from "@/lib/types";
 
@@ -260,6 +260,7 @@ export default function CartDrawer({ isOpen, onClose }: { isOpen: boolean; onClo
 
 function ExtrasBlock({ extras, items, add }: { extras: Product[]; items: CartItem[]; add: (p: Product) => void }) {
   const [open, setOpen] = useState(false);
+  const title = useGloss("cart_extras");
   if (!extras.length) return null;
   const qtyOf = (id: string) => items.find((i) => i.id === id)?.qty ?? 0;
   const inCart = extras.reduce((n, p) => n + qtyOf(p.id), 0);
@@ -267,7 +268,7 @@ function ExtrasBlock({ extras, items, add }: { extras: Product[]; items: CartIte
     <div style={{ borderTop: "1px solid var(--border)", marginTop: 6, paddingTop: 16 }}>
       <button type="button" onClick={() => setOpen((o) => !o)}
         style={{ width: "100%", display: "flex", alignItems: "center", gap: 8, background: "transparent", border: "none", cursor: "pointer", padding: 0, marginBottom: open ? 12 : 0 }}>
-        <span style={{ fontSize: 11, letterSpacing: 3, textTransform: "uppercase", color: "var(--text-secondary)" }}>Додатково</span>
+        <span style={{ fontSize: 11, letterSpacing: 3, textTransform: "uppercase", color: "var(--text-secondary)" }}>{title}</span>
         {inCart > 0 && <span style={{ fontSize: 11, color: "var(--accent)", fontWeight: 700 }}>· {inCart}</span>}
         <span style={{ marginLeft: "auto", color: "var(--text-secondary)", fontSize: 13, transition: "transform 0.2s", transform: open ? "rotate(180deg)" : "none" }}>▾</span>
       </button>

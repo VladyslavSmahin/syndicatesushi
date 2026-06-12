@@ -3,7 +3,7 @@
 import { useMemo, useState } from "react";
 import ArrowBtn from "./ArrowBtn";
 import MenuCard from "./MenuCard";
-import { usePublicCatalog } from "@/features/publicData";
+import { usePublicCatalog, useGloss } from "@/features/publicData";
 import { useIsMobile } from "@/features/useIsMobile";
 import type { Product } from "@/lib/types";
 
@@ -16,6 +16,7 @@ export default function Hits({
 }) {
   const isMobile = useIsMobile();
   const catalog = usePublicCatalog();
+  const titleHits = useGloss("title_hits");
   // «Хіт» = товар з бейджем «ХІТ» (єдине джерело — бейдж у картці товару)
   const hits = useMemo(() => catalog.filter((m) => m.badge === "ХІТ"), [catalog]);
   const perPage = 4;
@@ -32,7 +33,7 @@ export default function Hits({
       <div style={{ maxWidth: 1440, margin: "0 auto" }}>
         <div style={{ display: "flex", alignItems: "flex-end", justifyContent: "space-between", marginBottom: "var(--head-mb)", gap: 16, flexWrap: "wrap" }}>
           <h2 style={{ fontFamily: "var(--font-display)", fontSize: "var(--h2-size)", fontWeight: 700, lineHeight: 1, color: "var(--text-primary)" }}>
-            Хіти меню
+            {titleHits}
           </h2>
           {!isMobile && (
             <div style={{ display: "flex", gap: 8 }}>

@@ -1,6 +1,7 @@
 "use client";
 
 import { Icon, PhotoSlot } from "./icons";
+import { useGloss } from "@/features/publicData";
 import type { Product } from "@/lib/types";
 
 export default function MenuCard({
@@ -15,6 +16,9 @@ export default function MenuCard({
   /** компактний варіант (для блоку «Хіти меню») */
   compact?: boolean;
 }) {
+  const badgeHit = useGloss("badge_hit");
+  const badgeNew = useGloss("badge_new");
+  const badgeLabel = item.badge === "ХІТ" ? badgeHit : item.badge === "НОВЕ" ? badgeNew : item.badge;
   const photoH = compact ? 124 : 160;
   const pad = compact ? 10 : 14;
   const titleSize = compact ? 15 : 18;
@@ -44,20 +48,15 @@ export default function MenuCard({
               backdropFilter: "blur(6px)",
             }}
           >
-            {item.badge}
+            {badgeLabel}
           </div>
         )}
       </div>
 
-      <div style={{ paddingTop: compact ? 10 : 14, paddingBottom: 4, flex: 1, display: "flex", flexDirection: "column" }}>
+      <div style={{ paddingTop: compact ? 4 : 6, paddingBottom: 4, flex: 1, display: "flex", flexDirection: "column" }}>
         <h3 style={{ fontFamily: "var(--font-display)", fontSize: titleSize, fontWeight: 600, color: "var(--text-primary)", lineHeight: 1.15, marginBottom: compact ? 4 : 6 }}>
           {item.name}
         </h3>
-        {!compact && (
-          <p style={{ fontSize: 12, fontWeight: 400, color: "var(--text-secondary)", lineHeight: 1.5, marginBottom: 14, flex: 1, letterSpacing: 0.2 }}>
-            {item.desc}
-          </p>
-        )}
       </div>
 
       <div style={{ display: "flex", alignItems: "flex-end", justifyContent: "space-between", gap: 10 }}>

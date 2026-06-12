@@ -7,6 +7,7 @@
 import { createContext, useContext } from "react";
 import type { Product, Promo, NavCategory } from "@/lib/types";
 import { DEFAULT_DELIVERY, type DeliverySettings } from "@/lib/delivery";
+import { GLOSSARY_DEFAULTS, type Glossary } from "@/lib/glossary";
 
 export interface PubCategory {
   id: string;
@@ -32,9 +33,10 @@ export interface PublicData {
   promos: Promo[];
   delivery: DeliverySettings;
   navSpecials: NavCategory[];
+  glossary: Glossary;
 }
 
-const Ctx = createContext<PublicData>({ catalog: [], categories: [], subcategories: [], promos: [], delivery: DEFAULT_DELIVERY, navSpecials: [] });
+const Ctx = createContext<PublicData>({ catalog: [], categories: [], subcategories: [], promos: [], delivery: DEFAULT_DELIVERY, navSpecials: [], glossary: GLOSSARY_DEFAULTS });
 
 export function PublicDataProvider({ value, children }: { value: PublicData; children: React.ReactNode }) {
   return <Ctx.Provider value={value}>{children}</Ctx.Provider>;
@@ -64,4 +66,12 @@ export function usePublicDelivery(): DeliverySettings {
 
 export function usePublicNavSpecials(): NavCategory[] {
   return useContext(Ctx).navSpecials;
+}
+
+export function usePublicGlossary(): Glossary {
+  return useContext(Ctx).glossary;
+}
+/** Значення глосарію за ключем (з фолбеком на дефолт). */
+export function useGloss(key: string): string {
+  return useContext(Ctx).glossary[key] ?? GLOSSARY_DEFAULTS[key] ?? key;
 }

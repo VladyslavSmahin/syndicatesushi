@@ -48,7 +48,7 @@ export default function CategoriesPage() {
     const slug = slugify(n);
     if (cats.some((c) => c.slug === slug)) { setError("Категорія з такою назвою вже існує"); return; }
     const maxOrder = cats.reduce((m, c) => Math.max(m, c.sortOrder), 0);
-    const err = await dbCreateCategory({ name: n, slug, sortOrder: maxOrder + 10, showInNav: true, isActive: true });
+    const err = await dbCreateCategory({ name: n, slug, sortOrder: maxOrder + 1, showInNav: true, isActive: true });
     if (err) { setError(err); return; }
     setName(""); setError("");
     refetch();
@@ -85,16 +85,19 @@ export default function CategoriesPage() {
         <div className={s.tableWrap}>
           <table className={s.table}>
             <thead>
-              <tr><th>Назва</th><th>Slug</th><th>Порядок</th><th>У навігації</th><th>Активна</th><th style={{ textAlign: "right" }}>Дії</th></tr>
+              <tr><th>Назва</th><th>У навігації</th><th>Активна</th><th style={{ textAlign: "right" }}>Дії</th></tr>
             </thead>
             <tbody>
               {loading ? (
-                <tr><td colSpan={6} style={{ padding: 20, color: "var(--text-secondary)" }}>Завантаження…</td></tr>
+                <tr><td colSpan={4} style={{ padding: 20, color: "var(--text-secondary)" }}>Завантаження…</td></tr>
               ) : cats.map((c) => (
                 <tr key={c.id}>
-                  <td style={{ fontFamily: "var(--font-display)", fontSize: 15, fontWeight: 600 }}>{c.name}</td>
-                  <td data-label="Slug" style={{ color: "var(--text-secondary)" }}>{c.slug}</td>
-                  <td data-label="Порядок">{c.sortOrder}</td>
+                  <td style={{ fontFamily: "var(--font-display)", fontSize: 15, fontWeight: 600 }}>
+                    <span style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", gap: 10 }}>
+                      <span>{c.name}</span>
+                      <span style={{ fontFamily: "var(--font-body)", fontSize: 12, fontWeight: 400, color: "var(--text-tertiary)" }}>№{c.sortOrder}</span>
+                    </span>
+                  </td>
                   <td data-label="У навігації">
                     <button className={`${s.pill} ${c.showInNav ? s.pillOn : s.pillOff}`} style={{ cursor: "pointer", border: "none" }}
                       onClick={() => toggle(c.id, { showInNav: !c.showInNav })}>{c.showInNav ? "Так" : "Ні"}</button>

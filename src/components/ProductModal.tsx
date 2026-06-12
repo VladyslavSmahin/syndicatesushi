@@ -63,7 +63,7 @@ export default function ProductModal({
               style={{
                 position: "absolute", top: 20, left: 20, padding: "6px 12px",
                 background: item.badge === "НОВЕ" ? "var(--badge-new)" : "var(--accent)",
-                color: "#0A0908", fontSize: 9, fontWeight: 500, letterSpacing: 2.5, textTransform: "uppercase",
+                color: "#0A0908", fontSize: 11, fontWeight: 500, letterSpacing: 2.5, textTransform: "uppercase",
               }}
             >
               {item.badge === "ХІТ" ? "ХІТ ПРОДАЖІВ" : item.badge}
@@ -71,24 +71,24 @@ export default function ProductModal({
           )}
         </div>
 
-        <div style={{ padding: "44px 40px 40px", display: "flex", flexDirection: "column" }}>
-          <h2 style={{ fontFamily: "var(--font-display)", fontSize: 32, fontWeight: 700, color: "var(--text-primary)", lineHeight: 1.1, marginBottom: 12 }}>
+        <div style={{ padding: "22px 40px 40px", display: "flex", flexDirection: "column" }}>
+          <h2 style={{ fontFamily: "var(--font-display)", fontSize: 32, fontWeight: 700, color: "var(--text-primary)", lineHeight: 1.1, marginBottom: 10 }}>
             {item.name}
           </h2>
-          <div style={{ fontSize: 11, fontWeight: 300, letterSpacing: 2, textTransform: "uppercase", color: "var(--text-secondary)", marginBottom: 28 }}>
+          <div style={{ fontSize: 13, fontWeight: 300, letterSpacing: 2, textTransform: "uppercase", color: "var(--text-secondary)", marginBottom: 24 }}>
             {item.pieces} · {item.weight}
           </div>
 
           <div style={{ marginBottom: 24 }}>
-            <div className="eyebrow" style={{ marginBottom: 10, fontSize: 9 }}>Склад</div>
-            <p style={{ fontSize: 13, fontWeight: 300, color: "var(--text-primary)", lineHeight: 1.7, opacity: 0.9 }}>
-              {item.composition}
+            <div className="eyebrow" style={{ marginBottom: 10, fontSize: 11 }}>Склад</div>
+            <p style={{ fontSize: 15, fontWeight: 300, color: "var(--text-primary)", lineHeight: 1.7, opacity: 0.9 }}>
+              {item.composition.toLowerCase()}
             </p>
           </div>
 
           {item.portion && item.portion.weight > 0 && (
             <div style={{ marginBottom: 24 }}>
-              <div className="eyebrow" style={{ marginBottom: 10, fontSize: 9 }}>
+              <div className="eyebrow" style={{ marginBottom: 10, fontSize: 11 }}>
                 Харчова цінність порції ({item.portion.weight} г)
               </div>
               <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
@@ -99,23 +99,26 @@ export default function ProductModal({
                   { l: "Вугл.", v: `${item.portion.carbs} г` },
                 ].map((n) => (
                   <div key={n.l} style={{ flex: "1 1 80px", minWidth: 72, padding: "10px 12px", background: "var(--bg-elevated)", border: "1px solid var(--border)", textAlign: "center" }}>
-                    <div style={{ fontFamily: "var(--font-display)", fontSize: 18, fontWeight: 700, color: "var(--text-primary)", lineHeight: 1 }}>{n.v}</div>
-                    <div style={{ fontSize: 9, letterSpacing: 1.5, textTransform: "uppercase", color: "var(--text-secondary)", marginTop: 6 }}>{n.l}</div>
+                    <div style={{ fontFamily: "var(--font-display)", fontSize: 20, fontWeight: 700, color: "var(--text-primary)", lineHeight: 1 }}>{n.v}</div>
+                    <div style={{ fontSize: 11, letterSpacing: 1.5, textTransform: "uppercase", color: "var(--text-secondary)", marginTop: 6 }}>{n.l}</div>
                   </div>
                 ))}
               </div>
             </div>
           )}
 
-          <div style={{ marginBottom: 32, paddingTop: 24, borderTop: "1px solid var(--border)" }}>
-            <p style={{ fontSize: 13, fontWeight: 300, color: "var(--text-secondary)", lineHeight: 1.7, fontStyle: "italic" }}>
-              {item.fullDesc}
-            </p>
-          </div>
+          {item.fullDesc && (
+            <div style={{ marginBottom: 32, paddingTop: 24, borderTop: "1px solid var(--border)" }}>
+              <div className="eyebrow" style={{ marginBottom: 10, fontSize: 11 }}>Опис</div>
+              <p style={{ fontSize: 15, fontWeight: 300, color: "var(--text-secondary)", lineHeight: 1.7, fontStyle: "italic" }}>
+                {item.fullDesc}
+              </p>
+            </div>
+          )}
 
           <div style={{ marginTop: "auto", display: "flex", alignItems: "center", justifyContent: "space-between", gap: 16, paddingTop: 24, borderTop: "1px solid var(--border)", flexWrap: "wrap" }}>
-            <div style={{ fontFamily: "var(--font-display)", fontSize: 36, fontWeight: 700, color: "var(--text-primary)", lineHeight: 1 }}>
-              {item.price} <span style={{ fontSize: 16, fontWeight: 400 }}>грн</span>
+            <div style={{ fontFamily: "var(--font-display)", fontSize: 38, fontWeight: 700, color: "var(--text-primary)", lineHeight: 1 }}>
+              {item.price} <span style={{ fontSize: 18, fontWeight: 400 }}>грн</span>
             </div>
             <button className="btn-primary" onClick={() => { onAdd(item); onClose(); }}>
               Додати в кошик

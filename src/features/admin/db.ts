@@ -7,6 +7,7 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { createClient } from "@/lib/supabase/client";
 import { parseDeliverySettings, DEFAULT_DELIVERY, type DeliverySettings } from "@/lib/delivery";
 import { NAV_SPECIALS, parseNavVisibility } from "@/lib/navSpecials";
+import { parseGlossary, type Glossary } from "@/lib/glossary";
 import type { Badge } from "@/lib/types";
 
 // ---------- Типи ----------
@@ -71,7 +72,6 @@ export function useDbProducts() {
   const [products, setProducts] = useState<DbProduct[]>([]);
   const [loading, setLoading] = useState(true);
   const refetch = useCallback(async () => {
-    setLoading(true);
     const { data, error } = await supabase.from("products").select(PRODUCT_SELECT).order("sort_order");
     if (error) console.error("products:", error.message);
     else setProducts(((data ?? []) as unknown as ProductRow[]).map(mapProduct));
@@ -86,7 +86,6 @@ export function useDbIngredients() {
   const [ingredients, setIngredients] = useState<DbIngredient[]>([]);
   const [loading, setLoading] = useState(true);
   const refetch = useCallback(async () => {
-    setLoading(true);
     const { data, error } = await supabase.from("ingredients").select("id, name, slug, kcal, protein, fat, carbs").order("name");
     if (error) console.error("ingredients:", error.message);
     else setIngredients((data ?? []) as DbIngredient[]);
@@ -101,7 +100,6 @@ export function useDbCategories() {
   const [categories, setCategories] = useState<DbCategory[]>([]);
   const [loading, setLoading] = useState(true);
   const refetch = useCallback(async () => {
-    setLoading(true);
     const { data, error } = await supabase.from("categories").select("id, name, slug, sort_order, show_in_nav, is_active").order("sort_order");
     if (error) console.error("categories:", error.message);
     else setCategories((data ?? []).map((c) => ({ id: c.id, name: c.name, slug: c.slug, sortOrder: c.sort_order, showInNav: c.show_in_nav, isActive: c.is_active })));
@@ -116,7 +114,6 @@ export function useDbSubcategories() {
   const [subcategories, setSubcategories] = useState<DbSubcategory[]>([]);
   const [loading, setLoading] = useState(true);
   const refetch = useCallback(async () => {
-    setLoading(true);
     const { data, error } = await supabase.from("subcategories").select("id, category_id, name, slug, sort_order").order("sort_order");
     if (error) console.error("subcategories:", error.message);
     else setSubcategories((data ?? []).map((s) => ({ id: s.id, categoryId: s.category_id, name: s.name, slug: s.slug, sortOrder: s.sort_order })));
@@ -472,4 +469,25 @@ export async function dbSetNavSpecialVisible(specials: NavSpecialItem[], id: str
   const map: Record<string, boolean> = {};
   for (const sp of specials) map[sp.id] = sp.id === id ? visible : sp.showInNav;
   await createClient().from("settings").upsert({ key: "nav_specials", value: map }, { onConflict: "key" });
+}
+
+// ---------- Глосарій (settings, key='glossary') ----------
+export function useDbGlossary() {
+  const supabase = useMemo(() => createClient(), []);
+  const [glossary, setGlossary] = useState<Glossary>(parseGlossary(null));
+  const [loading, setLoading] = useState(true);
+  const refetch = useCallback(async () => {
+    setLoading(true);
+    const { data, error } = await supabase.from("settings").select("value").eq("key", "glossary").maybeSingle();
+    if (error) console.error("glossary:", error.message);
+    setGlossary(parseGlossary(data?.value));
+    setLoading(false);
+  }, [supabase]);
+  useEffect(() => { refetch(); }, [refetch]);
+  return { glossary, loading, refetch };
+}
+
+export async function dbSaveGlossary(glossary: Glossary): Promise<string | undefined> {
+  const { error } = await createClient().from("settings").upsert({ key: "glossary", value: glossary }, { onConflict: "key" });
+  return error?.message;
 }

@@ -70,7 +70,7 @@ export default function IngredientsPage() {
       <div className={s.card}>
         <div className={s.cardHead}><div className={s.cardTitle}>Інгредієнти ({ingredients.length})</div></div>
         <div className={s.tableWrap}>
-          <table className={s.table}>
+          <table className={`${s.table} ${s.nutTable}`}>
             <thead>
               <tr><th>Назва</th><th>Ккал</th><th>Білки, г</th><th>Жири, г</th><th>Вугл., г</th><th style={{ textAlign: "right" }}>Дії</th></tr>
             </thead>
@@ -81,7 +81,7 @@ export default function IngredientsPage() {
                 <tr key={ing.id}>
                   <td style={{ fontFamily: "var(--font-display)", fontSize: 15, fontWeight: 600 }}>{ing.name}</td>
                   {(["kcal", "protein", "fat", "carbs"] as NutField[]).map((f) => (
-                    <td key={f}>
+                    <td key={f} className={s.nutCell} data-label={NUT_LABEL[f]}>
                       <NutCell value={ing[f]} onCommit={(v) => setNut(ing.id, f, v)} />
                     </td>
                   ))}

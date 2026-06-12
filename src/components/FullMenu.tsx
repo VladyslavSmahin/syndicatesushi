@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 import MenuCard from "./MenuCard";
-import { usePublicCatalog, usePublicCategories, usePublicSubcategories } from "@/features/publicData";
+import { usePublicCatalog, usePublicCategories, usePublicSubcategories, useGloss } from "@/features/publicData";
 import { useIsMobile } from "@/features/useIsMobile";
 import type { Product, NavCategory } from "@/lib/types";
 
@@ -31,6 +31,8 @@ export default function FullMenu({
   const isMobile = useIsMobile();
   const catalog = usePublicCatalog();
   const cats = usePublicCategories();
+  const glossNovynky = useGloss("nav_novynky");
+  const glossFullMenu = useGloss("title_full_menu");
   // список інгредієнтів для фільтра — динамічно з каталогу (унікальні назви)
   const INGREDIENTS = useMemo(() => {
     const set = new Set<string>();
@@ -87,8 +89,8 @@ export default function FullMenu({
   const title = navFilter?.category
     ? cats.find((c) => c.slug === navFilter.category)?.name ?? "Меню"
     : navFilter?.badge === "НОВЕ"
-      ? "Новинки"
-      : "Повне меню";
+      ? glossNovynky
+      : glossFullMenu;
 
   const Chips = (
     <div style={{ display: "flex", flexWrap: "wrap", gap: 10 }}>

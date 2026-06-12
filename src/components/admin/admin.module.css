@@ -171,7 +171,7 @@
 .btnGhost:hover { background: var(--bg-elevated); border-color: var(--accent); }
 .btnDanger { background: transparent; border: 1px solid #5c2b2b; color: #E0726A; }
 .btnDanger:hover { background: #2a1215; }
-.btnSmall { padding: 7px 12px; font-size: 13px; }
+.btnSmall { padding: 6px 11px; font-size: 11px; letter-spacing: 1px; }
 
 .pill {
   display: inline-flex; align-items: center; padding: 3px 10px; border-radius: 12px;
@@ -260,4 +260,14 @@
   .table td:first-child { display: block; text-align: left; padding-bottom: 10px; }
   .table td:first-child::before { display: none; }
   .rowActions { justify-content: flex-start; flex-wrap: wrap; }
+
+  /* інгредієнти: 4 показники КБЖУ — в один рядок, лейбли зверху */
+  .nutTable tr { display: flex; flex-wrap: wrap; align-items: flex-end; gap: 8px; }
+  .nutTable td { padding: 0; }
+  .nutTable td:first-child { flex: 1 1 100%; padding-bottom: 6px; }
+  .nutTable .nutCell { flex: 1 1 0; display: flex; flex-direction: column; gap: 4px; text-align: center; min-width: 0; }
+  .nutTable .nutCell::before { display: block; text-align: center; }
+  .nutTable .nutCell input { width: 100% !important; }
+  .nutTable td:last-child { flex: 1 1 100%; padding-top: 6px; }
+  .nutTable .rowActions { justify-content: flex-start; }
 }

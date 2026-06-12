@@ -118,10 +118,18 @@ export default function ProductsPage() {
   };
   const close = () => { setDraft(null); setEditing(null); setNewIng(""); setSetPick(""); };
 
+  // «Склад» формується автоматично з обраних інгредієнтів (для сетів — з ролів)
+  const compositionAuto = !draft
+    ? ""
+    : (setyCat && draft.categoryId === setyCat.id)
+      ? draft.setItemIds.map((id) => prodById.get(id)?.name ?? "").filter(Boolean).join(", ")
+      : draft.ingredientIds.map((id) => ingName(id)).filter(Boolean).join(", ").toLowerCase();
+
   const save = async () => {
     if (!draft || !draft.name.trim()) return;
     setSaving(true);
-    const err = editing ? await dbUpdateProduct(editing.id, toInput(draft)) : await dbCreateProduct(toInput(draft));
+    const input = { ...toInput(draft), composition: compositionAuto };
+    const err = editing ? await dbUpdateProduct(editing.id, input) : await dbCreateProduct(input);
     setSaving(false);
     if (err) { alert("Помилка збереження: " + err); return; }
     if (editing && draft.price !== editing.price) {
@@ -325,7 +333,7 @@ export default function ProductsPage() {
               </Field>
             </div>
             <div style={{ display: "flex", gap: 14, flexWrap: "wrap" }}>
-              <Field label="Вага" grow>
+              <Field label="Вага, гр" grow>
                 <input className={s.input} placeholder="290 г" value={draft.weight} onChange={(e) => set("weight", e.target.value)} />
               </Field>
               <Field label="Кількість" grow>
@@ -416,8 +424,12 @@ export default function ProductsPage() {
             <Field label="Короткий опис (на картці)">
               <input className={s.input} value={draft.desc} onChange={(e) => set("desc", e.target.value)} />
             </Field>
-            <Field label="Склад (описовий текст)">
-              <input className={s.input} value={draft.composition} onChange={(e) => set("composition", e.target.value)} />
+            <Field label="Склад">
+              <input className={s.input} value={compositionAuto} readOnly disabled style={{ opacity: 0.7 }}
+                placeholder={isSetDraft ? "Додайте роли вище" : "Оберіть інгредієнти вище"} />
+              <span className={s.hint} style={{ fontSize: 11, marginTop: 4 }}>
+                Підтягується автоматично з обраних {isSetDraft ? "ролів" : "інгредієнтів"}.
+              </span>
             </Field>
             <Field label="Повний опис">
               <textarea className={s.input} style={{ minHeight: 70, resize: "vertical" }} value={draft.fullDesc} onChange={(e) => set("fullDesc", e.target.value)} />

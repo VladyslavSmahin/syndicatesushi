@@ -55,22 +55,6 @@ export default function DashboardPage() {
         ))}
       </div>
 
-      <div className={s.card}>
-        <div className={s.cardHead}>
-          <div className={s.cardTitle}>Швидкі дії</div>
-        </div>
-        <div style={{ padding: 22, display: "flex", gap: 10, flexWrap: "wrap" }}>
-          <Link href="/admin/categories" className={`${s.btn} ${s.btnGhost}`} style={{ textDecoration: "none" }}>
-            + Категорія
-          </Link>
-          <Link href="/admin/products" className={`${s.btn} ${s.btnGhost}`} style={{ textDecoration: "none" }}>
-            + Товар
-          </Link>
-          <Link href="/admin/staff" className={`${s.btn} ${s.btnGhost}`} style={{ textDecoration: "none" }}>
-            + Співробітник
-          </Link>
-        </div>
-      </div>
     </div>
   );
 }

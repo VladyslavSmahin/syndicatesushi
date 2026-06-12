@@ -40,7 +40,7 @@ export default function SubcategoriesPage() {
     const n = name.trim();
     if (!n || !categoryId) return;
     const maxOrder = subcategories.filter((sc) => sc.categoryId === categoryId).reduce((m, sc) => Math.max(m, sc.sortOrder), 0);
-    const err = await dbCreateSubcategory({ categoryId, name: n, sortOrder: maxOrder + 10 });
+    const err = await dbCreateSubcategory({ categoryId, name: n, sortOrder: maxOrder + 1 });
     if (err) { setError(err); return; }
     setName(""); setError("");
     refetch();
@@ -82,17 +82,20 @@ export default function SubcategoriesPage() {
         <div className={s.tableWrap}>
           <table className={s.table}>
             <thead>
-              <tr><th>Назва</th><th>Категорія</th><th>Slug</th><th>Порядок</th><th style={{ textAlign: "right" }}>Дії</th></tr>
+              <tr><th>Назва</th><th>Категорія</th><th style={{ textAlign: "right" }}>Дії</th></tr>
             </thead>
             <tbody>
               {loading ? (
-                <tr><td colSpan={5} style={{ padding: 20, color: "var(--text-secondary)" }}>Завантаження…</td></tr>
+                <tr><td colSpan={3} style={{ padding: 20, color: "var(--text-secondary)" }}>Завантаження…</td></tr>
               ) : subcategories.map((sc) => (
                 <tr key={sc.id}>
-                  <td style={{ fontFamily: "var(--font-display)", fontSize: 15, fontWeight: 600 }}>{sc.name}</td>
+                  <td style={{ fontFamily: "var(--font-display)", fontSize: 15, fontWeight: 600 }}>
+                    <span style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", gap: 10 }}>
+                      <span>{sc.name}</span>
+                      <span style={{ fontFamily: "var(--font-body)", fontSize: 12, fontWeight: 400, color: "var(--text-tertiary)" }}>№{sc.sortOrder}</span>
+                    </span>
+                  </td>
                   <td data-label="Категорія" style={{ color: "var(--text-secondary)" }}>{catName(sc.categoryId)}</td>
-                  <td data-label="Slug" style={{ color: "var(--text-secondary)", fontSize: 12 }}>{sc.slug}</td>
-                  <td data-label="Порядок">{sc.sortOrder}</td>
                   <td>
                     <div className={s.rowActions}>
                       <button className={`${s.btn} ${s.btnGhost} ${s.btnSmall}`} onClick={() => openEdit(sc)}>Редагувати</button>

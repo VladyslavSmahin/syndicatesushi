@@ -4,6 +4,7 @@ import type { Product, Badge, Portion, Promo } from "@/lib/types";
 import type { PublicData, PubCategory, PubSubcategory } from "@/features/publicData";
 import { parseDeliverySettings } from "@/lib/delivery";
 import { NAV_SPECIALS, parseNavVisibility } from "@/lib/navSpecials";
+import { parseGlossary } from "@/lib/glossary";
 
 const num = (v: unknown) => (v == null ? 0 : Number(v));
 const r1 = (n: number) => Math.round(n * 10) / 10;
@@ -63,7 +64,7 @@ export async function fetchPublicData(): Promise<PublicData> {
       .eq("is_available", true)
       .order("sort_order"),
     supabase.from("promos").select("id, label, title, promo_price, old_price, banner_image_path, product:products(id)").eq("is_active", true).order("sort_order"),
-    supabase.from("settings").select("key, value").in("key", ["delivery", "nav_specials"]),
+    supabase.from("settings").select("key, value").in("key", ["delivery", "nav_specials", "glossary"]),
   ]);
 
   if (catsRes.error) console.error("categories fetch:", catsRes.error.message);
@@ -95,7 +96,10 @@ export async function fetchPublicData(): Promise<PublicData> {
   const settingsRows = (deliveryRes.data ?? []) as { key: string; value: unknown }[];
   const delivery = parseDeliverySettings(settingsRows.find((r) => r.key === "delivery")?.value);
   const navVis = parseNavVisibility(settingsRows.find((r) => r.key === "nav_specials")?.value);
-  const navSpecials = NAV_SPECIALS.filter((sp) => navVis[sp.id]);
+  const glossary = parseGlossary(settingsRows.find((r) => r.key === "glossary")?.value);
+  // підписи спец-пунктів навігації беремо з глосарію
+  const navLabel: Record<string, string> = { novynky: glossary.nav_novynky, aktsii: glossary.nav_aktsii };
+  const navSpecials = NAV_SPECIALS.filter((sp) => navVis[sp.id]).map((sp) => ({ ...sp, label: navLabel[sp.id] ?? sp.label }));
 
-  return { catalog, categories, subcategories, promos, delivery, navSpecials };
+  return { catalog, categories, subcategories, promos, delivery, navSpecials, glossary };
 }
