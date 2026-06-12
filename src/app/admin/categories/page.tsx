@@ -11,6 +11,8 @@ import s from "@/components/admin/admin.module.css";
 
 interface EditDraft { id: string; name: string; slug: string; sortOrder: number; }
 
+const slugify = (v: string) => v.trim().toLowerCase().replace(/\s+/g, "-");
+
 export default function CategoriesPage() {
   const { categories: cats, loading, refetch } = useDbCategories();
   const { specials, refetch: refetchSpecials } = useDbNavSpecials();
@@ -42,7 +44,7 @@ export default function CategoriesPage() {
     e.preventDefault();
     const n = name.trim();
     if (!n) return;
-    const slug = n.toLowerCase().replace(/\s+/g, "-");
+    const slug = slugify(n);
     if (cats.some((c) => c.slug === slug)) { setError("Категорія з такою назвою вже існує"); return; }
     const maxOrder = cats.reduce((m, c) => Math.max(m, c.sortOrder), 0);
     const err = await dbCreateCategory({ name: n, slug, sortOrder: maxOrder + 10, showInNav: true, isActive: true });
@@ -152,9 +154,9 @@ export default function CategoriesPage() {
         >
           <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
             <div className={s.field}><span className={s.fieldLabel}>Назва</span>
-              <input className={s.input} value={edit.name} onChange={(e) => setEdit({ ...edit, name: e.target.value })} /></div>
-            <div className={s.field}><span className={s.fieldLabel}>Slug (для навігації/фільтра)</span>
-              <input className={s.input} value={edit.slug} onChange={(e) => setEdit({ ...edit, slug: e.target.value })} /></div>
+              <input className={s.input} value={edit.name} onChange={(e) => setEdit({ ...edit, name: e.target.value, slug: slugify(e.target.value) })} /></div>
+            <div className={s.field}><span className={s.fieldLabel}>Slug (авто з назви)</span>
+              <input className={s.input} value={edit.slug} disabled readOnly style={{ opacity: 0.6 }} /></div>
             <div className={s.field}><span className={s.fieldLabel}>Порядок</span>
               <input className={`${s.input} no-spin`} type="number" value={edit.sortOrder} onChange={(e) => setEdit({ ...edit, sortOrder: Number(e.target.value) })} /></div>
             {editErr && <p className={s.error}>{editErr}</p>}
