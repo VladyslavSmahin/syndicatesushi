@@ -20,8 +20,9 @@ export interface DeliverySettings {
 }
 
 export const DEFAULT_DELIVERY: DeliverySettings = {
-  originLat: 48.6756,
-  originLng: 28.8486,
+  // заклад: вул. Незалежності, 7, м. Тульчин (та сама точка, що в блоці «Карта закладу»)
+  originLat: 48.6744,
+  originLng: 28.8591,
   basePrice: 100,
   baseKm: 2,
   stepPrice: 20,

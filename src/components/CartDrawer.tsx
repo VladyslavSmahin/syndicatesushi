@@ -1,10 +1,13 @@
 "use client";
 
-import { useEffect, useRef, useState, type CSSProperties } from "react";
+import { useEffect, useMemo, useRef, useState, type CSSProperties } from "react";
 import { Icon } from "./icons";
 import { useCart } from "@/features/cart/CartContext";
-import { usePublicDelivery } from "@/features/publicData";
+import { usePublicDelivery, usePublicCatalog } from "@/features/publicData";
 import { quoteDelivery } from "@/lib/delivery";
+import type { Product, CartItem } from "@/lib/types";
+
+const EXTRAS_CATEGORY = "додатково";
 
 const qtyBtn: CSSProperties = {
   width: 32, height: 32, background: "transparent", border: "none", color: "var(--text-primary)",
@@ -27,8 +30,13 @@ function suggestionLabel(p: PhotonFeature["properties"]): string {
 }
 
 export default function CartDrawer({ isOpen, onClose }: { isOpen: boolean; onClose: () => void }) {
-  const { items, total, changeQty, remove, clear } = useCart();
+  const { items, total, changeQty, remove, clear, add } = useCart();
   const ds = usePublicDelivery();
+  const catalog = usePublicCatalog();
+  const extras = useMemo(
+    () => catalog.filter((p) => p.category === EXTRAS_CATEGORY).sort((a, b) => a.price - b.price),
+    [catalog]
+  );
   const [step, setStep] = useState<Step>("cart");
 
   const [delivery, setDelivery] = useState<Delivery>("delivery");
@@ -59,7 +67,8 @@ export default function CartDrawer({ isOpen, onClose }: { isOpen: boolean; onClo
     setSearching(true);
     const t = setTimeout(async () => {
       try {
-        const url = `https://photon.komoot.io/api/?q=${encodeURIComponent(q)}&lat=${ds.originLat}&lon=${ds.originLng}&limit=5&lang=uk`;
+        // Photon підтримує lang лише default/de/en/fr — для України беремо default (локальні назви укр.)
+        const url = `https://photon.komoot.io/api/?q=${encodeURIComponent(q)}&lat=${ds.originLat}&lon=${ds.originLng}&limit=5&lang=default`;
         const res = await fetch(url, { signal: ctrl.signal });
         const data = await res.json();
         const sugg: Suggestion[] = (data.features ?? []).map((f: PhotonFeature) => ({
@@ -134,10 +143,13 @@ export default function CartDrawer({ isOpen, onClose }: { isOpen: boolean; onClo
             <button className="btn-primary" style={{ marginTop: 28 }} onClick={onClose}>Чудово</button>
           </div>
         ) : items.length === 0 ? (
-          <div style={{ flex: 1, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", color: "var(--text-secondary)", padding: 32 }}>
-            <div style={{ marginBottom: 16, opacity: 0.4 }}><Icon.Cart width="48" height="48" /></div>
-            <p style={{ fontFamily: "var(--font-display)", fontStyle: "italic", fontSize: 18 }}>Кошик порожній</p>
-            <p style={{ fontSize: 11, marginTop: 8, letterSpacing: 1 }}>Оберіть страви з меню</p>
+          <div style={{ flex: 1, overflowY: "auto", padding: "8px 28px", display: "flex", flexDirection: "column" }}>
+            <div style={{ display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", color: "var(--text-secondary)", padding: "48px 0 24px" }}>
+              <div style={{ marginBottom: 16, opacity: 0.4 }}><Icon.Cart width="48" height="48" /></div>
+              <p style={{ fontFamily: "var(--font-display)", fontStyle: "italic", fontSize: 18 }}>Кошик порожній</p>
+              <p style={{ fontSize: 11, marginTop: 8, letterSpacing: 1 }}>Оберіть страви з меню</p>
+            </div>
+            <ExtrasBlock extras={extras} items={items} add={add} />
           </div>
         ) : step === "cart" ? (
           <>
@@ -164,6 +176,7 @@ export default function CartDrawer({ isOpen, onClose }: { isOpen: boolean; onClo
                   </div>
                 </div>
               ))}
+              <ExtrasBlock extras={extras} items={items} add={add} />
             </div>
             <div style={{ borderTop: "1px solid var(--border)", padding: "22px 28px 28px" }}>
               <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", marginBottom: 20 }}>
@@ -242,5 +255,37 @@ export default function CartDrawer({ isOpen, onClose }: { isOpen: boolean; onClo
         )}
       </aside>
     </>
+  );
+}
+
+function ExtrasBlock({ extras, items, add }: { extras: Product[]; items: CartItem[]; add: (p: Product) => void }) {
+  if (!extras.length) return null;
+  const qtyOf = (id: string) => items.find((i) => i.id === id)?.qty ?? 0;
+  return (
+    <div style={{ borderTop: "1px solid var(--border)", marginTop: 6, paddingTop: 16 }}>
+      <div style={{ fontSize: 11, letterSpacing: 3, textTransform: "uppercase", color: "var(--text-secondary)", marginBottom: 12 }}>Додатково</div>
+      <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(104px, 1fr))", gap: 8 }}>
+        {extras.map((p) => {
+          const q = qtyOf(p.id);
+          return (
+            <button key={p.id} onClick={() => add(p)} aria-label={`Додати ${p.name}`}
+              style={{
+                position: "relative", textAlign: "left", cursor: "pointer",
+                border: "1px solid var(--border-light)", background: q > 0 ? "var(--bg-elevated)" : "transparent",
+                borderRadius: 8, padding: "10px 10px 8px", display: "flex", flexDirection: "column", gap: 4, minHeight: 64,
+                color: "var(--text-primary)",
+              }}>
+              {/* плюсик у кутку */}
+              <span style={{ position: "absolute", top: 6, right: 6, width: 18, height: 18, borderRadius: 5, background: "var(--accent)", color: "#0A0908", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 13, lineHeight: 1, fontWeight: 700 }}>+</span>
+              {q > 0 && <span style={{ position: "absolute", top: 6, left: 8, fontSize: 11, color: "var(--accent)", fontWeight: 700 }}>×{q}</span>}
+              <span style={{ fontSize: 12, fontWeight: 600, lineHeight: 1.2, paddingRight: 20, marginTop: q > 0 ? 14 : 0 }}>{p.name}</span>
+              <span style={{ fontSize: 10, color: "var(--text-secondary)", letterSpacing: 0.5 }}>
+                {p.weight ? `${p.weight} · ` : ""}{p.price} грн
+              </span>
+            </button>
+          );
+        })}
+      </div>
+    </div>
   );
 }

@@ -213,6 +213,10 @@ textarea.form-input { resize: vertical; min-height: 120px; font-family: var(--fo
   .desktop-only { display: none !important; }
   .mobile-only { display: initial; }
   .burger { display: flex; }
+  /* контент Hero — по центру на мобільному */
+  .hero-copy { text-align: center; }
+  .hero-copy p { margin-left: auto; margin-right: auto; }
+  .hero-cta { justify-content: center; }
 }
 
 @media (max-width: 520px) {

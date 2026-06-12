@@ -22,12 +22,14 @@ export interface DbProduct {
   desc: string; composition: string; fullDesc: string; photo: string | null;
   isAvailable: boolean; deletedAt: string | null; sortOrder: number;
   ingredientIds: string[]; ingredientGrams: Record<string, number>;
+  setItemIds: string[]; // для сетів: id товарів-ролів у складі
 }
 export interface ProductInput {
   categoryId: string | null; subcategoryId: string | null;
   name: string; price: number; weight: string; pieces: string; badge: Badge;
   desc: string; composition: string; fullDesc: string; photo: string | null;
   isAvailable: boolean; ingredientIds: string[]; ingredientGrams: Record<string, number>;
+  setItemIds: string[];
 }
 
 const slugify = (s: string) =>
@@ -41,12 +43,14 @@ interface ProductRow {
   short_desc: string | null; full_desc: string | null; composition: string | null; image_path: string | null;
   is_available: boolean; deleted_at: string | null; sort_order: number;
   items: { ingredient_id: string; grams: number | string | null }[] | null;
+  setItems: { product_id: string; sort_order: number }[] | null;
 }
 
 function mapProduct(p: ProductRow): DbProduct {
   const items = p.items ?? [];
   const grams: Record<string, number> = {};
   for (const it of items) if (it.grams != null) grams[it.ingredient_id] = Number(it.grams);
+  const setItems = (p.setItems ?? []).slice().sort((a, b) => a.sort_order - b.sort_order);
   return {
     id: p.id, categoryId: p.category_id, subcategoryId: p.subcategory_id,
     name: p.name, slug: p.slug, price: Number(p.price), weight: p.weight ?? "", pieces: p.pieces ?? "",
@@ -54,11 +58,12 @@ function mapProduct(p: ProductRow): DbProduct {
     fullDesc: p.full_desc ?? "", photo: p.image_path ?? null, isAvailable: p.is_available,
     deletedAt: p.deleted_at, sortOrder: p.sort_order,
     ingredientIds: items.map((it) => it.ingredient_id), ingredientGrams: grams,
+    setItemIds: setItems.map((it) => it.product_id),
   };
 }
 
 const PRODUCT_SELECT =
-  "id, category_id, subcategory_id, name, slug, price, weight, pieces, badge, short_desc, full_desc, composition, image_path, is_available, deleted_at, sort_order, items:product_ingredients(ingredient_id, grams)";
+  "id, category_id, subcategory_id, name, slug, price, weight, pieces, badge, short_desc, full_desc, composition, image_path, is_available, deleted_at, sort_order, items:product_ingredients(ingredient_id, grams), setItems:set_items!set_id(product_id, sort_order)";
 
 // ---------- Хуки читання ----------
 export function useDbProducts() {
@@ -136,6 +141,16 @@ async function syncIngredients(
   }
 }
 
+// Склад сету: зв'язки set_items (set_id -> product_id ролів).
+async function syncSetItems(supabase: ReturnType<typeof createClient>, setId: string, productIds: string[]) {
+  await supabase.from("set_items").delete().eq("set_id", setId);
+  if (productIds.length) {
+    await supabase.from("set_items").insert(
+      productIds.map((pid, i) => ({ set_id: setId, product_id: pid, qty: 1, sort_order: i }))
+    );
+  }
+}
+
 function productFields(input: ProductInput) {
   return {
     category_id: input.categoryId, subcategory_id: input.subcategoryId,
@@ -154,6 +169,7 @@ export async function dbCreateProduct(input: ProductInput): Promise<string | und
     .select("id").single();
   if (error || !data) return error?.message ?? "Не вдалося створити товар";
   await syncIngredients(supabase, data.id, input.ingredientIds, input.ingredientGrams);
+  await syncSetItems(supabase, data.id, input.setItemIds);
   return undefined;
 }
 
@@ -162,6 +178,7 @@ export async function dbUpdateProduct(id: string, input: ProductInput): Promise<
   const { error } = await supabase.from("products").update(productFields(input)).eq("id", id);
   if (error) return error.message;
   await syncIngredients(supabase, id, input.ingredientIds, input.ingredientGrams);
+  await syncSetItems(supabase, id, input.setItemIds);
   return undefined;
 }
 

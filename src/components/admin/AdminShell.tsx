@@ -29,7 +29,8 @@ const NAV: { group: string; items: { href: string; label: string }[] }[] = [
   {
     group: "Замовлення",
     items: [
-      { href: "/admin/orders", label: "Замовлення" },
+      { href: "/admin/orders/board", label: "Дошка замовлень" },
+      { href: "/admin/orders", label: "Замовлення (список)" },
       { href: "/admin/reviews", label: "Відгуки" },
     ],
   },

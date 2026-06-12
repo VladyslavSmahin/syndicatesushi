@@ -44,8 +44,8 @@ export default function Hero({
         }}
       >
         {/* left */}
-        <div className="fade-up">
-          <div className="eyebrow" style={{ marginBottom: 28 }}>{CONTACTS.addressShort}</div>
+        <div className="fade-up hero-copy">
+          <div className="eyebrow" style={{ marginBottom: 28, fontSize: 15, letterSpacing: 4 }}>{CONTACTS.addressShort}</div>
           <h1
             style={{
               fontFamily: "var(--font-display)", fontSize: "var(--hero-h1)", fontWeight: 700, lineHeight: 0.92,
@@ -65,7 +65,7 @@ export default function Hero({
           <p style={{ fontSize: 16, fontWeight: 400, color: "var(--text-primary)", maxWidth: 440, lineHeight: 1.7, marginBottom: 48, opacity: 0.92 }}>
             {TEXTS.heroLead}
           </p>
-          <div style={{ display: "flex", gap: 14, flexWrap: "wrap" }}>
+          <div className="hero-cta" style={{ display: "flex", gap: 14, flexWrap: "wrap" }}>
             <button className="btn-primary" onClick={onCtaOrder}>Замовити</button>
             <button className="btn-secondary" onClick={onCtaMenu}>Переглянути меню</button>
           </div>

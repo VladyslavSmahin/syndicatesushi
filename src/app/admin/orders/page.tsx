@@ -1,6 +1,7 @@
 "use client";
 
 import { useMemo, useState } from "react";
+import Link from "next/link";
 import { useDbOrders, dbSetOrderStatus, type DbOrder, type OrderStatus } from "@/features/admin/db";
 import s from "@/components/admin/admin.module.css";
 
@@ -28,11 +29,12 @@ export default function OrdersPage() {
         Дублюються в Telegram. Ціни рахуються на сервері з БД.
       </p>
 
-      <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+      <div style={{ display: "flex", gap: 8, flexWrap: "wrap", alignItems: "center" }}>
         {([["all", "Усі"], ...STATUSES.map((x) => [x.value, x.label] as const)] as const).map(([v, l]) => (
           <button key={v} onClick={() => setFilter(v as OrderStatus | "all")}
             className={`chip square ${filter === v ? "active" : ""}`}>{l}</button>
         ))}
+        <Link href="/admin/orders/board" className={`${s.btn} ${s.btnGhost} ${s.btnSmall}`} style={{ marginLeft: "auto" }}>Дошка ▦</Link>
       </div>
 
       {loading ? (

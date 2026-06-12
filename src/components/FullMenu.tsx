@@ -11,6 +11,12 @@ type NavFilter = NonNullable<NavCategory["filter"]>;
 const PAGE_SIZE = 6;
 const cap = (n: string) => n.charAt(0).toUpperCase() + n.slice(1);
 
+type Sort = "default" | "price-asc" | "price-desc" | "weight-asc" | "weight-desc";
+const parseWeight = (w: string) => {
+  const m = (w || "").replace(",", ".").match(/[\d.]+/);
+  return m ? parseFloat(m[0]) : NaN;
+};
+
 export default function FullMenu({
   onAdd,
   onCardClick,
@@ -31,10 +37,13 @@ export default function FullMenu({
     for (const m of catalog) for (const i of m.ingredients) set.add(i);
     return [...set].sort((a, b) => a.localeCompare(b, "uk")).map(cap);
   }, [catalog]);
-  // підкатегорії активної категорії (напр. типи ролів для «роли»)
-  const subcats = usePublicSubcategories(navFilter?.category);
+  // підкатегорії активної категорії (напр. типи ролів для «роли»).
+  // Показуємо лише коли вибрана конкретна категорія — не на «Повне меню»/«Новинки».
+  const catSubs = usePublicSubcategories(navFilter?.category);
+  const subcats = navFilter?.category ? catSubs : [];
   const [selected, setSelected] = useState<string[]>([]); // обрані інгредієнти (мультивибір)
   const [selectedSub, setSelectedSub] = useState<string | null>(null); // обрана підкатегорія
+  const [sort, setSort] = useState<Sort>("default"); // сортування
   const [visibleCount, setVisibleCount] = useState(PAGE_SIZE);
   const [sheetOpen, setSheetOpen] = useState(false);
   const [filtersOpen, setFiltersOpen] = useState(false); // десктоп: розкриті чипи інгредієнтів
@@ -56,8 +65,19 @@ export default function FullMenu({
       // товар має містити ВСІ обрані інгредієнти
       list = list.filter((m) => selected.every((s) => m.ingredients.includes(s.toLowerCase())));
     }
+    if (sort !== "default") {
+      const dir = sort.endsWith("asc") ? 1 : -1;
+      const val = sort.startsWith("price") ? (p: Product) => p.price : (p: Product) => parseWeight(p.weight);
+      list = [...list].sort((a, b) => {
+        const av = val(a), bv = val(b), an = Number.isNaN(av), bn = Number.isNaN(bv);
+        if (an && bn) return 0;
+        if (an) return 1;   // без числової ваги — у кінець
+        if (bn) return -1;
+        return (av - bv) * dir;
+      });
+    }
     return list;
-  }, [catalog, selected, selectedSub, navFilter]);
+  }, [catalog, selected, selectedSub, navFilter, sort]);
 
   useEffect(() => { setVisibleCount(PAGE_SIZE); }, [selected, selectedSub, navFilter]);
 
@@ -110,14 +130,17 @@ export default function FullMenu({
             На мобільному фільтри в FAB-листі. */}
         {!isMobile && (
           <div style={{ marginBottom: subcats.length ? 16 : 24 }}>
-            <button
-              onClick={() => setFiltersOpen((v) => !v)}
-              className={`chip square ${selected.length ? "active" : ""}`}
-              style={{ display: "inline-flex", alignItems: "center", gap: 8 }}
-            >
-              <FilterIcon />
-              Фільтри{selected.length ? ` · ${selected.length}` : ""}
-            </button>
+            <div style={{ display: "flex", alignItems: "center", gap: 12, flexWrap: "wrap" }}>
+              <button
+                onClick={() => setFiltersOpen((v) => !v)}
+                className={`chip square ${selected.length ? "active" : ""}`}
+                style={{ display: "inline-flex", alignItems: "center", gap: 8 }}
+              >
+                <FilterIcon />
+                Фільтри{selected.length ? ` · ${selected.length}` : ""}
+              </button>
+              <SortControl sort={sort} setSort={setSort} />
+            </div>
             {filtersOpen && <div style={{ marginTop: 14 }}>{Chips}</div>}
           </div>
         )}
@@ -205,6 +228,11 @@ export default function FullMenu({
                     style={{ width: 36, height: 36, border: "1px solid var(--border-light)", background: "transparent", color: "var(--text-primary)", cursor: "pointer", fontSize: 18 }}>×</button>
                 </div>
 
+                <div style={{ marginBottom: 16 }}>
+                  <span className="eyebrow" style={{ display: "block", marginBottom: 8 }}>Сортування</span>
+                  <SortControl sort={sort} setSort={setSort} />
+                </div>
+
                 {Chips}
 
                 <div style={{ display: "flex", gap: 10, marginTop: 20 }}>
@@ -221,6 +249,28 @@ export default function FullMenu({
         </>
       )}
     </section>
+  );
+}
+
+function SortControl({ sort, setSort }: { sort: Sort; setSort: (s: Sort) => void }) {
+  return (
+    <select
+      value={sort}
+      onChange={(e) => setSort(e.target.value as Sort)}
+      aria-label="Сортування"
+      style={{
+        background: "var(--bg-elevated)", color: sort === "default" ? "var(--text-secondary)" : "var(--text-primary)",
+        border: `1px solid ${sort === "default" ? "var(--border-light)" : "var(--accent)"}`,
+        padding: "10px 14px", fontSize: 11, letterSpacing: 1.5, textTransform: "uppercase",
+        fontFamily: "var(--font-body)", cursor: "pointer",
+      }}
+    >
+      <option value="default">Сортування</option>
+      <option value="price-asc">Ціна: спочатку дешевші</option>
+      <option value="price-desc">Ціна: спочатку дорожчі</option>
+      <option value="weight-asc">Вага: спочатку менші</option>
+      <option value="weight-desc">Вага: спочатку більші</option>
+    </select>
   );
 }
 

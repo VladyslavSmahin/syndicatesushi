@@ -72,16 +72,9 @@ export default function Header({
           display: "flex", alignItems: "center", justifyContent: "space-between", gap: 16,
         }}
       >
-        {/* Brand + location */}
+        {/* Brand */}
         <div style={{ display: "flex", alignItems: "center", gap: 32 }}>
           <BrandMark />
-          <div className="desktop-only" style={{ alignItems: "center", gap: 10, paddingLeft: 24, borderLeft: "1px solid var(--border-light)", display: "flex" }}>
-            <Icon.Pin width="18" height="18" style={{ color: "var(--accent)", flexShrink: 0 }} />
-            <div>
-              <div style={{ fontSize: 12, fontWeight: 500, letterSpacing: 2.5, textTransform: "uppercase", color: "var(--text-primary)", lineHeight: 1.1 }}>Тульчин</div>
-              <div style={{ fontSize: 10, fontWeight: 400, letterSpacing: 2, textTransform: "uppercase", color: "var(--text-secondary)", marginTop: 3 }}>Доставка та самовивіз</div>
-            </div>
-          </div>
         </div>
 
         {/* Desktop nav */}
