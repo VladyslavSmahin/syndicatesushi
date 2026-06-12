@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useRef, useState, type CSSProperties } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState, type CSSProperties } from "react";
 import { usePublicPromos } from "@/features/publicData";
 import type { Promo } from "@/lib/types";
 
@@ -8,7 +8,9 @@ const AUTO_MS = 5000;        // авто-перемикання кожні 5с
 const AFTER_MANUAL_MS = 5000; // після ручного — пауза (≥ 3с) до авто
 
 export default function HeroPromoSlider({ onOrder }: { onOrder: (p: Promo) => void }) {
-  const PROMOS = usePublicPromos();
+  const allPromos = usePublicPromos();
+  // у слайдер — лише акції з банером (без зображення показувати нічого)
+  const PROMOS = useMemo(() => allPromos.filter((p) => p.bannerImage), [allPromos]);
   const [current, setCurrent] = useState(0);
   const timer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const len = PROMOS.length;
