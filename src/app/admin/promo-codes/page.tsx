@@ -55,7 +55,7 @@ export default function PromoCodesPage() {
             </div>
             <div className={s.field}>
               <span className={s.fieldLabel}>{discountType === "percent" ? "Відсоток" : "Сума, грн"}</span>
-              <input className={`${s.input} no-spin`} type="number" style={{ width: 120 }} value={value} onChange={(e) => setValue(Number(e.target.value))} />
+              <input className={`${s.input} no-spin`} type="number" style={{ width: 120 }} value={value || ""} onChange={(e) => setValue(e.target.value === "" ? 0 : Number(e.target.value))} />
             </div>
             <button className={s.btn} type="submit" disabled={!code.trim()}>Додати</button>
           </div>

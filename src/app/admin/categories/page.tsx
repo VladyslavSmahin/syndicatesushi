@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import Modal from "@/components/admin/Modal";
+import Collapsible from "@/components/admin/Collapsible";
 import {
   useDbCategories, dbCreateCategory, dbUpdateCategory, dbDeleteCategory,
   useDbNavSpecials, dbSetNavSpecialVisible, type DbCategory,
@@ -65,9 +66,8 @@ export default function CategoriesPage() {
         Вимкніть «У навігації» або «Активна», щоб приховати без видалення.
       </p>
 
-      <form className={s.card} onSubmit={handleAdd}>
-        <div className={s.cardHead}><div className={s.cardTitle}>Нова категорія</div></div>
-        <div style={{ padding: 22 }}>
+      <Collapsible title="Нова категорія">
+        <form onSubmit={handleAdd} style={{ padding: 22 }}>
           <div className={s.formRow}>
             <div className={s.field} style={{ flex: 1, minWidth: 220 }}>
               <span className={s.fieldLabel}>Назва</span>
@@ -77,8 +77,8 @@ export default function CategoriesPage() {
             <button className={s.btn} type="submit" disabled={!name.trim()}>Додати</button>
           </div>
           {error && <p className={s.error} style={{ marginTop: 10 }}>{error}</p>}
-        </div>
-      </form>
+        </form>
+      </Collapsible>
 
       <div className={s.card}>
         <div className={s.cardHead}><div className={s.cardTitle}>Категорії ({cats.length})</div></div>
@@ -93,13 +93,13 @@ export default function CategoriesPage() {
               ) : cats.map((c) => (
                 <tr key={c.id}>
                   <td style={{ fontFamily: "var(--font-display)", fontSize: 15, fontWeight: 600 }}>{c.name}</td>
-                  <td style={{ color: "var(--text-secondary)" }}>{c.slug}</td>
-                  <td>{c.sortOrder}</td>
-                  <td>
+                  <td data-label="Slug" style={{ color: "var(--text-secondary)" }}>{c.slug}</td>
+                  <td data-label="Порядок">{c.sortOrder}</td>
+                  <td data-label="У навігації">
                     <button className={`${s.pill} ${c.showInNav ? s.pillOn : s.pillOff}`} style={{ cursor: "pointer", border: "none" }}
                       onClick={() => toggle(c.id, { showInNav: !c.showInNav })}>{c.showInNav ? "Так" : "Ні"}</button>
                   </td>
-                  <td>
+                  <td data-label="Активна">
                     <button className={`${s.pill} ${c.isActive ? s.pillOn : s.pillOff}`} style={{ cursor: "pointer", border: "none" }}
                       onClick={() => toggle(c.id, { isActive: !c.isActive })}>{c.isActive ? "Так" : "Ні"}</button>
                   </td>
@@ -158,7 +158,7 @@ export default function CategoriesPage() {
             <div className={s.field}><span className={s.fieldLabel}>Slug (авто з назви)</span>
               <input className={s.input} value={edit.slug} disabled readOnly style={{ opacity: 0.6 }} /></div>
             <div className={s.field}><span className={s.fieldLabel}>Порядок</span>
-              <input className={`${s.input} no-spin`} type="number" value={edit.sortOrder} onChange={(e) => setEdit({ ...edit, sortOrder: Number(e.target.value) })} /></div>
+              <input className={`${s.input} no-spin`} type="number" value={edit.sortOrder || ""} onChange={(e) => setEdit({ ...edit, sortOrder: e.target.value === "" ? 0 : Number(e.target.value) })} /></div>
             {editErr && <p className={s.error}>{editErr}</p>}
           </div>
         </Modal>

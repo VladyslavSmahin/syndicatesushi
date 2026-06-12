@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import Modal from "@/components/admin/Modal";
+import Collapsible from "@/components/admin/Collapsible";
 import {
   useDbCategories, useDbSubcategories,
   dbCreateSubcategory, dbUpdateSubcategory, dbDeleteSubcategory, type DbSubcategory,
@@ -56,9 +57,8 @@ export default function SubcategoriesPage() {
         навігацією над товарами, коли обрано відповідну категорію.
       </p>
 
-      <form className={s.card} onSubmit={add}>
-        <div className={s.cardHead}><div className={s.cardTitle}>Нова підкатегорія</div></div>
-        <div style={{ padding: 22 }}>
+      <Collapsible title="Нова підкатегорія">
+        <form onSubmit={add} style={{ padding: 22 }}>
           <div className={s.formRow}>
             <div className={s.field} style={{ minWidth: 180 }}>
               <span className={s.fieldLabel}>Категорія</span>
@@ -74,8 +74,8 @@ export default function SubcategoriesPage() {
             <button className={s.btn} type="submit" disabled={!name.trim() || !categoryId}>Додати</button>
           </div>
           {error && <p className={s.error} style={{ marginTop: 10 }}>{error}</p>}
-        </div>
-      </form>
+        </form>
+      </Collapsible>
 
       <div className={s.card}>
         <div className={s.cardHead}><div className={s.cardTitle}>Підкатегорії ({subcategories.length})</div></div>
@@ -90,9 +90,9 @@ export default function SubcategoriesPage() {
               ) : subcategories.map((sc) => (
                 <tr key={sc.id}>
                   <td style={{ fontFamily: "var(--font-display)", fontSize: 15, fontWeight: 600 }}>{sc.name}</td>
-                  <td style={{ color: "var(--text-secondary)" }}>{catName(sc.categoryId)}</td>
-                  <td style={{ color: "var(--text-secondary)", fontSize: 12 }}>{sc.slug}</td>
-                  <td>{sc.sortOrder}</td>
+                  <td data-label="Категорія" style={{ color: "var(--text-secondary)" }}>{catName(sc.categoryId)}</td>
+                  <td data-label="Slug" style={{ color: "var(--text-secondary)", fontSize: 12 }}>{sc.slug}</td>
+                  <td data-label="Порядок">{sc.sortOrder}</td>
                   <td>
                     <div className={s.rowActions}>
                       <button className={`${s.btn} ${s.btnGhost} ${s.btnSmall}`} onClick={() => openEdit(sc)}>Редагувати</button>
@@ -123,7 +123,7 @@ export default function SubcategoriesPage() {
                 {categories.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
               </select></div>
             <div className={s.field}><span className={s.fieldLabel}>Порядок</span>
-              <input className={`${s.input} no-spin`} type="number" value={edit.sortOrder} onChange={(e) => setEdit({ ...edit, sortOrder: Number(e.target.value) })} /></div>
+              <input className={`${s.input} no-spin`} type="number" value={edit.sortOrder || ""} onChange={(e) => setEdit({ ...edit, sortOrder: e.target.value === "" ? 0 : Number(e.target.value) })} /></div>
             <p className={s.hint} style={{ fontSize: 11 }}>Slug лишається незмінним (на нього посилаються товари).</p>
           </div>
         </Modal>

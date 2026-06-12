@@ -59,7 +59,7 @@ export default function DeliverySettingsPage() {
                   <div key={f.key} className={s.field} style={{ flex: "1 1 200px", minWidth: 180 }}>
                     <span className={s.fieldLabel}>{f.label}</span>
                     <input className={`${s.input} no-spin`} type="number" step="any"
-                      value={draft[f.key] ?? ""} onChange={(e) => set(f.key, e.target.value === "" ? 0 : Number(e.target.value))} />
+                      value={draft[f.key] || ""} onChange={(e) => set(f.key, e.target.value === "" ? 0 : Number(e.target.value))} />
                     {f.hint && <span className={s.hint} style={{ fontSize: 11, marginTop: 4 }}>{f.hint}</span>}
                   </div>
                 ))}
@@ -69,13 +69,13 @@ export default function DeliverySettingsPage() {
                 <div className={s.field} style={{ flex: "1 1 200px", minWidth: 180 }}>
                   <span className={s.fieldLabel}>Безкоштовно від суми, грн</span>
                   <input className={`${s.input} no-spin`} type="number" step="any" placeholder="вимкнено"
-                    value={draft.freeFrom ?? ""} onChange={(e) => set("freeFrom", e.target.value === "" ? null : Number(e.target.value))} />
+                    value={draft.freeFrom || ""} onChange={(e) => set("freeFrom", e.target.value === "" ? null : Number(e.target.value))} />
                   <span className={s.hint} style={{ fontSize: 11, marginTop: 4 }}>порожньо = вимкнено</span>
                 </div>
                 <div className={s.field} style={{ flex: "1 1 200px", minWidth: 180 }}>
                   <span className={s.fieldLabel}>Макс. відстань доставки, км</span>
                   <input className={`${s.input} no-spin`} type="number" step="any" placeholder="без обмеження"
-                    value={draft.maxKm ?? ""} onChange={(e) => set("maxKm", e.target.value === "" ? null : Number(e.target.value))} />
+                    value={draft.maxKm || ""} onChange={(e) => set("maxKm", e.target.value === "" ? null : Number(e.target.value))} />
                   <span className={s.hint} style={{ fontSize: 11, marginTop: 4 }}>порожньо = без обмеження</span>
                 </div>
               </div>

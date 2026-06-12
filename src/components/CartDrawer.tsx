@@ -259,11 +259,19 @@ export default function CartDrawer({ isOpen, onClose }: { isOpen: boolean; onClo
 }
 
 function ExtrasBlock({ extras, items, add }: { extras: Product[]; items: CartItem[]; add: (p: Product) => void }) {
+  const [open, setOpen] = useState(false);
   if (!extras.length) return null;
   const qtyOf = (id: string) => items.find((i) => i.id === id)?.qty ?? 0;
+  const inCart = extras.reduce((n, p) => n + qtyOf(p.id), 0);
   return (
     <div style={{ borderTop: "1px solid var(--border)", marginTop: 6, paddingTop: 16 }}>
-      <div style={{ fontSize: 11, letterSpacing: 3, textTransform: "uppercase", color: "var(--text-secondary)", marginBottom: 12 }}>Додатково</div>
+      <button type="button" onClick={() => setOpen((o) => !o)}
+        style={{ width: "100%", display: "flex", alignItems: "center", gap: 8, background: "transparent", border: "none", cursor: "pointer", padding: 0, marginBottom: open ? 12 : 0 }}>
+        <span style={{ fontSize: 11, letterSpacing: 3, textTransform: "uppercase", color: "var(--text-secondary)" }}>Додатково</span>
+        {inCart > 0 && <span style={{ fontSize: 11, color: "var(--accent)", fontWeight: 700 }}>· {inCart}</span>}
+        <span style={{ marginLeft: "auto", color: "var(--text-secondary)", fontSize: 13, transition: "transform 0.2s", transform: open ? "rotate(180deg)" : "none" }}>▾</span>
+      </button>
+      {open && (
       <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(104px, 1fr))", gap: 8 }}>
         {extras.map((p) => {
           const q = qtyOf(p.id);
@@ -286,6 +294,7 @@ function ExtrasBlock({ extras, items, add }: { extras: Product[]; items: CartIte
           );
         })}
       </div>
+      )}
     </div>
   );
 }

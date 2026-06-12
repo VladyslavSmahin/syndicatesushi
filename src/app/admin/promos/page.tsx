@@ -111,9 +111,9 @@ export default function PromosPage() {
               <input className={s.input} placeholder="/assets/promo-imperia.png" value={draft.bannerImagePath} onChange={(e) => set("bannerImagePath", e.target.value)} /></div>
             <div style={{ display: "flex", gap: 14 }}>
               <div className={s.field} style={{ flex: 1 }}><span className={s.fieldLabel}>Акційна ціна</span>
-                <input className={`${s.input} no-spin`} type="number" value={draft.price} onChange={(e) => set("price", Number(e.target.value))} /></div>
+                <input className={`${s.input} no-spin`} type="number" value={draft.price || ""} onChange={(e) => set("price", e.target.value === "" ? 0 : Number(e.target.value))} /></div>
               <div className={s.field} style={{ flex: 1 }}><span className={s.fieldLabel}>Стара ціна</span>
-                <input className={`${s.input} no-spin`} type="number" value={draft.oldPrice} onChange={(e) => set("oldPrice", Number(e.target.value))} /></div>
+                <input className={`${s.input} no-spin`} type="number" value={draft.oldPrice || ""} onChange={(e) => set("oldPrice", e.target.value === "" ? 0 : Number(e.target.value))} /></div>
             </div>
             <label style={{ display: "flex", alignItems: "center", gap: 8, color: "var(--text-primary)", fontSize: 13, cursor: "pointer" }}>
               <input type="checkbox" checked={draft.isActive} onChange={(e) => set("isActive", e.target.checked)} /> Активна

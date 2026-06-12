@@ -239,3 +239,25 @@
   .topbar { padding: 14px 18px; }
   .tableWrap { overflow-x: auto; }
 }
+
+/* На вузьких екранах таблиці — картками (без горизонтального скролу) */
+@media (max-width: 600px) {
+  .tableWrap { overflow-x: visible; }
+  .table { display: block; }
+  .table thead { display: none; }
+  .table tbody { display: block; }
+  .table tr { display: block; padding: 14px 16px; border-bottom: 1px solid var(--border); }
+  .table tr:last-child { border-bottom: none; }
+  .table td {
+    display: flex; align-items: center; justify-content: space-between; gap: 14px;
+    padding: 5px 0; border: none; text-align: right;
+  }
+  .table td::before {
+    content: attr(data-label); flex-shrink: 0; text-align: left;
+    font-size: 11px; letter-spacing: 1px; text-transform: uppercase; color: var(--text-tertiary);
+  }
+  /* перша клітинка (назва) — окремим заголовком картки */
+  .table td:first-child { display: block; text-align: left; padding-bottom: 10px; }
+  .table td:first-child::before { display: none; }
+  .rowActions { justify-content: flex-start; flex-wrap: wrap; }
+}

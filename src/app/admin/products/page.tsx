@@ -240,14 +240,14 @@ export default function ProductsPage() {
                           <span style={{ fontFamily: "var(--font-display)", fontSize: 15, fontWeight: 600 }}>{p.name}</span>
                         </div>
                       </td>
-                      <td>{p.price} грн</td>
-                      <td style={{ color: "var(--text-secondary)", fontSize: 11, maxWidth: 320 }}>
+                      <td data-label="Ціна">{p.price} грн</td>
+                      <td data-label="Склад" style={{ color: "var(--text-secondary)", fontSize: 11, maxWidth: 320 }}>
                         {p.setItemIds.length
                           ? `🍱 ${p.setItemIds.map(prodName).join(", ")}`
                           : p.ingredientIds.length ? p.ingredientIds.map(ingName).filter(Boolean).join(", ") : "—"}
                       </td>
-                      <td>{p.badge ? <span className={`${s.pill} ${s.pillEditor}`}>{p.badge}</span> : "—"}</td>
-                      <td>
+                      <td data-label="Бейдж">{p.badge ? <span className={`${s.pill} ${s.pillEditor}`}>{p.badge}</span> : "—"}</td>
+                      <td data-label="В наявності">
                         <button className={`${s.pill} ${p.isAvailable ? s.pillOn : s.pillOff}`} style={{ cursor: "pointer", border: "none" }}
                           onClick={() => toggleAvailable(p)}>
                           {p.isAvailable ? "Так" : "Ні"}
@@ -321,7 +321,7 @@ export default function ProductsPage() {
                 </Field>
               )}
               <Field label="Ціна, грн">
-                <input className={`${s.input} no-spin`} type="number" value={draft.price} onChange={(e) => set("price", Number(e.target.value))} />
+                <input className={`${s.input} no-spin`} type="number" value={draft.price || ""} onChange={(e) => set("price", e.target.value === "" ? 0 : Number(e.target.value))} />
               </Field>
             </div>
             <div style={{ display: "flex", gap: 14, flexWrap: "wrap" }}>
@@ -394,7 +394,7 @@ export default function ProductsPage() {
                       <div key={id} style={{ display: "flex", alignItems: "center", gap: 10 }}>
                         <span style={{ flex: 1, fontSize: 13, color: "var(--text-primary)" }}>{ingName(id)}</span>
                         <input className={`${s.input} no-spin`} type="number" min="0" step="1" placeholder="0" style={{ width: 96 }}
-                          value={draft.ingredientGrams[id] ?? ""} onChange={(e) => setGram(id, e.target.value)} />
+                          value={draft.ingredientGrams[id] || ""} onChange={(e) => setGram(id, e.target.value)} />
                         <span style={{ fontSize: 12, color: "var(--text-secondary)", width: 12 }}>г</span>
                       </div>
                     ))}

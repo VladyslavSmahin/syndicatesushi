@@ -108,7 +108,7 @@ export default function BulkPriceTool({
           </div>
           <div className={s.field}>
             <span className={s.fieldLabel}>{mode === "amount" ? "Сума, грн" : "Відсоток"}</span>
-            <input className={`${s.input} no-spin`} type="number" style={{ width: 110 }} value={value} onChange={(e) => setValue(Number(e.target.value))} />
+            <input className={`${s.input} no-spin`} type="number" style={{ width: 110 }} value={value || ""} onChange={(e) => setValue(e.target.value === "" ? 0 : Number(e.target.value))} />
           </div>
           <button className={s.btn} onClick={preview} disabled={!effectiveId}>Переглянути</button>
         </div>
@@ -144,7 +144,7 @@ export default function BulkPriceTool({
                         <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
                           <button className={`${s.btn} ${s.btnGhost} ${s.btnSmall}`} style={{ padding: "6px 10px" }} onClick={() => nudge(r.id, -5)}>−</button>
                           <input className={`${s.input} no-spin`} type="number" style={{ width: 84, padding: "7px 8px", textAlign: "center" }}
-                            value={r.newPrice} onChange={(e) => setRowPrice(r.id, Number(e.target.value))} />
+                            value={r.newPrice || ""} onChange={(e) => setRowPrice(r.id, e.target.value === "" ? 0 : Number(e.target.value))} />
                           <button className={`${s.btn} ${s.btnGhost} ${s.btnSmall}`} style={{ padding: "6px 10px" }} onClick={() => nudge(r.id, +5)}>+</button>
                           <span style={{ color: "var(--accent)", fontSize: 12 }}>
                             {r.newPrice > r.oldPrice ? `+${r.newPrice - r.oldPrice}` : r.newPrice < r.oldPrice ? `${r.newPrice - r.oldPrice}` : "—"}
