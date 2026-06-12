@@ -1,12 +1,15 @@
 "use client";
 
 import { useState } from "react";
+import Modal from "@/components/admin/Modal";
 import {
   useDbCategories, dbCreateCategory, dbUpdateCategory, dbDeleteCategory,
-  useDbNavSpecials, dbSetNavSpecialVisible,
+  useDbNavSpecials, dbSetNavSpecialVisible, type DbCategory,
 } from "@/features/admin/db";
 import { useAdminAuth } from "@/features/admin/AdminAuthContext";
 import s from "@/components/admin/admin.module.css";
+
+interface EditDraft { id: string; name: string; slug: string; sortOrder: number; }
 
 export default function CategoriesPage() {
   const { categories: cats, loading, refetch } = useDbCategories();
@@ -21,6 +24,19 @@ export default function CategoriesPage() {
 
   const [name, setName] = useState("");
   const [error, setError] = useState("");
+  const [edit, setEdit] = useState<EditDraft | null>(null);
+  const [editErr, setEditErr] = useState("");
+
+  const openEdit = (c: DbCategory) => { setEdit({ id: c.id, name: c.name, slug: c.slug, sortOrder: c.sortOrder }); setEditErr(""); };
+  const saveEdit = async () => {
+    if (!edit) return;
+    const nm = edit.name.trim(), sl = edit.slug.trim().toLowerCase();
+    if (!nm || !sl) { setEditErr("Назва і slug обовʼязкові"); return; }
+    if (cats.some((c) => c.id !== edit.id && c.slug === sl)) { setEditErr("Slug вже зайнятий"); return; }
+    await dbUpdateCategory(edit.id, { name: nm, slug: sl, sortOrder: edit.sortOrder });
+    setEdit(null);
+    refetch();
+  };
 
   const handleAdd = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -87,9 +103,8 @@ export default function CategoriesPage() {
                   </td>
                   <td>
                     <div className={s.rowActions}>
-                      {isAdmin ? (
-                        <button className={`${s.btn} ${s.btnDanger} ${s.btnSmall}`} onClick={() => remove(c.id)}>Видалити</button>
-                      ) : <span className={s.hint} style={{ fontSize: 11 }}>—</span>}
+                      <button className={`${s.btn} ${s.btnGhost} ${s.btnSmall}`} onClick={() => openEdit(c)}>Редагувати</button>
+                      {isAdmin && <button className={`${s.btn} ${s.btnDanger} ${s.btnSmall}`} onClick={() => remove(c.id)}>Видалити</button>}
                     </div>
                   </td>
                 </tr>
@@ -125,6 +140,27 @@ export default function CategoriesPage() {
           </div>
         </div>
       </div>
+
+      {edit && (
+        <Modal
+          title="Редагувати категорію"
+          onClose={() => setEdit(null)}
+          footer={<>
+            <button className={`${s.btn} ${s.btnGhost}`} onClick={() => setEdit(null)}>Скасувати</button>
+            <button className={s.btn} onClick={saveEdit} disabled={!edit.name.trim()}>Зберегти</button>
+          </>}
+        >
+          <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
+            <div className={s.field}><span className={s.fieldLabel}>Назва</span>
+              <input className={s.input} value={edit.name} onChange={(e) => setEdit({ ...edit, name: e.target.value })} /></div>
+            <div className={s.field}><span className={s.fieldLabel}>Slug (для навігації/фільтра)</span>
+              <input className={s.input} value={edit.slug} onChange={(e) => setEdit({ ...edit, slug: e.target.value })} /></div>
+            <div className={s.field}><span className={s.fieldLabel}>Порядок</span>
+              <input className={`${s.input} no-spin`} type="number" value={edit.sortOrder} onChange={(e) => setEdit({ ...edit, sortOrder: Number(e.target.value) })} /></div>
+            {editErr && <p className={s.error}>{editErr}</p>}
+          </div>
+        </Modal>
+      )}
     </div>
   );
 }

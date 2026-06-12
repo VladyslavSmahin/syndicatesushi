@@ -1,12 +1,15 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import Modal from "@/components/admin/Modal";
 import {
   useDbCategories, useDbSubcategories,
-  dbCreateSubcategory, dbDeleteSubcategory,
+  dbCreateSubcategory, dbUpdateSubcategory, dbDeleteSubcategory, type DbSubcategory,
 } from "@/features/admin/db";
 import { useAdminAuth } from "@/features/admin/AdminAuthContext";
 import s from "@/components/admin/admin.module.css";
+
+interface SubEditDraft { id: string; name: string; categoryId: string; sortOrder: number; }
 
 export default function SubcategoriesPage() {
   const { categories } = useDbCategories();
@@ -17,6 +20,15 @@ export default function SubcategoriesPage() {
   const [categoryId, setCategoryId] = useState("");
   const [name, setName] = useState("");
   const [error, setError] = useState("");
+  const [edit, setEdit] = useState<SubEditDraft | null>(null);
+
+  const openEdit = (sc: DbSubcategory) => setEdit({ id: sc.id, name: sc.name, categoryId: sc.categoryId, sortOrder: sc.sortOrder });
+  const saveEdit = async () => {
+    if (!edit || !edit.name.trim()) return;
+    await dbUpdateSubcategory(edit.id, { name: edit.name.trim(), categoryId: edit.categoryId, sortOrder: edit.sortOrder });
+    setEdit(null);
+    refetch();
+  };
 
   useEffect(() => { if (!categoryId && categories.length) setCategoryId(categories[0].id); }, [categories, categoryId]);
 
@@ -83,9 +95,8 @@ export default function SubcategoriesPage() {
                   <td>{sc.sortOrder}</td>
                   <td>
                     <div className={s.rowActions}>
-                      {isAdmin ? (
-                        <button className={`${s.btn} ${s.btnDanger} ${s.btnSmall}`} onClick={() => remove(sc.id)}>Видалити</button>
-                      ) : <span className={s.hint} style={{ fontSize: 11 }}>—</span>}
+                      <button className={`${s.btn} ${s.btnGhost} ${s.btnSmall}`} onClick={() => openEdit(sc)}>Редагувати</button>
+                      {isAdmin && <button className={`${s.btn} ${s.btnDanger} ${s.btnSmall}`} onClick={() => remove(sc.id)}>Видалити</button>}
                     </div>
                   </td>
                 </tr>
@@ -94,6 +105,29 @@ export default function SubcategoriesPage() {
           </table>
         </div>
       </div>
+
+      {edit && (
+        <Modal
+          title="Редагувати підкатегорію"
+          onClose={() => setEdit(null)}
+          footer={<>
+            <button className={`${s.btn} ${s.btnGhost}`} onClick={() => setEdit(null)}>Скасувати</button>
+            <button className={s.btn} onClick={saveEdit} disabled={!edit.name.trim()}>Зберегти</button>
+          </>}
+        >
+          <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
+            <div className={s.field}><span className={s.fieldLabel}>Назва</span>
+              <input className={s.input} value={edit.name} onChange={(e) => setEdit({ ...edit, name: e.target.value })} /></div>
+            <div className={s.field}><span className={s.fieldLabel}>Категорія</span>
+              <select className={s.input} value={edit.categoryId} onChange={(e) => setEdit({ ...edit, categoryId: e.target.value })}>
+                {categories.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
+              </select></div>
+            <div className={s.field}><span className={s.fieldLabel}>Порядок</span>
+              <input className={`${s.input} no-spin`} type="number" value={edit.sortOrder} onChange={(e) => setEdit({ ...edit, sortOrder: Number(e.target.value) })} /></div>
+            <p className={s.hint} style={{ fontSize: 11 }}>Slug лишається незмінним (на нього посилаються товари).</p>
+          </div>
+        </Modal>
+      )}
     </div>
   );
 }
