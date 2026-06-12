@@ -2,9 +2,9 @@
 
 import { useEffect, useState } from "react";
 import { Icon } from "./icons";
-import { CONTACTS, NAV_SPECIALS, ASSET_ICONS } from "@/data/site";
+import { CONTACTS, ASSET_ICONS } from "@/data/site";
 import { useCart } from "@/features/cart/CartContext";
-import { usePublicCategories } from "@/features/publicData";
+import { usePublicCategories, usePublicNavSpecials } from "@/features/publicData";
 import type { NavCategory } from "@/lib/types";
 
 function BrandMark() {
@@ -41,6 +41,7 @@ export default function Header({
 }) {
   const { count } = useCart();
   const cats = usePublicCategories({ navOnly: true });
+  const specials = usePublicNavSpecials();
   const [scrolled, setScrolled] = useState(false);
 
   useEffect(() => {
@@ -51,7 +52,7 @@ export default function Header({
   }, []);
 
   const navItems: NavCategory[] = [
-    ...NAV_SPECIALS,
+    ...specials,
     ...cats.map((c) => ({ id: c.id, label: c.name, filter: { category: c.slug } })),
   ];
 

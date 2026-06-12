@@ -2,8 +2,8 @@
 
 import { useEffect } from "react";
 import { Icon } from "./icons";
-import { CONTACTS, NAV_SPECIALS, ASSET_ICONS } from "@/data/site";
-import { usePublicCategories } from "@/features/publicData";
+import { CONTACTS, ASSET_ICONS } from "@/data/site";
+import { usePublicCategories, usePublicNavSpecials } from "@/features/publicData";
 import type { NavCategory } from "@/lib/types";
 
 export default function MobileMenu({
@@ -16,6 +16,7 @@ export default function MobileMenu({
   onNavClick: (cat: NavCategory) => void;
 }) {
   const cats = usePublicCategories({ navOnly: true });
+  const specials = usePublicNavSpecials();
 
   useEffect(() => {
     document.body.style.overflow = open ? "hidden" : "";
@@ -25,7 +26,7 @@ export default function MobileMenu({
   if (!open) return null;
 
   const navItems: NavCategory[] = [
-    ...NAV_SPECIALS,
+    ...specials,
     ...cats.map((c) => ({ id: c.id, label: c.name, filter: { category: c.slug } })),
   ];
 

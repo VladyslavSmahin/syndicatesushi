@@ -3,6 +3,7 @@ import { createClient } from "@/lib/supabase/server";
 import type { Product, Badge, Portion, Promo } from "@/lib/types";
 import type { PublicData, PubCategory, PubSubcategory } from "@/features/publicData";
 import { parseDeliverySettings } from "@/lib/delivery";
+import { NAV_SPECIALS, parseNavVisibility } from "@/lib/navSpecials";
 
 const num = (v: unknown) => (v == null ? 0 : Number(v));
 const r1 = (n: number) => Math.round(n * 10) / 10;
@@ -62,7 +63,7 @@ export async function fetchPublicData(): Promise<PublicData> {
       .eq("is_available", true)
       .order("sort_order"),
     supabase.from("promos").select("id, label, title, promo_price, old_price, banner_image_path, product:products(id)").eq("is_active", true).order("sort_order"),
-    supabase.from("settings").select("value").eq("key", "delivery").maybeSingle(),
+    supabase.from("settings").select("key, value").in("key", ["delivery", "nav_specials"]),
   ]);
 
   if (catsRes.error) console.error("categories fetch:", catsRes.error.message);
@@ -91,7 +92,10 @@ export async function fetchPublicData(): Promise<PublicData> {
     };
   });
 
-  const delivery = parseDeliverySettings(deliveryRes.data?.value);
+  const settingsRows = (deliveryRes.data ?? []) as { key: string; value: unknown }[];
+  const delivery = parseDeliverySettings(settingsRows.find((r) => r.key === "delivery")?.value);
+  const navVis = parseNavVisibility(settingsRows.find((r) => r.key === "nav_specials")?.value);
+  const navSpecials = NAV_SPECIALS.filter((sp) => navVis[sp.id]);
 
-  return { catalog, categories, subcategories, promos, delivery };
+  return { catalog, categories, subcategories, promos, delivery, navSpecials };
 }

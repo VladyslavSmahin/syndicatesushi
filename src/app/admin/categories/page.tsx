@@ -3,14 +3,21 @@
 import { useState } from "react";
 import {
   useDbCategories, dbCreateCategory, dbUpdateCategory, dbDeleteCategory,
+  useDbNavSpecials, dbSetNavSpecialVisible,
 } from "@/features/admin/db";
 import { useAdminAuth } from "@/features/admin/AdminAuthContext";
 import s from "@/components/admin/admin.module.css";
 
 export default function CategoriesPage() {
   const { categories: cats, loading, refetch } = useDbCategories();
+  const { specials, refetch: refetchSpecials } = useDbNavSpecials();
   const { user } = useAdminAuth();
   const isAdmin = user?.role === "admin";
+
+  const toggleSpecial = async (id: string, visible: boolean) => {
+    await dbSetNavSpecialVisible(specials, id, visible);
+    refetchSpecials();
+  };
 
   const [name, setName] = useState("");
   const [error, setError] = useState("");
@@ -89,6 +96,33 @@ export default function CategoriesPage() {
               ))}
             </tbody>
           </table>
+        </div>
+      </div>
+
+      {/* Спец-пункти навігації (фіксовані сутності — лише вмикання/вимикання) */}
+      <div className={s.card}>
+        <div className={s.cardHead}><div className={s.cardTitle}>Спец-пункти навігації</div></div>
+        <div style={{ padding: "8px 0" }}>
+          <p className={s.hint} style={{ padding: "0 22px 8px" }}>
+            «Новинки» (товари з бейджем НОВЕ) та «Акції» — закріплені пункти меню.
+            Їх можна сховати з навігації, не видаляючи: вимкнення лише прибирає кнопку, сутність лишається.
+          </p>
+          <div className={s.tableWrap}>
+            <table className={s.table}>
+              <thead><tr><th>Пункт</th><th style={{ textAlign: "right" }}>У навігації</th></tr></thead>
+              <tbody>
+                {specials.map((sp) => (
+                  <tr key={sp.id}>
+                    <td style={{ fontFamily: "var(--font-display)", fontSize: 15, fontWeight: 600 }}>{sp.label}</td>
+                    <td style={{ textAlign: "right" }}>
+                      <button className={`${s.pill} ${sp.showInNav ? s.pillOn : s.pillOff}`} style={{ cursor: "pointer", border: "none" }}
+                        onClick={() => toggleSpecial(sp.id, !sp.showInNav)}>{sp.showInNav ? "Так" : "Ні"}</button>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
         </div>
       </div>
     </div>

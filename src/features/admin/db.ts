@@ -6,6 +6,7 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { createClient } from "@/lib/supabase/client";
 import { parseDeliverySettings, DEFAULT_DELIVERY, type DeliverySettings } from "@/lib/delivery";
+import { NAV_SPECIALS, parseNavVisibility } from "@/lib/navSpecials";
 import type { Badge } from "@/lib/types";
 
 // ---------- Типи ----------
@@ -428,4 +429,30 @@ export function useDbDelivery() {
 export async function dbSaveDelivery(settings: DeliverySettings): Promise<string | undefined> {
   const { error } = await createClient().from("settings").upsert({ key: "delivery", value: settings }, { onConflict: "key" });
   return error?.message;
+}
+
+// ---------- Спец-пункти навігації (Новинки / Акції) ----------
+export interface NavSpecialItem { id: string; label: string; showInNav: boolean; }
+
+export function useDbNavSpecials() {
+  const supabase = useMemo(() => createClient(), []);
+  const [specials, setSpecials] = useState<NavSpecialItem[]>([]);
+  const [loading, setLoading] = useState(true);
+  const refetch = useCallback(async () => {
+    setLoading(true);
+    const { data, error } = await supabase.from("settings").select("value").eq("key", "nav_specials").maybeSingle();
+    if (error) console.error("nav_specials:", error.message);
+    const vis = parseNavVisibility(data?.value);
+    setSpecials(NAV_SPECIALS.map((sp) => ({ id: sp.id, label: sp.label, showInNav: vis[sp.id] })));
+    setLoading(false);
+  }, [supabase]);
+  useEffect(() => { refetch(); }, [refetch]);
+  return { specials, loading, refetch };
+}
+
+/** Перемкнути видимість одного спец-пункту (інші лишаються як були). */
+export async function dbSetNavSpecialVisible(specials: NavSpecialItem[], id: string, visible: boolean) {
+  const map: Record<string, boolean> = {};
+  for (const sp of specials) map[sp.id] = sp.id === id ? visible : sp.showInNav;
+  await createClient().from("settings").upsert({ key: "nav_specials", value: map }, { onConflict: "key" });
 }

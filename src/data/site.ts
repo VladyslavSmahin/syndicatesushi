@@ -6,8 +6,6 @@
 //  спец-пункти навігації та іконки. За потреби можна винести в таблицю settings.
 // =============================================================================
 
-import type { NavCategory } from "@/lib/types";
-
 const A = (name: string) => `/assets/${name}`;
 
 // ===== Контакти =====
@@ -22,13 +20,6 @@ export const CONTACTS = {
   telegram: "#",
   facebook: "#",
 };
-
-// ===== Спец-пункти навігації (не категорії товарів) =====
-// Решта пунктів навігації — динамічні категорії з Supabase.
-export const NAV_SPECIALS: NavCategory[] = [
-  { id: "novynky", label: "Новинки", filter: { badge: "НОВЕ" } },
-  { id: "aktsii", label: "Акції", scrollTo: "hero" },
-];
 
 // ===== Тексти =====
 export const TEXTS = {

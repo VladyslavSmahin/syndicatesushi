@@ -1,7 +1,6 @@
 "use client";
 
-import { NAV_SPECIALS } from "@/data/site";
-import { usePublicCategories } from "@/features/publicData";
+import { usePublicCategories, usePublicNavSpecials } from "@/features/publicData";
 import { useIsMobile } from "@/features/useIsMobile";
 import type { NavCategory } from "@/lib/types";
 
@@ -16,10 +15,11 @@ export default function MobileCategoryBar({
 }) {
   const isMobile = useIsMobile();
   const cats = usePublicCategories({ navOnly: true });
+  const specials = usePublicNavSpecials();
   if (!isMobile) return null;
 
   const navItems: NavCategory[] = [
-    ...NAV_SPECIALS,
+    ...specials,
     ...cats.map((c) => ({ id: c.id, label: c.name, filter: { category: c.slug } })),
   ];
 

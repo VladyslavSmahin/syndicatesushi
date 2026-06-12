@@ -132,7 +132,7 @@ export default function ProductsPage() {
         фільтр на сайті), грамовка дає вагу та КБЖУ порції. «Склад» — описове поле.
       </p>
 
-      <BulkPriceTool products={active} ingredients={ingredients} onApplied={refetch} />
+      <BulkPriceTool products={active} ingredients={ingredients} categories={categories} subcategories={subcategories} onApplied={refetch} />
 
       <div className={s.card}>
         <div className={s.cardHead}>
