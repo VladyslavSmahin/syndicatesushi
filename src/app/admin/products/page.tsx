@@ -245,16 +245,21 @@ export default function ProductsPage() {
                       <td>
                         <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
                           <div style={{ width: 38, height: 38, borderRadius: 6, flexShrink: 0, border: "1px solid var(--border)", background: p.photo ? `#0A0908 url(${p.photo}) center/cover no-repeat` : "var(--bg-elevated)" }} />
-                          <span style={{ fontFamily: "var(--font-display)", fontSize: 15, fontWeight: 600 }}>{p.name}</span>
+                          <span style={{ fontFamily: "var(--font-display)", fontSize: 15, fontWeight: 600, flex: 1, minWidth: 0 }}>{p.name}</span>
+                          {/* моб.: бейдж + ціна у верхньому рядку */}
+                          <span className={s.cardMeta}>
+                            {p.badge && <span className={`${s.pill} ${s.pillEditor}`}>{p.badge}</span>}
+                            <span style={{ fontWeight: 700 }}>{p.price} грн</span>
+                          </span>
                         </div>
                       </td>
-                      <td data-label="Ціна">{p.price} грн</td>
-                      <td data-label="Склад" style={{ color: "var(--text-secondary)", fontSize: 11, maxWidth: 320 }}>
+                      <td data-label="Ціна" className={s.colHideMobile}>{p.price} грн</td>
+                      <td className={s.composCell} style={{ color: "var(--text-secondary)", fontSize: 11, maxWidth: 320 }}>
                         {p.setItemIds.length
                           ? `🍱 ${p.setItemIds.map(prodName).join(", ")}`
                           : p.ingredientIds.length ? p.ingredientIds.map(ingName).filter(Boolean).join(", ") : "—"}
                       </td>
-                      <td data-label="Бейдж">{p.badge ? <span className={`${s.pill} ${s.pillEditor}`}>{p.badge}</span> : "—"}</td>
+                      <td data-label="Бейдж" className={s.colHideMobile}>{p.badge ? <span className={`${s.pill} ${s.pillEditor}`}>{p.badge}</span> : "—"}</td>
                       <td data-label="В наявності">
                         <button className={`${s.pill} ${p.isAvailable ? s.pillOn : s.pillOff}`} style={{ cursor: "pointer", border: "none" }}
                           onClick={() => toggleAvailable(p)}>

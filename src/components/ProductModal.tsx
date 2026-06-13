@@ -71,56 +71,49 @@ export default function ProductModal({
           )}
         </div>
 
-        <div style={{ padding: "22px 40px 40px", display: "flex", flexDirection: "column" }}>
+        <div style={{ padding: "22px 32px 28px", display: "flex", flexDirection: "column" }}>
           <h2 style={{ fontFamily: "var(--font-display)", fontSize: 32, fontWeight: 700, color: "var(--text-primary)", lineHeight: 1.1, marginBottom: 10 }}>
             {item.name}
           </h2>
-          <div style={{ fontSize: 13, fontWeight: 300, letterSpacing: 2, textTransform: "uppercase", color: "var(--text-secondary)", marginBottom: 24 }}>
-            {item.pieces} · {item.weight}
+          <div style={{ display: "flex", alignItems: "baseline", justifyContent: "space-between", gap: 12, marginBottom: 18 }}>
+            <span style={{ fontSize: 13, fontWeight: 300, letterSpacing: 2, textTransform: "uppercase", color: "var(--text-secondary)" }}>
+              {item.pieces}{item.pieces && item.weight ? " · " : ""}{item.weight}
+            </span>
+            <span style={{ fontFamily: "var(--font-display)", fontSize: 30, fontWeight: 700, color: "var(--text-primary)", lineHeight: 1, whiteSpace: "nowrap" }}>
+              {item.price} <span style={{ fontSize: 15, fontWeight: 400 }}>грн</span>
+            </span>
           </div>
 
-          <div style={{ marginBottom: 24 }}>
-            <div className="eyebrow" style={{ marginBottom: 10, fontSize: 11 }}>Склад</div>
-            <p style={{ fontSize: 15, fontWeight: 300, color: "var(--text-primary)", lineHeight: 1.7, opacity: 0.9 }}>
+          <div style={{ marginBottom: 18 }}>
+            <div className="eyebrow" style={{ marginBottom: 8, fontSize: 11 }}>Склад</div>
+            <p style={{ fontSize: 15, fontWeight: 300, color: "var(--text-primary)", lineHeight: 1.6, opacity: 0.9 }}>
               {item.composition.toLowerCase()}
             </p>
           </div>
 
           {item.portion && item.portion.weight > 0 && (
-            <div style={{ marginBottom: 24 }}>
-              <div className="eyebrow" style={{ marginBottom: 10, fontSize: 11 }}>
+            <div style={{ marginBottom: 18 }}>
+              <div className="eyebrow" style={{ marginBottom: 8, fontSize: 10 }}>
                 Харчова цінність порції ({item.portion.weight} г)
               </div>
-              <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
+              <div style={{ display: "flex", gap: 6, flexWrap: "nowrap" }}>
                 {[
                   { l: "Ккал", v: item.portion.kcal },
                   { l: "Білки", v: `${item.portion.protein} г` },
                   { l: "Жири", v: `${item.portion.fat} г` },
                   { l: "Вугл.", v: `${item.portion.carbs} г` },
                 ].map((n) => (
-                  <div key={n.l} style={{ flex: "1 1 80px", minWidth: 72, padding: "10px 12px", background: "var(--bg-elevated)", border: "1px solid var(--border)", textAlign: "center" }}>
-                    <div style={{ fontFamily: "var(--font-display)", fontSize: 20, fontWeight: 700, color: "var(--text-primary)", lineHeight: 1 }}>{n.v}</div>
-                    <div style={{ fontSize: 11, letterSpacing: 1.5, textTransform: "uppercase", color: "var(--text-secondary)", marginTop: 6 }}>{n.l}</div>
+                  <div key={n.l} style={{ flex: "1 1 0", minWidth: 0, padding: "6px 3px", background: "var(--bg-elevated)", border: "1px solid var(--border)", textAlign: "center" }}>
+                    <div style={{ fontFamily: "var(--font-display)", fontSize: 14, fontWeight: 700, color: "var(--text-primary)", lineHeight: 1, whiteSpace: "nowrap" }}>{n.v}</div>
+                    <div style={{ fontSize: 8, letterSpacing: 0.5, textTransform: "uppercase", color: "var(--text-secondary)", marginTop: 4 }}>{n.l}</div>
                   </div>
                 ))}
               </div>
             </div>
           )}
 
-          {item.fullDesc && (
-            <div style={{ marginBottom: 32, paddingTop: 24, borderTop: "1px solid var(--border)" }}>
-              <div className="eyebrow" style={{ marginBottom: 10, fontSize: 11 }}>Опис</div>
-              <p style={{ fontSize: 15, fontWeight: 300, color: "var(--text-secondary)", lineHeight: 1.7, fontStyle: "italic" }}>
-                {item.fullDesc}
-              </p>
-            </div>
-          )}
-
-          <div style={{ marginTop: "auto", display: "flex", alignItems: "center", justifyContent: "space-between", gap: 16, paddingTop: 24, borderTop: "1px solid var(--border)", flexWrap: "wrap" }}>
-            <div style={{ fontFamily: "var(--font-display)", fontSize: 38, fontWeight: 700, color: "var(--text-primary)", lineHeight: 1 }}>
-              {item.price} <span style={{ fontSize: 18, fontWeight: 400 }}>грн</span>
-            </div>
-            <button className="btn-primary" onClick={() => { onAdd(item); onClose(); }}>
+          <div style={{ marginTop: "auto", paddingTop: 18, borderTop: "1px solid var(--border)" }}>
+            <button className="btn-primary" style={{ width: "100%" }} onClick={() => { onAdd(item); onClose(); }}>
               Додати в кошик
             </button>
           </div>

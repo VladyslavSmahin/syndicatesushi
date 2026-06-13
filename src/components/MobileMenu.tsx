@@ -1,9 +1,9 @@
 "use client";
 
 import { useEffect } from "react";
+import Link from "next/link";
 import { Icon } from "./icons";
 import { CONTACTS, ASSET_ICONS } from "@/data/site";
-import { usePublicCategories, usePublicNavSpecials } from "@/features/publicData";
 import type { NavCategory } from "@/lib/types";
 
 export default function MobileMenu({
@@ -15,9 +15,6 @@ export default function MobileMenu({
   onClose: () => void;
   onNavClick: (cat: NavCategory) => void;
 }) {
-  const cats = usePublicCategories({ navOnly: true });
-  const specials = usePublicNavSpecials();
-
   useEffect(() => {
     document.body.style.overflow = open ? "hidden" : "";
     return () => { document.body.style.overflow = ""; };
@@ -25,11 +22,7 @@ export default function MobileMenu({
 
   if (!open) return null;
 
-  const navItems: NavCategory[] = [
-    ...specials,
-    ...cats.map((c) => ({ id: c.id, label: c.name, filter: { category: c.slug } })),
-  ];
-
+  // Категорії доступні у фіксованій нижній панелі — у бургері лише перехід до меню
   const handle = (c: NavCategory) => { onClose(); onNavClick(c); };
 
   return (
@@ -66,20 +59,36 @@ export default function MobileMenu({
 
         {/* nav + contacts */}
         <nav style={{ flex: 1, overflowY: "auto", padding: "12px 20px 28px", display: "flex", flexDirection: "column" }}>
-          {navItems.map((c) => (
-            <a
-              key={c.id}
-              href={`#${c.id}`}
-              onClick={(e) => { e.preventDefault(); handle(c); }}
+          <a
+            href="#menu"
+            onClick={(e) => { e.preventDefault(); handle({ id: "menu", label: "Меню", scrollTo: "menu" }); }}
+            style={{
+              display: "flex", alignItems: "center", justifyContent: "space-between",
+              padding: "16px 4px", borderBottom: "1px solid var(--border)", textDecoration: "none",
+              fontFamily: "var(--font-display)", fontSize: 22, fontWeight: 600, color: "var(--text-primary)",
+            }}
+          >
+            Меню
+            <Icon.Arrow width="18" height="18" style={{ color: "var(--text-secondary)" }} />
+          </a>
+
+          {[
+            { href: "/about", label: "Про нас" },
+            { href: "/oferta", label: "Публічна оферта" },
+          ].map((it) => (
+            <Link
+              key={it.href}
+              href={it.href}
+              onClick={onClose}
               style={{
                 display: "flex", alignItems: "center", justifyContent: "space-between",
                 padding: "16px 4px", borderBottom: "1px solid var(--border)", textDecoration: "none",
                 fontFamily: "var(--font-display)", fontSize: 22, fontWeight: 600, color: "var(--text-primary)",
               }}
             >
-              {c.label}
+              {it.label}
               <Icon.Arrow width="18" height="18" style={{ color: "var(--text-secondary)" }} />
-            </a>
+            </Link>
           ))}
 
           <div style={{ marginTop: 26, display: "flex", flexDirection: "column", gap: 14 }}>

@@ -216,7 +216,14 @@ textarea.form-input { resize: vertical; min-height: 120px; font-family: var(--fo
   /* контент Hero — по центру на мобільному */
   .hero-copy { text-align: center; }
   .hero-copy p { margin-left: auto; margin-right: auto; }
-  .hero-cta { justify-content: center; }
+  /* «Sushi Syndicate» — в один рядок */
+  .hero-title { font-size: clamp(24px, 9vw, 40px) !important; white-space: nowrap; }
+  .hero-br { display: none; }
+  /* дві кнопки — в один ряд */
+  .hero-cta { justify-content: center; flex-wrap: nowrap; gap: 10px; }
+  .hero-cta .btn-primary, .hero-cta .btn-secondary {
+    flex: 1 1 0; min-width: 0; padding: 13px 6px; font-size: 10px; letter-spacing: 0.5px; white-space: nowrap;
+  }
 }
 
 @media (max-width: 520px) {

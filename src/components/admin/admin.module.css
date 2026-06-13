@@ -142,6 +142,7 @@
   padding: 18px 22px; border-bottom: 1px solid var(--border);
 }
 .cardTitle { font-family: var(--font-display); font-size: 21px; font-weight: 600; color: var(--text-primary); }
+.cardBody { padding: 22px; }
 
 .table { width: 100%; border-collapse: collapse; }
 .table th {
@@ -181,6 +182,8 @@
 .pillEditor { background: var(--bg-elevated); color: var(--text-secondary); border: 1px solid var(--border-light); }
 .pillOn { background: rgba(120,180,120,0.12); color: #8fc98f; border: 1px solid rgba(120,180,120,0.3); }
 .pillOff { background: var(--bg-elevated); color: var(--text-secondary); border: 1px solid var(--border-light); }
+
+.cardMeta { display: none; } /* бейдж+ціна у верхньому рядку картки — лише на мобільному */
 
 .hint { font-size: 15px; color: var(--text-secondary); line-height: 1.6; }
 .error { font-size: 15px; color: #E0726A; }
@@ -240,6 +243,20 @@
   .tableWrap { overflow-x: auto; }
 }
 
+/* На вузьких екранах — компактніші форми/інпути/відступи */
+@media (max-width: 600px) {
+  .input { font-size: 14px; padding: 9px 11px; }
+  .fieldLabel { font-size: 11px; }
+  .field { gap: 5px; }
+  .formRow { gap: 8px; }
+  .cardHead { padding: 14px 16px; }
+  .cardTitle { font-size: 18px; }
+  .btn { padding: 10px 16px; font-size: 12px; }
+  .hint { font-size: 13px; }
+  .content { padding: 14px; }
+  .cardBody { padding: 14px; }
+}
+
 /* На вузьких екранах таблиці — картками (без горизонтального скролу) */
 @media (max-width: 600px) {
   .tableWrap { overflow-x: visible; }
@@ -260,14 +277,20 @@
   .table td:first-child { display: block; text-align: left; padding-bottom: 10px; }
   .table td:first-child::before { display: none; }
   .rowActions { justify-content: flex-start; flex-wrap: wrap; }
+  /* бейдж+ціна у верхньому рядку; окремі колонки Ціна/Бейдж ховаємо */
+  .cardMeta { display: inline-flex; align-items: center; gap: 8px; flex-shrink: 0; font-size: 14px; color: var(--text-primary); }
+  .table td.colHideMobile { display: none; }
+  /* склад — на всю ширину картки, без лейбла */
+  .table td.composCell { display: block; text-align: left; font-size: 12px; max-width: none; padding: 4px 0 8px; line-height: 1.5; }
+  .table td.composCell::before { display: none; }
 
-  /* інгредієнти: 4 показники КБЖУ — в один рядок, лейбли зверху */
-  .nutTable tr { display: flex; flex-wrap: wrap; align-items: flex-end; gap: 8px; }
+  /* інгредієнти: 4 показники КБЖУ — в один рядок, лейбли зверху, компактно */
+  .nutTable tr { display: flex; flex-wrap: wrap; align-items: flex-end; gap: 6px; }
   .nutTable td { padding: 0; }
-  .nutTable td:first-child { flex: 1 1 100%; padding-bottom: 6px; }
-  .nutTable .nutCell { flex: 1 1 0; display: flex; flex-direction: column; gap: 4px; text-align: center; min-width: 0; }
-  .nutTable .nutCell::before { display: block; text-align: center; }
-  .nutTable .nutCell input { width: 100% !important; }
-  .nutTable td:last-child { flex: 1 1 100%; padding-top: 6px; }
+  .nutTable td:first-child { flex: 1 1 100%; padding-bottom: 4px; }
+  .nutTable .nutCell { flex: 1 1 0; display: flex; flex-direction: column; gap: 2px; text-align: center; min-width: 0; }
+  .nutTable .nutCell::before { display: block; text-align: center; font-size: 9px; letter-spacing: 0.5px; }
+  .nutTable .nutCell input { width: 100% !important; font-size: 13px !important; padding: 6px 4px !important; text-align: center; }
+  .nutTable td:last-child { flex: 1 1 100%; padding-top: 4px; }
   .nutTable .rowActions { justify-content: flex-start; }
 }

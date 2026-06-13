@@ -47,12 +47,13 @@ export default function Hero({
         <div className="fade-up hero-copy">
           <div className="eyebrow" style={{ marginBottom: 28, fontSize: 15, letterSpacing: 4 }}>{CONTACTS.addressShort}</div>
           <h1
+            className="hero-title"
             style={{
               fontFamily: "var(--font-display)", fontSize: "var(--hero-h1)", fontWeight: 700, lineHeight: 0.92,
               color: "var(--text-primary)", letterSpacing: -1, marginBottom: 18,
             }}
           >
-            Sushi<br />Syndicate
+            Sushi<br className="hero-br" /> Syndicate
           </h1>
           <p
             style={{

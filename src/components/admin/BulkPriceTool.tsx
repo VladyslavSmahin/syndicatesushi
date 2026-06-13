@@ -2,6 +2,7 @@
 
 import { useMemo, useState } from "react";
 import Modal from "./Modal";
+import Collapsible from "./Collapsible";
 import { dbUpdatePrice, type DbProduct, type DbIngredient, type DbCategory, type DbSubcategory } from "@/features/admin/db";
 import { dbLogPriceChange } from "@/features/admin/priceHistory";
 import s from "./admin.module.css";
@@ -74,10 +75,8 @@ export default function BulkPriceTool({
   };
 
   return (
-    <div className={s.card}>
-      <div className={s.cardHead}>
-        <div className={s.cardTitle}>Масова зміна цін за {FILTER_LABEL[filterType]}</div>
-      </div>
+    <>
+    <Collapsible title={`Масова зміна цін за ${FILTER_LABEL[filterType]}`}>
       <div style={{ padding: 22 }}>
         <p className={s.hint} style={{ marginBottom: 16 }}>
           Підніме (або знизить) ціну всіх товарів обраної групи. Перед застосуванням
@@ -113,6 +112,7 @@ export default function BulkPriceTool({
           <button className={s.btn} onClick={preview} disabled={!effectiveId}>Переглянути</button>
         </div>
       </div>
+    </Collapsible>
 
       {rows && (
         <Modal
@@ -164,6 +164,6 @@ export default function BulkPriceTool({
           )}
         </Modal>
       )}
-    </div>
+    </>
   );
 }
