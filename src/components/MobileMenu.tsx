@@ -75,6 +75,7 @@ export default function MobileMenu({
           {[
             { href: "/about", label: "Про нас" },
             { href: "/oferta", label: "Публічна оферта" },
+            { href: "/privacy", label: "Політика конфіденційності" },
           ].map((it) => (
             <Link
               key={it.href}

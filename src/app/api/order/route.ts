@@ -18,6 +18,7 @@ interface OrderBody {
   address?: string;
   comment?: string;
   promo?: string;
+  consent?: boolean;
   lat?: number;
   lng?: number;
   items: IncomingItem[];
@@ -38,10 +39,13 @@ export async function POST(req: Request) {
     return NextResponse.json({ ok: false, error: "bad_json" }, { status: 400 });
   }
 
-  const { delivery, name, phone, address, comment, promo, items } = body;
+  const { delivery, name, phone, address, comment, promo, consent, items } = body;
 
   if (!name?.trim() || !phone?.trim() || !Array.isArray(items) || items.length === 0) {
     return NextResponse.json({ ok: false, error: "missing_fields" }, { status: 400 });
+  }
+  if (consent !== true) {
+    return NextResponse.json({ ok: false, error: "consent_required" }, { status: 400 });
   }
   if (delivery === "delivery" && !address?.trim()) {
     return NextResponse.json({ ok: false, error: "address_required" }, { status: 400 });
@@ -127,6 +131,7 @@ export async function POST(req: Request) {
         discount,
         delivery_cost: deliveryCost,
         total,
+        pd_consent_at: new Date().toISOString(),
       })
       .select("id")
       .single();

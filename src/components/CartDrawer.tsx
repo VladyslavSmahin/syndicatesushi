@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useRef, useState, type CSSProperties } from "react";
+import Link from "next/link";
 import { Icon } from "./icons";
 import { useCart } from "@/features/cart/CartContext";
 import { usePublicDelivery, usePublicCatalog, useGloss } from "@/features/publicData";
@@ -48,6 +49,7 @@ export default function CartDrawer({ isOpen, onClose }: { isOpen: boolean; onClo
   const [searching, setSearching] = useState(false);
   const [comment, setComment] = useState("");
   const [promo, setPromo] = useState("");
+  const [consent, setConsent] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState("");
   const skipSearch = useRef(false); // не шукати після вибору підказки
@@ -87,7 +89,7 @@ export default function CartDrawer({ isOpen, onClose }: { isOpen: boolean; onClo
   const payable = total + (delivery === "delivery" ? deliveryFee : 0);
 
   const addrOk = delivery === "pickup" || (!!coords && !dq?.outOfRange);
-  const canSubmit = !!name.trim() && !!phone.trim() && addrOk;
+  const canSubmit = !!name.trim() && !!phone.trim() && addrOk && consent;
 
   const pickSuggestion = (sg: Suggestion) => {
     skipSearch.current = true;
@@ -106,7 +108,7 @@ export default function CartDrawer({ isOpen, onClose }: { isOpen: boolean; onClo
       const res = await fetch("/api/order", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ delivery, name, phone, address, comment, promo, items, lat: coords?.lat, lng: coords?.lng }),
+        body: JSON.stringify({ delivery, name, phone, address, comment, promo, consent, items, lat: coords?.lat, lng: coords?.lng }),
       });
       if (!res.ok) throw new Error("request_failed");
       setStep("done");
@@ -244,6 +246,16 @@ export default function CartDrawer({ isOpen, onClose }: { isOpen: boolean; onClo
                 <span style={{ fontSize: 11, letterSpacing: 3, textTransform: "uppercase", color: "var(--text-secondary)" }}>До сплати</span>
                 <span style={{ fontFamily: "var(--font-display)", fontSize: 28, fontWeight: 700, color: "var(--text-primary)" }}>{payable} грн</span>
               </div>
+              <label style={{ display: "flex", gap: 10, alignItems: "flex-start", marginBottom: 16, cursor: "pointer", fontSize: 11, lineHeight: 1.5, color: "var(--text-secondary)" }}>
+                <input type="checkbox" checked={consent} onChange={(e) => setConsent(e.target.checked)}
+                  style={{ marginTop: 1, width: 16, height: 16, flexShrink: 0, accentColor: "var(--accent)", cursor: "pointer" }} />
+                <span>
+                  Я погоджуюсь на обробку моїх персональних даних згідно з{" "}
+                  <Link href="/privacy" target="_blank" style={{ color: "var(--accent)", textDecoration: "underline" }}>Політикою конфіденційності</Link>
+                  {" "}та умовами{" "}
+                  <Link href="/oferta" target="_blank" style={{ color: "var(--accent)", textDecoration: "underline" }}>публічної оферти</Link>.
+                </span>
+              </label>
               <div style={{ display: "flex", gap: 10 }}>
                 <button type="button" className="btn-secondary" style={{ flex: "0 0 auto" }} onClick={() => setStep("cart")} disabled={submitting}>Назад</button>
                 <button type="submit" className="btn-primary" style={{ flex: 1 }} disabled={!canSubmit || submitting}>
