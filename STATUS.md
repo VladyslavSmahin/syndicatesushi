@@ -73,5 +73,5 @@
 ## ⚠️ Не забыть
 - **Не запускать `supabase db push`**: схему применяли напрямую (SQL), таблица миграций рассинхронизирована — упадёт без `migration repair`. Изменения БД делать напрямую/через SQL Editor.
 - Прямое подключение `db.<ref>.supabase.co` не резолвится локально (IPv6) — использовать **session pooler** (`aws-1-eu-central-1.pooler.supabase.com`), пароль из `SUPABASE_DB_PASSWORD` (в URL он URL-энкодирован).
-- Бот-токен в `.env.local` мог быть засвечен — заменить через `/revoke` @BotFather.
-- `client_secret_*.json` в корне — секрет, gitignored; приложению не нужен, можно удалить.
+- Бот-токен в `.env.local` мог быть засвечен — заменить через `/revoke` @BotFather (решено оставить как есть).
+- ✅ `client_secret_*.json` удалён из корня (был gitignored, приложению не нужен).
