@@ -97,6 +97,16 @@ export default function CartDrawer({ isOpen, onClose }: { isOpen: boolean; onClo
     ? [address.trim(), house.trim() && `буд. ${house.trim()}`].filter(Boolean).join(", ")
     : "";
 
+  // причина, чому кнопка «Підтвердити» неактивна (показуємо користувачу)
+  const submitHint =
+    !name.trim() ? "Вкажіть ім'я"
+    : !phone.trim() ? "Вкажіть телефон"
+    : delivery === "delivery" && !coords ? "Оберіть вулицю зі списку підказок"
+    : delivery === "delivery" && dq?.outOfRange ? "Адреса поза зоною доставки"
+    : delivery === "delivery" && !house.trim() ? "Вкажіть номер будинку"
+    : !consent ? "Підтвердіть згоду на обробку персональних даних"
+    : "";
+
   const pickSuggestion = (sg: Suggestion) => {
     skipSearch.current = true;
     setAddress(sg.label);
@@ -269,6 +279,11 @@ export default function CartDrawer({ isOpen, onClose }: { isOpen: boolean; onClo
                   <Link href="/oferta" target="_blank" style={{ color: "var(--accent)", textDecoration: "underline" }}>публічної оферти</Link>.
                 </span>
               </label>
+              {submitHint && !submitting && (
+                <p style={{ fontSize: 11, color: "var(--text-secondary)", marginBottom: 10, textAlign: "center" }}>
+                  {submitHint}
+                </p>
+              )}
               <div style={{ display: "flex", gap: 10 }}>
                 <button type="button" className="btn-secondary" style={{ flex: "0 0 auto" }} onClick={() => setStep("cart")} disabled={submitting}>Назад</button>
                 <button type="submit" className="btn-primary" style={{ flex: 1 }} disabled={!canSubmit || submitting}>
