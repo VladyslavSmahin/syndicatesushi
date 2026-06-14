@@ -44,6 +44,7 @@ export default function CartDrawer({ isOpen, onClose }: { isOpen: boolean; onClo
   const [name, setName] = useState("");
   const [phone, setPhone] = useState("");
   const [address, setAddress] = useState("");
+  const [house, setHouse] = useState(""); // номер будинку — окремо (геокодер вулиць не дає номерів)
   const [coords, setCoords] = useState<{ lat: number; lng: number } | null>(null);
   const [suggestions, setSuggestions] = useState<Suggestion[]>([]);
   const [searching, setSearching] = useState(false);
@@ -88,8 +89,13 @@ export default function CartDrawer({ isOpen, onClose }: { isOpen: boolean; onClo
   const deliveryFee = dq && !dq.outOfRange ? (dq.free ? 0 : dq.price) : 0;
   const payable = total + (delivery === "delivery" ? deliveryFee : 0);
 
-  const addrOk = delivery === "pickup" || (!!coords && !dq?.outOfRange);
+  const addrOk = delivery === "pickup" || (!!coords && !dq?.outOfRange && !!house.trim());
   const canSubmit = !!name.trim() && !!phone.trim() && addrOk && consent;
+
+  // повна адреса: вулиця (з підказки) + номер будинку (вручну)
+  const fullAddress = delivery === "delivery"
+    ? [address.trim(), house.trim() && `буд. ${house.trim()}`].filter(Boolean).join(", ")
+    : "";
 
   const pickSuggestion = (sg: Suggestion) => {
     skipSearch.current = true;
@@ -108,7 +114,7 @@ export default function CartDrawer({ isOpen, onClose }: { isOpen: boolean; onClo
       const res = await fetch("/api/order", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ delivery, name, phone, address, comment, promo, consent, items, lat: coords?.lat, lng: coords?.lng }),
+        body: JSON.stringify({ delivery, name, phone, address: fullAddress, comment, promo, consent, items, lat: coords?.lat, lng: coords?.lng }),
       });
       if (!res.ok) throw new Error("request_failed");
       setStep("done");
@@ -207,8 +213,9 @@ export default function CartDrawer({ isOpen, onClose }: { isOpen: boolean; onClo
               <input className="form-input" placeholder="Телефон *" value={phone} onChange={(e) => setPhone(e.target.value)} />
 
               {delivery === "delivery" && (
+                <>
                 <div style={{ position: "relative" }}>
-                  <input className="form-input" placeholder="Адреса доставки * (оберіть зі списку)"
+                  <input className="form-input" placeholder="Вулиця * (оберіть зі списку)"
                     value={address} onChange={(e) => onAddressChange(e.target.value)} autoComplete="off" />
                   {suggestions.length > 0 && !coords && (
                     <div style={{ position: "absolute", top: "100%", left: 0, right: 0, zIndex: 10, background: "var(--bg-elevated)", border: "1px solid var(--border-light)", borderTop: "none", maxHeight: 220, overflowY: "auto" }}>
@@ -227,6 +234,12 @@ export default function CartDrawer({ isOpen, onClose }: { isOpen: boolean; onClo
                     </p>
                   )}
                 </div>
+                <input className="form-input" placeholder="Номер будинку * (кв., під'їзд — у коментарі)"
+                  value={house} onChange={(e) => setHouse(e.target.value)} autoComplete="off" />
+                {coords && !house.trim() && (
+                  <p style={{ fontSize: 11, color: "var(--text-secondary)", marginTop: -4 }}>Вкажіть номер будинку — вартість рахується за вулицею.</p>
+                )}
+                </>
               )}
 
               <input className="form-input" placeholder="Промокод" value={promo} onChange={(e) => setPromo(e.target.value)} />
