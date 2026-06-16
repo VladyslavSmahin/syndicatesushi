@@ -27,6 +27,11 @@
   --hero-h: 520px;
   --h2-size: 56px;
   --menu-cols: repeat(4, 1fr);
+  --review-cols: 4;         /* скільки відгуків видно в слайдері */
+  --card-ar: 16 / 9;        /* пропорції фото в картці товару */
+  --card-title-mt: 10px;    /* верхній відступ назви (десктоп) */
+  --modal-photo-h: 320px;   /* мін. висота фото в модалці товару */
+  --modal-body-pt: 22px;    /* верхній відступ контенту модалки */
   --promo-cols: repeat(3, 1fr);
   --reviews-cols: 1fr 1.2fr;
   --reviews-gap: 100px;
@@ -102,6 +107,7 @@ body {
 @keyframes slideInLeft { from { transform: translateX(-100%); } to { transform: translateX(0); } }
 .slide-in-left { animation: slideInLeft 0.3s cubic-bezier(0.4,0,0.2,1) both; }
 @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+@keyframes spin { to { transform: rotate(360deg); } }
 .fade-in { animation: fadeIn 0.25s ease both; }
 @keyframes modalPop { from { opacity: 0; transform: scale(0.96) translateY(8px); } to { opacity: 1; transform: scale(1) translateY(0); } }
 .modal-pop { animation: modalPop 0.3s cubic-bezier(0.4,0,0.2,1) both; }
@@ -186,6 +192,7 @@ textarea.form-input { resize: vertical; min-height: 120px; font-family: var(--fo
     --hero-h1: 72px;
     --h2-size: 46px;
     --menu-cols: repeat(3, 1fr);
+    --review-cols: 3;
     --reviews-gap: 56px;
   }
 }
@@ -198,6 +205,11 @@ textarea.form-input { resize: vertical; min-height: 120px; font-family: var(--fo
     --hero-h: 320px;
     --h2-size: 40px;
     --menu-cols: repeat(2, 1fr);
+    --review-cols: 2;
+    --card-ar: 3 / 2;        /* нижче фото — картка ближче до квадрата, більше вміщається */
+    --card-title-mt: 5px;    /* менший відступ назви на мобілці/планшеті */
+    --modal-photo-h: 192px;  /* фото в модалці на мобілці */
+    --modal-body-pt: 10px;   /* майже без відступу над назвою */
     --promo-cols: 1fr;
     --reviews-cols: 1fr;
     --map-cols: 1fr;
@@ -213,9 +225,18 @@ textarea.form-input { resize: vertical; min-height: 120px; font-family: var(--fo
   .desktop-only { display: none !important; }
   .mobile-only { display: initial; }
   .burger { display: flex; }
+  /* заголовки секцій — менші відступи зверху/знизу на мобілці (≈ втричі) */
+  .section-title { margin: 11px 0; }
   /* контент Hero — по центру на мобільному */
   .hero-copy { text-align: center; }
   .hero-copy p { margin-left: auto; margin-right: auto; }
+  /* Hero на мобілці: ейбраун → слайдер → кнопки (назва — лише в хедері) */
+  .hero-grid { display: flex !important; flex-direction: column; gap: 20px !important; align-items: stretch !important; }
+  .hero-copy { display: contents; }
+  .hero-eyebrow { order: 1; margin-bottom: 0 !important; }
+  .hero-slider { order: 2; }
+  .hero-cta { order: 3; width: 100%; }
+  .hero-title, .hero-tagline, .hero-lead { display: none; }
   /* «Sushi Syndicate» — в один рядок */
   .hero-title { font-size: clamp(24px, 9vw, 40px) !important; white-space: nowrap; }
   .hero-br { display: none; }
@@ -232,6 +253,7 @@ textarea.form-input { resize: vertical; min-height: 120px; font-family: var(--fo
     --hero-h1: 48px;
     --h2-size: 32px;
     --menu-cols: repeat(2, 1fr);   /* 2 картки в ряд на телефоні */
+    --review-cols: 1;              /* один відгук на екран — для читабельності */
     --footer-cols: 1fr;
     --py: 28px;
     --hero-pt: 104px;

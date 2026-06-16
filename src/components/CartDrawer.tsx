@@ -24,6 +24,22 @@ interface PhotonFeature {
   properties: { name?: string; street?: string; housenumber?: string; city?: string; town?: string; village?: string; county?: string };
 }
 
+// Український номер: лише цифри, формат «093 728 42 98» (10 цифр, починається з 0).
+function phoneDigits(raw: string): string {
+  let d = raw.replace(/\D/g, "");
+  if (d.startsWith("380")) d = "0" + d.slice(3);   // +380XX… → 0XX…
+  else if (d.startsWith("80")) d = "0" + d.slice(2); // 80XX…  → 0XX…
+  return d.slice(0, 10);
+}
+function formatPhone(raw: string): string {
+  const d = phoneDigits(raw);
+  return [d.slice(0, 3), d.slice(3, 6), d.slice(6, 8), d.slice(8, 10)].filter(Boolean).join(" ");
+}
+function isPhoneValid(raw: string): boolean {
+  const d = phoneDigits(raw);
+  return d.length === 10 && d.startsWith("0");
+}
+
 function suggestionLabel(p: PhotonFeature["properties"]): string {
   const line1 = [p.street ?? p.name, p.housenumber].filter(Boolean).join(", ");
   const line2 = p.city ?? p.town ?? p.village ?? p.county ?? "";
@@ -90,7 +106,8 @@ export default function CartDrawer({ isOpen, onClose }: { isOpen: boolean; onClo
   const payable = total + (delivery === "delivery" ? deliveryFee : 0);
 
   const addrOk = delivery === "pickup" || (!!coords && !dq?.outOfRange && !!house.trim());
-  const canSubmit = !!name.trim() && !!phone.trim() && addrOk && consent;
+  const phoneOk = isPhoneValid(phone);
+  const canSubmit = !!name.trim() && phoneOk && addrOk && consent;
 
   // повна адреса: вулиця (з підказки) + номер будинку (вручну)
   const fullAddress = delivery === "delivery"
@@ -101,6 +118,7 @@ export default function CartDrawer({ isOpen, onClose }: { isOpen: boolean; onClo
   const submitHint =
     !name.trim() ? "Вкажіть ім'я"
     : !phone.trim() ? "Вкажіть телефон"
+    : !phoneOk ? "Невірний формат номера (напр. 093 728 42 98)"
     : delivery === "delivery" && !coords ? "Оберіть вулицю зі списку підказок"
     : delivery === "delivery" && dq?.outOfRange ? "Адреса поза зоною доставки"
     : delivery === "delivery" && !house.trim() ? "Вкажіть номер будинку"
@@ -220,7 +238,9 @@ export default function CartDrawer({ isOpen, onClose }: { isOpen: boolean; onClo
               </div>
 
               <input className="form-input" placeholder="Ім'я *" value={name} onChange={(e) => setName(e.target.value)} />
-              <input className="form-input" placeholder="Телефон *" value={phone} onChange={(e) => setPhone(e.target.value)} />
+              <input className="form-input" type="tel" inputMode="numeric" autoComplete="tel"
+                placeholder="093 728 42 98" value={phone}
+                onChange={(e) => setPhone(formatPhone(e.target.value))} />
 
               {delivery === "delivery" && (
                 <>

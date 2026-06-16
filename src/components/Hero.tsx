@@ -38,6 +38,7 @@ export default function Hero({
         }}
       />
       <div
+        className="hero-grid"
         style={{
           maxWidth: 1440, margin: "0 auto", display: "grid",
           gridTemplateColumns: "var(--hero-cols)", gap: 80, alignItems: "center", position: "relative",
@@ -45,7 +46,7 @@ export default function Hero({
       >
         {/* left */}
         <div className="fade-up hero-copy">
-          <div className="eyebrow" style={{ marginBottom: 28, fontSize: 15, letterSpacing: 4 }}>{CONTACTS.addressShort}</div>
+          <div className="eyebrow hero-eyebrow" style={{ marginBottom: 28, fontSize: 15, letterSpacing: 4 }}>{CONTACTS.addressShort}</div>
           <h1
             className="hero-title"
             style={{
@@ -56,6 +57,7 @@ export default function Hero({
             Sushi<br className="hero-br" /> Syndicate
           </h1>
           <p
+            className="hero-tagline"
             style={{
               fontFamily: "var(--font-display)", fontStyle: "italic", fontSize: 24,
               color: "var(--text-secondary)", marginBottom: 36, fontWeight: 400,
@@ -63,7 +65,7 @@ export default function Hero({
           >
             {TEXTS.tagline}
           </p>
-          <p style={{ fontSize: 16, fontWeight: 400, color: "var(--text-primary)", maxWidth: 440, lineHeight: 1.7, marginBottom: 48, opacity: 0.92 }}>
+          <p className="hero-lead" style={{ fontSize: 16, fontWeight: 400, color: "var(--text-primary)", maxWidth: 440, lineHeight: 1.7, marginBottom: 48, opacity: 0.92 }}>
             {TEXTS.heroLead}
           </p>
           <div className="hero-cta" style={{ display: "flex", gap: 14, flexWrap: "wrap" }}>
@@ -73,7 +75,9 @@ export default function Hero({
         </div>
 
         {/* right — вертикальний промо-слайдер */}
-        <HeroPromoSlider onOrder={onPromoOrder} />
+        <div className="hero-slider">
+          <HeroPromoSlider onOrder={onPromoOrder} />
+        </div>
       </div>
     </section>
   );

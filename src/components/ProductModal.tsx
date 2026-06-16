@@ -56,7 +56,7 @@ export default function ProductModal({
           <Icon.Close width="14" height="14" />
         </button>
 
-        <div style={{ position: "relative", minHeight: 320 }}>
+        <div style={{ position: "relative", minHeight: "var(--modal-photo-h, 320px)" }}>
           <PhotoSlot h="100%" photo={item.photo} />
           {item.badge && (
             <div
@@ -71,8 +71,8 @@ export default function ProductModal({
           )}
         </div>
 
-        <div style={{ padding: "22px 32px 28px", display: "flex", flexDirection: "column" }}>
-          <h2 style={{ fontFamily: "var(--font-display)", fontSize: 32, fontWeight: 700, color: "var(--text-primary)", lineHeight: 1.1, marginBottom: 10 }}>
+        <div style={{ padding: "var(--modal-body-pt, 22px) 32px 28px", display: "flex", flexDirection: "column" }}>
+          <h2 style={{ fontFamily: "var(--font-display)", fontSize: 32, fontWeight: 700, color: "var(--text-primary)", lineHeight: 1.1, marginTop: 12, marginBottom: 10 }}>
             {item.name}
           </h2>
           <div style={{ display: "flex", alignItems: "baseline", justifyContent: "space-between", gap: 12, marginBottom: 18 }}>
@@ -84,7 +84,7 @@ export default function ProductModal({
             </span>
           </div>
 
-          <div style={{ marginBottom: 18 }}>
+          <div>
             <div className="eyebrow" style={{ marginBottom: 8, fontSize: 11 }}>Склад</div>
             <p style={{ fontSize: 15, fontWeight: 300, color: "var(--text-primary)", lineHeight: 1.6, opacity: 0.9 }}>
               {item.composition.toLowerCase()}
@@ -92,23 +92,8 @@ export default function ProductModal({
           </div>
 
           {item.portion && item.portion.weight > 0 && (
-            <div style={{ marginBottom: 18 }}>
-              <div className="eyebrow" style={{ marginBottom: 8, fontSize: 10 }}>
-                Харчова цінність порції ({item.portion.weight} г)
-              </div>
-              <div style={{ display: "flex", gap: 6, flexWrap: "nowrap" }}>
-                {[
-                  { l: "Ккал", v: item.portion.kcal },
-                  { l: "Білки", v: `${item.portion.protein} г` },
-                  { l: "Жири", v: `${item.portion.fat} г` },
-                  { l: "Вугл.", v: `${item.portion.carbs} г` },
-                ].map((n) => (
-                  <div key={n.l} style={{ flex: "1 1 0", minWidth: 0, padding: "6px 3px", background: "var(--bg-elevated)", border: "1px solid var(--border)", textAlign: "center" }}>
-                    <div style={{ fontFamily: "var(--font-display)", fontSize: 14, fontWeight: 700, color: "var(--text-primary)", lineHeight: 1, whiteSpace: "nowrap" }}>{n.v}</div>
-                    <div style={{ fontSize: 8, letterSpacing: 0.5, textTransform: "uppercase", color: "var(--text-secondary)", marginTop: 4 }}>{n.l}</div>
-                  </div>
-                ))}
-              </div>
+            <div style={{ marginTop: 2, marginBottom: 14, fontSize: 11, lineHeight: 1.5, color: "var(--text-secondary)" }}>
+              {item.portion.kcal} ккал / {item.portion.protein} г білки / {item.portion.fat} г жири / {item.portion.carbs} г вугл.
             </div>
           )}
 

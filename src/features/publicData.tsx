@@ -26,6 +26,14 @@ export interface PubSubcategory {
   sortOrder: number;
 }
 
+export interface PubReview {
+  id: string;
+  authorName: string;
+  rating: number | null;
+  text: string;
+  createdAt: string;
+}
+
 export interface PublicData {
   catalog: Product[];
   categories: PubCategory[];
@@ -34,9 +42,10 @@ export interface PublicData {
   delivery: DeliverySettings;
   navSpecials: NavCategory[];
   glossary: Glossary;
+  reviews: PubReview[];
 }
 
-const Ctx = createContext<PublicData>({ catalog: [], categories: [], subcategories: [], promos: [], delivery: DEFAULT_DELIVERY, navSpecials: [], glossary: GLOSSARY_DEFAULTS });
+const Ctx = createContext<PublicData>({ catalog: [], categories: [], subcategories: [], promos: [], delivery: DEFAULT_DELIVERY, navSpecials: [], glossary: GLOSSARY_DEFAULTS, reviews: [] });
 
 export function PublicDataProvider({ value, children }: { value: PublicData; children: React.ReactNode }) {
   return <Ctx.Provider value={value}>{children}</Ctx.Provider>;
@@ -70,6 +79,10 @@ export function usePublicNavSpecials(): NavCategory[] {
 
 export function usePublicGlossary(): Glossary {
   return useContext(Ctx).glossary;
+}
+
+export function usePublicReviews(): PubReview[] {
+  return useContext(Ctx).reviews;
 }
 /** Значення глосарію за ключем (з фолбеком на дефолт). */
 export function useGloss(key: string): string {

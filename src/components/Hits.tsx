@@ -32,7 +32,7 @@ export default function Hits({
     <section id="hits" style={{ padding: "var(--py) var(--page-pad)", borderTop: "1px solid var(--border)" }}>
       <div style={{ maxWidth: 1440, margin: "0 auto" }}>
         <div style={{ display: "flex", alignItems: "flex-end", justifyContent: "space-between", marginBottom: "var(--head-mb)", gap: 16, flexWrap: "wrap" }}>
-          <h2 style={{ fontFamily: "var(--font-display)", fontSize: "var(--h2-size)", fontWeight: 700, lineHeight: 1, color: "var(--text-primary)" }}>
+          <h2 className="section-title" style={{ fontFamily: "var(--font-display)", fontSize: "var(--h2-size)", fontWeight: 700, lineHeight: 1, color: "var(--text-primary)" }}>
             {titleHits}
           </h2>
           {!isMobile && (

@@ -57,10 +57,15 @@ export default function GlossaryPage() {
                 {entries.map((e) => (
                   <div key={e.key} className={s.field}>
                     <span className={s.fieldLabel}>{e.label}</span>
-                    <input className={s.input} placeholder={e.default}
-                      value={draft[e.key] ?? ""} onChange={(ev) => setDraft((d) => ({ ...d, [e.key]: ev.target.value }))} />
+                    {e.multiline ? (
+                      <textarea className={s.input} placeholder={e.default} rows={8} style={{ resize: "vertical", lineHeight: 1.6 }}
+                        value={draft[e.key] ?? ""} onChange={(ev) => setDraft((d) => ({ ...d, [e.key]: ev.target.value }))} />
+                    ) : (
+                      <input className={s.input} placeholder={e.default}
+                        value={draft[e.key] ?? ""} onChange={(ev) => setDraft((d) => ({ ...d, [e.key]: ev.target.value }))} />
+                    )}
                     {e.hint && <span className={s.hint} style={{ fontSize: 11, marginTop: 4 }}>{e.hint}</span>}
-                    {(draft[e.key]?.trim() || e.default) !== e.default && (
+                    {!e.multiline && (draft[e.key]?.trim() || e.default) !== e.default && (
                       <span className={s.hint} style={{ fontSize: 11, marginTop: 4 }}>За замовчуванням: «{e.default}»</span>
                     )}
                   </div>

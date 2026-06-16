@@ -72,8 +72,20 @@ export default function MobileMenu({
             <Icon.Arrow width="18" height="18" style={{ color: "var(--text-secondary)" }} />
           </a>
 
+          <a
+            href="#about"
+            onClick={(e) => { e.preventDefault(); handle({ id: "about", label: "Про нас", scrollTo: "about" }); }}
+            style={{
+              display: "flex", alignItems: "center", justifyContent: "space-between",
+              padding: "16px 4px", borderBottom: "1px solid var(--border)", textDecoration: "none",
+              fontFamily: "var(--font-display)", fontSize: 22, fontWeight: 600, color: "var(--text-primary)",
+            }}
+          >
+            Про нас
+            <Icon.Arrow width="18" height="18" style={{ color: "var(--text-secondary)" }} />
+          </a>
+
           {[
-            { href: "/about", label: "Про нас" },
             { href: "/oferta", label: "Публічна оферта" },
             { href: "/privacy", label: "Політика конфіденційності" },
           ].map((it) => (

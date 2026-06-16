@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import MenuCard from "./MenuCard";
 import { usePublicCatalog, usePublicCategories, usePublicSubcategories, useGloss } from "@/features/publicData";
 import { useIsMobile } from "@/features/useIsMobile";
@@ -8,7 +8,9 @@ import type { Product, NavCategory } from "@/lib/types";
 
 type NavFilter = NonNullable<NavCategory["filter"]>;
 
-const PAGE_SIZE = 6;
+// скільки товарів вантажимо за раз: мобілка (2 кол.) — 10, десктоп (4/3 кол.) — 12 (повні ряди)
+const PAGE_MOBILE = 10;
+const PAGE_DESKTOP = 12;
 const cap = (n: string) => n.charAt(0).toUpperCase() + n.slice(1);
 
 type Sort = "default" | "price-asc" | "price-desc" | "weight-asc" | "weight-desc";
@@ -46,7 +48,8 @@ export default function FullMenu({
   const [selected, setSelected] = useState<string[]>([]); // обрані інгредієнти (мультивибір)
   const [selectedSub, setSelectedSub] = useState<string | null>(null); // обрана підкатегорія
   const [sort, setSort] = useState<Sort>("default"); // сортування
-  const [visibleCount, setVisibleCount] = useState(PAGE_SIZE);
+  const pageSize = isMobile ? PAGE_MOBILE : PAGE_DESKTOP;
+  const [visibleCount, setVisibleCount] = useState(PAGE_DESKTOP);
   const [sheetOpen, setSheetOpen] = useState(false);
   const [filtersOpen, setFiltersOpen] = useState(false); // десктоп: розкриті чипи інгредієнтів
 
@@ -81,7 +84,7 @@ export default function FullMenu({
     return list;
   }, [catalog, selected, selectedSub, navFilter, sort]);
 
-  useEffect(() => { setVisibleCount(PAGE_SIZE); }, [selected, selectedSub, navFilter]);
+  useEffect(() => { setVisibleCount(pageSize); }, [selected, selectedSub, navFilter, pageSize]);
 
   const shown = items.slice(0, visibleCount);
   const hasMore = visibleCount < items.length;
@@ -110,7 +113,7 @@ export default function FullMenu({
       <div style={{ maxWidth: 1440, margin: "0 auto" }}>
         <div style={{ marginBottom: 20 }}>
           <div style={{ display: "flex", alignItems: "baseline", justifyContent: "space-between", flexWrap: "wrap", gap: 24 }}>
-            <h2 style={{ fontFamily: "var(--font-display)", fontSize: "var(--h2-size)", fontWeight: 700, lineHeight: 1, color: "var(--text-primary)" }}>
+            <h2 className="section-title" style={{ fontFamily: "var(--font-display)", fontSize: "var(--h2-size)", fontWeight: 700, lineHeight: 1, color: "var(--text-primary)" }}>
               {title}
             </h2>
             {navFilter && (
@@ -182,7 +185,7 @@ export default function FullMenu({
 
             {hasMore && (
               <div style={{ display: "flex", justifyContent: "center", marginTop: 36 }}>
-                <button className="btn-secondary" onClick={() => setVisibleCount((c) => c + PAGE_SIZE)}>
+                <button className="btn-secondary" onClick={() => setVisibleCount((c) => c + pageSize)}>
                   Завантажити більше
                 </button>
               </div>
@@ -254,25 +257,88 @@ export default function FullMenu({
   );
 }
 
+const SORT_OPTIONS: { value: Sort; label: string }[] = [
+  { value: "default", label: "Сортування" },
+  { value: "price-asc", label: "Ціна: спочатку дешевші" },
+  { value: "price-desc", label: "Ціна: спочатку дорожчі" },
+  { value: "weight-asc", label: "Вага: спочатку менші" },
+  { value: "weight-desc", label: "Вага: спочатку більші" },
+];
+
 function SortControl({ sort, setSort }: { sort: Sort; setSort: (s: Sort) => void }) {
+  const [open, setOpen] = useState(false);
+  const ref = useRef<HTMLDivElement>(null);
+  const active = sort !== "default";
+  const current = SORT_OPTIONS.find((o) => o.value === sort) ?? SORT_OPTIONS[0];
+
+  useEffect(() => {
+    if (!open) return;
+    const onDocClick = (e: MouseEvent) => { if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false); };
+    const onKey = (e: KeyboardEvent) => { if (e.key === "Escape") setOpen(false); };
+    document.addEventListener("mousedown", onDocClick);
+    document.addEventListener("keydown", onKey);
+    return () => { document.removeEventListener("mousedown", onDocClick); document.removeEventListener("keydown", onKey); };
+  }, [open]);
+
   return (
-    <select
-      value={sort}
-      onChange={(e) => setSort(e.target.value as Sort)}
-      aria-label="Сортування"
-      style={{
-        background: "var(--bg-elevated)", color: sort === "default" ? "var(--text-secondary)" : "var(--text-primary)",
-        border: `1px solid ${sort === "default" ? "var(--border-light)" : "var(--accent)"}`,
-        padding: "10px 14px", fontSize: 11, letterSpacing: 1.5, textTransform: "uppercase",
-        fontFamily: "var(--font-body)", cursor: "pointer",
-      }}
-    >
-      <option value="default">Сортування</option>
-      <option value="price-asc">Ціна: спочатку дешевші</option>
-      <option value="price-desc">Ціна: спочатку дорожчі</option>
-      <option value="weight-asc">Вага: спочатку менші</option>
-      <option value="weight-desc">Вага: спочатку більші</option>
-    </select>
+    <div ref={ref} style={{ position: "relative" }}>
+      <button
+        type="button"
+        onClick={() => setOpen((v) => !v)}
+        aria-haspopup="listbox"
+        aria-expanded={open}
+        className={`chip square ${active ? "active" : ""}`}
+        style={{ display: "inline-flex", alignItems: "center", gap: 8 }}
+      >
+        {current.label}
+        <Chevron open={open} />
+      </button>
+
+      {open && (
+        <div
+          role="listbox"
+          style={{
+            position: "absolute", top: "calc(100% + 6px)", left: 0, zIndex: 60, minWidth: 240,
+            background: "var(--bg-card)", border: "1px solid var(--border-light)",
+            boxShadow: "0 12px 32px rgba(0,0,0,0.55)", padding: 6,
+          }}
+        >
+          {SORT_OPTIONS.map((o) => {
+            const selected = o.value === sort;
+            return (
+              <button
+                key={o.value}
+                type="button"
+                role="option"
+                aria-selected={selected}
+                onClick={() => { setSort(o.value); setOpen(false); }}
+                style={{
+                  width: "100%", display: "flex", alignItems: "center", gap: 10, textAlign: "left",
+                  background: "transparent", border: "none", cursor: "pointer",
+                  padding: "10px 12px", fontFamily: "var(--font-body)", fontSize: 11, letterSpacing: 1.5,
+                  textTransform: "uppercase", color: selected ? "var(--accent)" : "var(--text-secondary)",
+                  transition: "background 0.15s, color 0.15s",
+                }}
+                onMouseEnter={(e) => { e.currentTarget.style.background = "var(--bg-elevated)"; if (!selected) e.currentTarget.style.color = "var(--text-primary)"; }}
+                onMouseLeave={(e) => { e.currentTarget.style.background = "transparent"; if (!selected) e.currentTarget.style.color = "var(--text-secondary)"; }}
+              >
+                <span style={{ width: 14, flexShrink: 0, color: "var(--accent)" }}>{selected ? "✓" : ""}</span>
+                {o.label}
+              </button>
+            );
+          })}
+        </div>
+      )}
+    </div>
+  );
+}
+
+function Chevron({ open }: { open: boolean }) {
+  return (
+    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"
+      style={{ transform: open ? "rotate(180deg)" : "none", transition: "transform 0.2s" }}>
+      <path d="M6 9l6 6 6-6" />
+    </svg>
   );
 }
 

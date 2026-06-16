@@ -6,7 +6,9 @@ import Hero from "./Hero";
 import Hits from "./Hits";
 import FullMenu from "./FullMenu";
 import ReviewForm from "./ReviewForm";
+import ReviewsList from "./ReviewsList";
 import MapSection from "./MapSection";
+import AboutSection from "./AboutSection";
 import Footer from "./Footer";
 import CartDrawer from "./CartDrawer";
 import ProductModal from "./ProductModal";
@@ -77,7 +79,9 @@ export default function HomeClient() {
         setNavFilter={setNavFilter}
       />
       <ReviewForm />
+      <ReviewsList />
       <MapSection />
+      <AboutSection />
       <Footer />
       <CartDrawer isOpen={cartOpen} onClose={() => setCartOpen(false)} />
       <ProductModal item={modalItem} onClose={() => setModalItem(null)} onAdd={add} />

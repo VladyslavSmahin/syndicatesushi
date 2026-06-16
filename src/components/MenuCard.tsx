@@ -35,8 +35,8 @@ export default function MenuCard({
         cursor: "pointer", display: "flex", flexDirection: "column", padding: pad,
       }}
     >
-      <div style={{ position: "relative", background: "var(--bg-dark)" }}>
-        <PhotoSlot h={photoH} photo={item.photo} />
+      <div style={{ position: "relative", background: "var(--bg-dark)", aspectRatio: compact ? undefined : "var(--card-ar, 16 / 9)" }}>
+        <PhotoSlot h={compact ? photoH : "100%"} photo={item.photo} />
         {item.badge && (
           <div
             style={{
@@ -53,8 +53,8 @@ export default function MenuCard({
         )}
       </div>
 
-      <div style={{ paddingTop: compact ? 4 : 6, paddingBottom: 4, flex: 1, display: "flex", flexDirection: "column" }}>
-        <h3 style={{ fontFamily: "var(--font-display)", fontSize: titleSize, fontWeight: 600, color: "var(--text-primary)", lineHeight: 1.15, marginBottom: compact ? 4 : 6 }}>
+      <div style={{ paddingTop: 0, paddingBottom: 4, flex: 1, display: "flex", flexDirection: "column" }}>
+        <h3 style={{ fontFamily: "var(--font-display)", fontSize: titleSize, fontWeight: 600, color: "var(--text-primary)", lineHeight: 1.15, marginTop: "var(--card-title-mt, 10px)", marginBottom: compact ? 4 : 6 }}>
           {item.name}
         </h3>
       </div>

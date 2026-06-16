@@ -1,7 +1,7 @@
 import "server-only";
 import { createClient } from "@/lib/supabase/server";
 import type { Product, Badge, Portion, Promo } from "@/lib/types";
-import type { PublicData, PubCategory, PubSubcategory } from "@/features/publicData";
+import type { PublicData, PubCategory, PubSubcategory, PubReview } from "@/features/publicData";
 import { parseDeliverySettings } from "@/lib/delivery";
 import { NAV_SPECIALS, parseNavVisibility } from "@/lib/navSpecials";
 import { parseGlossary } from "@/lib/glossary";
@@ -54,7 +54,7 @@ function mapProduct(p: ProductRow): Product {
 export async function fetchPublicData(): Promise<PublicData> {
   const supabase = await createClient();
 
-  const [catsRes, subsRes, prodsRes, promosRes, deliveryRes] = await Promise.all([
+  const [catsRes, subsRes, prodsRes, promosRes, deliveryRes, reviewsRes] = await Promise.all([
     supabase.from("categories").select("id, name, slug, sort_order, show_in_nav, is_active").order("sort_order"),
     supabase.from("subcategories").select("id, name, slug, sort_order, category:categories(slug)").eq("is_active", true).order("sort_order"),
     supabase
@@ -65,12 +65,14 @@ export async function fetchPublicData(): Promise<PublicData> {
       .order("sort_order"),
     supabase.from("promos").select("id, label, title, promo_price, old_price, banner_image_path, product:products(id)").eq("is_active", true).order("sort_order"),
     supabase.from("settings").select("key, value").in("key", ["delivery", "nav_specials", "glossary"]),
+    supabase.from("reviews").select("id, author_name, rating, text, created_at").eq("status", "approved").order("created_at", { ascending: false }).limit(24),
   ]);
 
   if (catsRes.error) console.error("categories fetch:", catsRes.error.message);
   if (subsRes.error) console.error("subcategories fetch:", subsRes.error.message);
   if (prodsRes.error) console.error("products fetch:", prodsRes.error.message);
   if (promosRes.error) console.error("promos fetch:", promosRes.error.message);
+  if (reviewsRes.error) console.error("reviews fetch:", reviewsRes.error.message);
 
   const categories: PubCategory[] = (catsRes.data ?? []).map((c) => ({
     id: c.id, name: c.name, slug: c.slug, sortOrder: c.sort_order, showInNav: c.show_in_nav, isActive: c.is_active,
@@ -101,5 +103,9 @@ export async function fetchPublicData(): Promise<PublicData> {
   const navLabel: Record<string, string> = { novynky: glossary.nav_novynky, aktsii: glossary.nav_aktsii };
   const navSpecials = NAV_SPECIALS.filter((sp) => navVis[sp.id]).map((sp) => ({ ...sp, label: navLabel[sp.id] ?? sp.label }));
 
-  return { catalog, categories, subcategories, promos, delivery, navSpecials, glossary };
+  const reviews: PubReview[] = ((reviewsRes.data ?? []) as { id: string; author_name: string; rating: number | null; text: string; created_at: string }[]).map((r) => ({
+    id: r.id, authorName: r.author_name, rating: r.rating, text: r.text, createdAt: r.created_at,
+  }));
+
+  return { catalog, categories, subcategories, promos, delivery, navSpecials, glossary, reviews };
 }
