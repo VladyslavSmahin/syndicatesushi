@@ -4,7 +4,9 @@ import { useEffect, useState } from "react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import ScrollTop from "./ScrollTop";
+import RefreshButton from "./RefreshButton";
 import { useAdminAuth } from "@/features/admin/AdminAuthContext";
+import { refreshAdminAction } from "@/features/admin/actions/common";
 import s from "./admin.module.css";
 
 const NAV: { group: string; items: { href: string; label: string }[] }[] = [
@@ -50,10 +52,14 @@ export default function AdminShell({ children }: { children: React.ReactNode }) 
   const pathname = usePathname();
   const router = useRouter();
   const [navOpen, setNavOpen] = useState(false);
+  // куди йде перехід — для миттєвого візуального відгуку (спінер + підсвітка),
+  // щоб не складалося враження зависання й не тиснули кілька разів
+  const [pendingHref, setPendingHref] = useState<string | null>(null);
 
   const isLogin = pathname === "/admin/login";
 
-  useEffect(() => { setNavOpen(false); }, [pathname]);
+  // перехід завершено (маршрут змінився) — прибираємо індикатор
+  useEffect(() => { setNavOpen(false); setPendingHref(null); }, [pathname]);
 
   const signOut = async () => { await logout(); router.replace("/admin/login"); };
 
@@ -109,9 +115,17 @@ export default function AdminShell({ children }: { children: React.ReactNode }) 
             <div className={s.navGroupLabel}>{g.group}</div>
             {g.items.map((it) => {
               const active = pathname === it.href;
+              const pending = pendingHref === it.href;
               return (
-                <Link key={it.href} href={it.href} className={`${s.navItem} ${active ? s.navItemActive : ""}`}>
+                <Link
+                  key={it.href}
+                  href={it.href}
+                  onClick={() => { if (pathname !== it.href) setPendingHref(it.href); }}
+                  className={`${s.navItem} ${active || pending ? s.navItemActive : ""}`}
+                  style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 8 }}
+                >
                   {it.label}
+                  {pending && <Spinner />}
                 </Link>
               );
             })}
@@ -136,11 +150,8 @@ export default function AdminShell({ children }: { children: React.ReactNode }) 
           </div>
 
           <div className={s.userBox}>
-            <div style={{ display: "flex", flexDirection: "column", alignItems: "flex-end", lineHeight: 1.3 }}>
-              <span style={{ fontSize: 13, color: "var(--text-primary)" }}>{user.name}</span>
-              <span className={`${s.pill} ${user.role === "admin" ? s.pillAdmin : s.pillEditor}`}>{user.role}</span>
-            </div>
-            <div className={s.avatar}>{user.name.charAt(0).toUpperCase()}</div>
+            <RefreshButton action={refreshAdminAction} />
+            <div className={s.avatar} title={`${user.name} · ${user.role}`}>{user.name.charAt(0).toUpperCase()}</div>
           </div>
         </div>
 
@@ -148,5 +159,14 @@ export default function AdminShell({ children }: { children: React.ReactNode }) 
       </div>
       <ScrollTop />
     </div>
+  );
+}
+
+function Spinner() {
+  return (
+    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4"
+      strokeLinecap="round" style={{ animation: "spin 0.7s linear infinite", flexShrink: 0, opacity: 0.9 }}>
+      <path d="M12 3a9 9 0 1 0 9 9" />
+    </svg>
   );
 }

@@ -426,18 +426,12 @@ export default function ProductsPage() {
               </Field>
             )}
 
-            <Field label="Короткий опис (на картці)">
-              <input className={s.input} value={draft.desc} onChange={(e) => set("desc", e.target.value)} />
-            </Field>
             <Field label="Склад">
               <input className={s.input} value={compositionAuto} readOnly disabled style={{ opacity: 0.7 }}
                 placeholder={isSetDraft ? "Додайте роли вище" : "Оберіть інгредієнти вище"} />
               <span className={s.hint} style={{ fontSize: 11, marginTop: 4 }}>
                 Підтягується автоматично з обраних {isSetDraft ? "ролів" : "інгредієнтів"}.
               </span>
-            </Field>
-            <Field label="Повний опис">
-              <textarea className={s.input} style={{ minHeight: 70, resize: "vertical" }} value={draft.fullDesc} onChange={(e) => set("fullDesc", e.target.value)} />
             </Field>
             <p className={s.hint} style={{ fontSize: 11 }}>
               Щоб товар зʼявився у блоці «Хіти меню» на сайті — встановіть бейдж «ХІТ».
