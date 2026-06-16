@@ -1,12 +1,18 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { createClient } from "@/lib/supabase/client";
 import s from "@/components/admin/admin.module.css";
 
 export default function LoginPage() {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
+  const [denied, setDenied] = useState(false);
+
+  // прапор ?denied=1 ставить middleware, коли акаунт залогінений, але не у білому списку
+  useEffect(() => {
+    setDenied(new URLSearchParams(window.location.search).get("denied") === "1");
+  }, []);
 
   const signIn = async () => {
     setBusy(true);
@@ -18,6 +24,13 @@ export default function LoginPage() {
     });
     if (error) { setError("Не вдалося почати вхід. Спробуйте ще раз."); setBusy(false); }
     // інакше браузер перейде на сторінку Google
+  };
+
+  // вийти з поточного (не-staff) акаунта, щоб увійти іншим
+  const signOut = async () => {
+    setBusy(true);
+    await createClient().auth.signOut();
+    window.location.href = "/admin/login";
   };
 
   return (
@@ -32,17 +45,33 @@ export default function LoginPage() {
           Адмінпанель
         </div>
 
+        {denied && (
+          <div className={s.error} style={{ marginBottom: 18, padding: "12px 14px", border: "1px solid #5c2b2b", borderRadius: 8, lineHeight: 1.5, textAlign: "center" }}>
+            <b>Доступ заборонено.</b><br />
+            Цей акаунт не входить у білий список співробітників. Увійдіть робочим акаунтом
+            або зверніться до адміністратора, щоб вас додали.
+          </div>
+        )}
+
         <button className={s.googleBtn} onClick={signIn} disabled={busy}>
           <GoogleIcon />
-          {busy ? "Перенаправлення…" : "Увійти через Google"}
+          {busy ? "Перенаправлення…" : denied ? "Спробувати іншим Google" : "Увійти через Google"}
         </button>
+
+        {denied && (
+          <button className={`${s.btn} ${s.btnGhost}`} onClick={signOut} disabled={busy} style={{ marginTop: 10, width: "100%" }}>
+            Вийти з поточного акаунта
+          </button>
+        )}
 
         {error && <p className={s.error} style={{ marginTop: 14 }}>{error}</p>}
 
-        <p className={s.hint} style={{ marginTop: 22 }}>
-          Доступ лише для співробітників з білого списку. Якщо ваш email не додано —
-          зверніться до адміністратора.
-        </p>
+        {!denied && (
+          <p className={s.hint} style={{ marginTop: 22 }}>
+            Доступ лише для співробітників з білого списку. Якщо ваш email не додано —
+            зверніться до адміністратора.
+          </p>
+        )}
       </div>
     </div>
   );
