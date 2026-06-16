@@ -25,6 +25,8 @@ interface OrderBody {
 }
 
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+// екранує спецсимволи LIKE (%, _, \), щоб ввід не змінював семантику пошуку
+const escapeLike = (s: string) => s.replace(/[\\%_]/g, (m) => "\\" + m);
 
 export async function POST(req: Request) {
   const rl = rateLimit(`order:${clientIp(req)}`, 6, 60_000); // 6 замовлень / хв з IP
@@ -56,6 +58,7 @@ export async function POST(req: Request) {
   // ---- Авторитетні ціни з БД (захист від підміни ціни на клієнті) ----
   const ids = [...new Set(items.map((i) => i.id).filter((id) => UUID_RE.test(id)))];
   const fromDb = new Map<string, { name: string; price: number }>();
+  const promoPrice = new Map<string, number>(); // авторитетна акційна ціна по товару
   if (ids.length) {
     const { data: prods } = await supabase
       .from("products")
@@ -64,15 +67,35 @@ export async function POST(req: Request) {
     for (const p of prods ?? []) {
       if (p.is_available && !p.deleted_at) fromDb.set(p.id, { name: p.name, price: Number(p.price) });
     }
+    // активні акції на ці товари — щоб ціна замовлення збігалася з тією, що бачить клієнт
+    const { data: promos } = await supabase
+      .from("promos")
+      .select("product_id, promo_price, is_active, valid_from, valid_until")
+      .in("product_id", ids)
+      .eq("is_active", true);
+    const now = new Date();
+    for (const pr of promos ?? []) {
+      if (!pr.product_id) continue;
+      if (pr.valid_from && new Date(pr.valid_from) > now) continue;
+      if (pr.valid_until && new Date(pr.valid_until) < now) continue;
+      const pp = Number(pr.promo_price);
+      if (pp > 0) {
+        const prev = promoPrice.get(pr.product_id);
+        promoPrice.set(pr.product_id, prev != null ? Math.min(prev, pp) : pp);
+      }
+    }
   }
 
   const lineItems = items.map((i) => {
     const db = fromDb.get(i.id);
     const qty = Math.max(1, Math.floor(Number(i.qty) || 1));
+    const catalogPrice = db ? db.price : Math.max(0, Number(i.price) || 0);
+    const promoP = db ? promoPrice.get(i.id) : undefined;
     return {
       productId: db ? i.id : null,
       name: db?.name ?? i.name,
-      price: db ? db.price : Math.max(0, Number(i.price) || 0),
+      // акційна ціна, якщо вона є й нижча за каталожну
+      price: promoP != null ? Math.min(catalogPrice, promoP) : catalogPrice,
       qty,
     };
   });
@@ -86,7 +109,7 @@ export async function POST(req: Request) {
     const { data: pc } = await supabase
       .from("promo_codes")
       .select("id, discount_type, discount_value, is_active, valid_until, usage_limit, used_count")
-      .ilike("code", code)
+      .ilike("code", escapeLike(code))
       .maybeSingle();
     const valid = pc && pc.is_active
       && (!pc.valid_until || new Date(pc.valid_until) > new Date())
@@ -172,5 +195,10 @@ export async function POST(req: Request) {
 
   const sent = await sendTelegramMessage(msg);
 
-  return NextResponse.json({ ok: true, orderId, dbSaved, telegram: sent });
+  // замовлення нікуди не дійшло (ні БД, ні Telegram) — чесна помилка, клієнт НЕ очистить кошик
+  if (!dbSaved && !sent) {
+    return NextResponse.json({ ok: false, error: "save_failed" }, { status: 502 });
+  }
+
+  return NextResponse.json({ ok: true, orderId });
 }

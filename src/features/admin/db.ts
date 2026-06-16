@@ -129,23 +129,29 @@ async function syncIngredients(
   productId: string,
   ids: string[],
   grams: Record<string, number>
-) {
-  await supabase.from("product_ingredients").delete().eq("product_id", productId);
+): Promise<string | undefined> {
+  const del = await supabase.from("product_ingredients").delete().eq("product_id", productId);
+  if (del.error) return del.error.message;
   if (ids.length) {
-    await supabase.from("product_ingredients").insert(
+    const ins = await supabase.from("product_ingredients").insert(
       ids.map((id) => ({ product_id: productId, ingredient_id: id, grams: grams[id] ?? null }))
     );
+    if (ins.error) return ins.error.message;
   }
+  return undefined;
 }
 
 // Склад сету: зв'язки set_items (set_id -> product_id ролів).
-async function syncSetItems(supabase: ReturnType<typeof createClient>, setId: string, productIds: string[]) {
-  await supabase.from("set_items").delete().eq("set_id", setId);
+async function syncSetItems(supabase: ReturnType<typeof createClient>, setId: string, productIds: string[]): Promise<string | undefined> {
+  const del = await supabase.from("set_items").delete().eq("set_id", setId);
+  if (del.error) return del.error.message;
   if (productIds.length) {
-    await supabase.from("set_items").insert(
+    const ins = await supabase.from("set_items").insert(
       productIds.map((pid, i) => ({ set_id: setId, product_id: pid, qty: 1, sort_order: i }))
     );
+    if (ins.error) return ins.error.message;
   }
+  return undefined;
 }
 
 function productFields(input: ProductInput) {
@@ -165,22 +171,22 @@ export async function dbCreateProduct(input: ProductInput): Promise<string | und
     .insert({ ...productFields(input), slug: slugify(input.name), sort_order: 9999 })
     .select("id").single();
   if (error || !data) return error?.message ?? "Не вдалося створити товар";
-  await syncIngredients(supabase, data.id, input.ingredientIds, input.ingredientGrams);
-  await syncSetItems(supabase, data.id, input.setItemIds);
-  return undefined;
+  return (await syncIngredients(supabase, data.id, input.ingredientIds, input.ingredientGrams))
+    ?? (await syncSetItems(supabase, data.id, input.setItemIds));
 }
 
 export async function dbUpdateProduct(id: string, input: ProductInput): Promise<string | undefined> {
   const supabase = createClient();
   const { error } = await supabase.from("products").update(productFields(input)).eq("id", id);
   if (error) return error.message;
-  await syncIngredients(supabase, id, input.ingredientIds, input.ingredientGrams);
-  await syncSetItems(supabase, id, input.setItemIds);
-  return undefined;
+  return (await syncIngredients(supabase, id, input.ingredientIds, input.ingredientGrams))
+    ?? (await syncSetItems(supabase, id, input.setItemIds));
 }
 
-export async function dbUpdatePrice(id: string, price: number) {
-  await createClient().from("products").update({ price }).eq("id", id);
+/** Повертає текст помилки або undefined при успіху. */
+export async function dbUpdatePrice(id: string, price: number): Promise<string | undefined> {
+  const { error } = await createClient().from("products").update({ price }).eq("id", id);
+  return error?.message;
 }
 export async function dbSetAvailable(id: string, value: boolean) {
   await createClient().from("products").update({ is_available: value }).eq("id", id);

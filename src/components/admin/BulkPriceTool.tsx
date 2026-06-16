@@ -65,13 +65,22 @@ export default function BulkPriceTool({
   const apply = async () => {
     const changed = rows!.filter((r) => r.newPrice !== r.oldPrice);
     setApplying(true);
-    await Promise.all(changed.map((r) => dbUpdatePrice(r.id, r.newPrice)));
-    setApplying(false);
-    const sign = value >= 0 ? "+" : "";
-    await dbLogPriceChange("bulk", `${targetName} ${sign}${value}${mode === "amount" ? " грн" : "%"}`,
-      changed.map((r) => ({ productId: r.id, name: r.name, from: r.oldPrice, to: r.newPrice })));
-    setRows(null);
-    onApplied();
+    try {
+      const errs = await Promise.all(changed.map((r) => dbUpdatePrice(r.id, r.newPrice)));
+      // у журнал історії пишемо лише ті позиції, що реально оновились
+      const ok = changed.filter((_, i) => !errs[i]);
+      const failed = errs.filter(Boolean).length;
+      if (failed) alert(`Не вдалося оновити ${failed} з ${changed.length} цін. Решту збережено.`);
+      if (ok.length) {
+        const sign = value >= 0 ? "+" : "";
+        await dbLogPriceChange("bulk", `${targetName} ${sign}${value}${mode === "amount" ? " грн" : "%"}`,
+          ok.map((r) => ({ productId: r.id, name: r.name, from: r.oldPrice, to: r.newPrice })));
+      }
+      setRows(null);
+      onApplied();
+    } finally {
+      setApplying(false);
+    }
   };
 
   return (
