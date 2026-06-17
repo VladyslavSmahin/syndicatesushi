@@ -105,3 +105,5 @@
 - Прямое подключение `db.<ref>.supabase.co` не резолвится локально (IPv6) — использовать **session pooler** (`aws-1-eu-central-1.pooler.supabase.com`), пароль из `SUPABASE_DB_PASSWORD` (в URL он URL-энкодирован).
 - Бот-токен в `.env.local` мог быть засвечен — заменить через `/revoke` @BotFather (решено оставить как есть).
 - ✅ `client_secret_*.json` удалён из корня (был gitignored, приложению не нужен).
+- **`sharp` на Vercel**: нативная libvips грузится через `dlopen`, file-tracer Next её не видит → API с `sharp` (`/api/upload`, `/api/banners`) падали 500 (`ERR_DLOPEN_FAILED: libvips-cpp.so`). Решено в `next.config.mjs`: `outputFileTracingIncludes` для `@img/**` + `serverExternalPackages` + ленивый `import("sharp")`. При добавлении новых роутов с sharp — дописать их в `outputFileTracingIncludes`.
+- **R2-переменные (`R2_*`, 5 шт) обязательны в Vercel Production** — без них загрузка фото/баннеров не работает (показ уже загруженных — работает, R2 публичный).
