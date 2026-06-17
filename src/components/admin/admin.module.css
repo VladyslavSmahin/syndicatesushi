@@ -219,6 +219,13 @@
   color: var(--text-primary); cursor: pointer; font-family: var(--font-body); font-size: 17px; transition: all 0.2s;
 }
 .googleBtn:hover { border-color: var(--accent); background: #211d19; }
+.loginDivider {
+  display: flex; align-items: center; gap: 12px; margin: 18px 0;
+  color: var(--text-secondary); font-size: 11px; letter-spacing: 2px; text-transform: uppercase;
+}
+.loginDivider::before, .loginDivider::after {
+  content: ""; flex: 1; height: 1px; background: var(--border-light);
+}
 
 /* ===== Адаптив ===== */
 .menuBtn { display: none; }

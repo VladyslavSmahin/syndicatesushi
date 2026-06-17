@@ -21,7 +21,9 @@ export default function StaffPage() {
   const [loading, setLoading] = useState(true);
   const [email, setEmail] = useState("");
   const [role, setRole] = useState<Role>("editor");
+  const [password, setPassword] = useState("");
   const [error, setError] = useState("");
+  const [notice, setNotice] = useState("");
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -47,14 +49,55 @@ export default function StaffPage() {
     );
   }
 
+  // задає/скидає пароль через серверний route (потрібен service_role). Email має бути
+  // вже у білому списку — тригер створить профіль лише для нього.
+  const setStaffPassword = async (eml: string, pwd: string): Promise<string | null> => {
+    const res = await fetch("/api/admin/staff/password", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ email: eml, password: pwd }),
+    });
+    const data = await res.json().catch(() => ({}));
+    if (!res.ok || !data.ok) {
+      const map: Record<string, string> = {
+        weak_password: "Пароль закороткий (мінімум 8 символів)",
+        bad_email: "Невірний email",
+        not_in_allowlist: "Email не у білому списку",
+        unauthorized: "Лише головний адміністратор може задавати паролі",
+      };
+      return map[data.error] ?? "Не вдалося зберегти пароль";
+    }
+    return null;
+  };
+
   const handleAdd = async (e: React.FormEvent) => {
     e.preventDefault();
+    setError(""); setNotice("");
     const eml = email.trim().toLowerCase();
     if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(eml)) { setError("Невірний email"); return; }
+    const pwd = password.trim();
+    if (pwd && pwd.length < 8) { setError("Пароль закороткий (мінімум 8 символів)"); return; }
+
+    // спочатку у білий список — інакше пароль ні до чого (профіль не створиться)
     const { error } = await supabase.from("allowed_staff").insert({ email: eml, role });
     if (error) { setError(error.code === "23505" ? "Такий email вже додано" : error.message); return; }
-    setEmail(""); setError("");
+
+    if (pwd) {
+      const perr = await setStaffPassword(eml, pwd);
+      if (perr) { setError(`Додано у список, але пароль не задано: ${perr}`); setEmail(""); setPassword(""); load(); return; }
+      setNotice(`${eml}: додано, пароль задано`);
+    }
+    setEmail(""); setPassword("");
     load();
+  };
+
+  const resetPassword = async (eml: string) => {
+    setError(""); setNotice("");
+    const pwd = window.prompt(`Новий пароль для ${eml} (мінімум 8 символів):`);
+    if (pwd === null) return;
+    if (pwd.trim().length < 8) { setError("Пароль закороткий (мінімум 8 символів)"); return; }
+    const perr = await setStaffPassword(eml, pwd.trim());
+    if (perr) setError(perr); else setNotice(`${eml}: пароль оновлено`);
   };
 
   const updateRole = async (id: string, newRole: Role) => {
@@ -70,7 +113,8 @@ export default function StaffPage() {
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 20 }}>
       <p className={s.hint}>
-        Білий список — email співробітників, які можуть увійти через Google. Видалення з списку
+        Білий список — email співробітників, які можуть увійти через Google або за паролем.
+        Пароль необов’язковий: задайте його тут, щоб дозволити вхід без Google. Видалення з списку
         відкликає доступ (профіль і дані захищені RLS).
         <br />
         <b>editor</b> — може все, крім видалення. <b>admin</b> — повний доступ.
@@ -86,10 +130,16 @@ export default function StaffPage() {
         <div className={s.cardHead}><div className={s.cardTitle}>Додати співробітника</div></div>
         <div style={{ padding: 22 }}>
           <div className={s.formRow}>
-            <div className={s.field} style={{ flex: 1, minWidth: 220 }}>
-              <span className={s.fieldLabel}>Email (Google-акаунт)</span>
+            <div className={s.field} style={{ flex: 1, minWidth: 200 }}>
+              <span className={s.fieldLabel}>Email</span>
               <input className={s.input} type="email" placeholder="employee@gmail.com" value={email}
                 onChange={(e) => { setEmail(e.target.value); setError(""); }} />
+            </div>
+            <div className={s.field} style={{ flex: 1, minWidth: 160 }}>
+              <span className={s.fieldLabel}>Пароль (необов’язково)</span>
+              <input className={s.input} type="text" placeholder="для входу без Google" value={password}
+                autoComplete="new-password"
+                onChange={(e) => { setPassword(e.target.value); setError(""); }} />
             </div>
             <div className={s.field}>
               <span className={s.fieldLabel}>Роль</span>
@@ -101,6 +151,7 @@ export default function StaffPage() {
             <button className={s.btn} type="submit" disabled={!email.trim()}>Додати</button>
           </div>
           {error && <p className={s.error} style={{ marginTop: 10 }}>{error}</p>}
+          {notice && <p className={s.hint} style={{ marginTop: 10, color: "var(--accent)" }}>{notice}</p>}
         </div>
       </form>
 
@@ -131,6 +182,9 @@ export default function StaffPage() {
                     <td style={{ color: "var(--text-secondary)" }}>{new Date(m.created_at).toLocaleDateString("uk-UA")}</td>
                     <td>
                       <div className={s.rowActions}>
+                        <button className={`${s.btn} ${s.btnGhost} ${s.btnSmall}`} onClick={() => resetPassword(m.email)}>
+                          Пароль
+                        </button>
                         <button className={`${s.btn} ${s.btnDanger} ${s.btnSmall}`} disabled={isSelf} onClick={() => remove(m.id)}>
                           Прибрати
                         </button>

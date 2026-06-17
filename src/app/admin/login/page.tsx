@@ -8,6 +8,8 @@ export default function LoginPage() {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
   const [denied, setDenied] = useState(false);
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
 
   // прапор ?denied=1 ставить middleware, коли акаунт залогінений, але не у білому списку
   useEffect(() => {
@@ -24,6 +26,25 @@ export default function LoginPage() {
     });
     if (error) { setError("Не вдалося почати вхід. Спробуйте ще раз."); setBusy(false); }
     // інакше браузер перейде на сторінку Google
+  };
+
+  // вхід за email+паролем (альтернатива Google). Сесія кладеться в cookie,
+  // далі middleware пускає в /admin, якщо профіль є (email у білому списку).
+  const signInPassword = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setBusy(true);
+    setError("");
+    const supabase = createClient();
+    const { error } = await supabase.auth.signInWithPassword({
+      email: email.trim().toLowerCase(),
+      password,
+    });
+    if (error) {
+      setError("Невірний email або пароль.");
+      setBusy(false);
+      return;
+    }
+    window.location.href = "/admin";
   };
 
   // вийти з поточного (не-staff) акаунта, щоб увійти іншим
@@ -57,6 +78,30 @@ export default function LoginPage() {
           <GoogleIcon />
           {busy ? "Перенаправлення…" : denied ? "Спробувати іншим Google" : "Увійти через Google"}
         </button>
+
+        <div className={s.loginDivider}><span>або</span></div>
+
+        <form onSubmit={signInPassword} style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+          <input
+            className={s.input}
+            type="email"
+            placeholder="Email"
+            autoComplete="username"
+            value={email}
+            onChange={(e) => { setEmail(e.target.value); setError(""); }}
+          />
+          <input
+            className={s.input}
+            type="password"
+            placeholder="Пароль"
+            autoComplete="current-password"
+            value={password}
+            onChange={(e) => { setPassword(e.target.value); setError(""); }}
+          />
+          <button className={s.btn} type="submit" disabled={busy || !email.trim() || !password} style={{ width: "100%" }}>
+            {busy ? "Вхід…" : "Увійти за паролем"}
+          </button>
+        </form>
 
         {denied && (
           <button className={`${s.btn} ${s.btnGhost}`} onClick={signOut} disabled={busy} style={{ marginTop: 10, width: "100%" }}>
