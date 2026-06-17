@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { Cormorant_Garamond, Jost } from "next/font/google";
+import { Analytics } from "@vercel/analytics/next";
 import { CartProvider } from "@/features/cart/CartContext";
 import "./globals.css";
 
@@ -33,6 +34,7 @@ export default function RootLayout({
     <html lang="uk" className={`${cormorant.variable} ${jost.variable}`}>
       <body>
         <CartProvider>{children}</CartProvider>
+        <Analytics />
       </body>
     </html>
   );
