@@ -5,7 +5,7 @@
 // localStorage-сторів, щоб публічні компоненти змінювались мінімально.
 
 import { createContext, useContext } from "react";
-import type { Product, Promo, NavCategory } from "@/lib/types";
+import type { Product, Promo, Banner, NavCategory } from "@/lib/types";
 import { DEFAULT_DELIVERY, type DeliverySettings } from "@/lib/delivery";
 import { GLOSSARY_DEFAULTS, type Glossary } from "@/lib/glossary";
 
@@ -39,13 +39,14 @@ export interface PublicData {
   categories: PubCategory[];
   subcategories: PubSubcategory[];
   promos: Promo[];
+  banners: Banner[];
   delivery: DeliverySettings;
   navSpecials: NavCategory[];
   glossary: Glossary;
   reviews: PubReview[];
 }
 
-const Ctx = createContext<PublicData>({ catalog: [], categories: [], subcategories: [], promos: [], delivery: DEFAULT_DELIVERY, navSpecials: [], glossary: GLOSSARY_DEFAULTS, reviews: [] });
+const Ctx = createContext<PublicData>({ catalog: [], categories: [], subcategories: [], promos: [], banners: [], delivery: DEFAULT_DELIVERY, navSpecials: [], glossary: GLOSSARY_DEFAULTS, reviews: [] });
 
 export function PublicDataProvider({ value, children }: { value: PublicData; children: React.ReactNode }) {
   return <Ctx.Provider value={value}>{children}</Ctx.Provider>;
@@ -67,6 +68,10 @@ export function usePublicSubcategories(categorySlug?: string): PubSubcategory[] 
 
 export function usePublicPromos(): Promo[] {
   return useContext(Ctx).promos;
+}
+
+export function usePublicBanners(): Banner[] {
+  return useContext(Ctx).banners;
 }
 
 export function usePublicDelivery(): DeliverySettings {

@@ -268,12 +268,14 @@ export async function dbDeleteSubcategory(id: string) {
 
 // ---------- Акції ----------
 export interface DbPromo {
-  id: string; productId: string | null; label: string; title: string;
-  price: number; oldPrice: number; bannerImagePath: string; isActive: boolean; sortOrder: number;
+  id: string; productId: string | null;
+  price: number; oldPrice: number; isActive: boolean; sortOrder: number;
+  validFrom: string | null; validUntil: string | null; // дати у форматі YYYY-MM-DD (для інпутів)
 }
 export interface PromoInput {
-  productId: string | null; label: string; title: string;
-  price: number; oldPrice: number; bannerImagePath: string; isActive: boolean;
+  productId: string | null;
+  price: number; oldPrice: number; isActive: boolean;
+  validFrom: string | null; validUntil: string | null;
 }
 
 export function useDbPromos() {
@@ -284,13 +286,15 @@ export function useDbPromos() {
     setLoading(true);
     const { data, error } = await supabase
       .from("promos")
-      .select("id, product_id, label, title, promo_price, old_price, banner_image_path, is_active, sort_order")
+      .select("id, product_id, promo_price, old_price, is_active, sort_order, valid_from, valid_until")
       .order("sort_order");
     if (error) console.error("promos:", error.message);
     else setPromos((data ?? []).map((p) => ({
-      id: p.id, productId: p.product_id, label: p.label ?? "", title: p.title ?? "",
-      price: Number(p.promo_price), oldPrice: Number(p.old_price ?? 0), bannerImagePath: p.banner_image_path ?? "",
+      id: p.id, productId: p.product_id,
+      price: Number(p.promo_price), oldPrice: Number(p.old_price ?? 0),
       isActive: p.is_active, sortOrder: p.sort_order,
+      validFrom: p.valid_from ? String(p.valid_from).slice(0, 10) : null,
+      validUntil: p.valid_until ? String(p.valid_until).slice(0, 10) : null,
     })));
     setLoading(false);
   }, [supabase]);
@@ -300,9 +304,12 @@ export function useDbPromos() {
 
 function promoFields(input: PromoInput) {
   return {
-    product_id: input.productId, label: input.label || null, title: input.title,
+    product_id: input.productId,
     promo_price: input.price, old_price: input.oldPrice || null,
-    banner_image_path: input.bannerImagePath || null, is_active: input.isActive,
+    is_active: input.isActive,
+    // дату-початок беремо як 00:00, дату-кінець — як кінець доби, щоб акція діяла весь день
+    valid_from: input.validFrom ? `${input.validFrom}T00:00:00` : null,
+    valid_until: input.validUntil ? `${input.validUntil}T23:59:59` : null,
   };
 }
 export async function dbCreatePromo(input: PromoInput): Promise<string | undefined> {
@@ -318,6 +325,71 @@ export async function dbSetPromoActive(id: string, value: boolean) {
 }
 export async function dbDeletePromo(id: string) {
   await createClient().from("promos").delete().eq("id", id);
+}
+
+// ---------- Банери (Hero-слайдер) ----------
+export interface DbBanner { id: string; imagePath: string; isActive: boolean; sortOrder: number; }
+
+export function useDbBanners() {
+  const supabase = useMemo(() => createClient(), []);
+  const [banners, setBanners] = useState<DbBanner[]>([]);
+  const [loading, setLoading] = useState(true);
+  const refetch = useCallback(async () => {
+    setLoading(true);
+    const { data, error } = await supabase
+      .from("banners")
+      .select("id, image_path, is_active, sort_order")
+      .order("sort_order");
+    if (error) console.error("banners:", error.message);
+    else setBanners((data ?? []).map((b) => ({ id: b.id, imagePath: b.image_path, isActive: b.is_active, sortOrder: b.sort_order })));
+    setLoading(false);
+  }, [supabase]);
+  useEffect(() => { refetch(); }, [refetch]);
+  return { banners, loading, refetch };
+}
+
+/** Завантажує зображення через API (конвертація у WebP + R2). Повертає публічний URL або помилку. */
+export async function dbUploadImage(file: File, folder = "products"): Promise<{ url?: string; error?: string }> {
+  const fd = new FormData();
+  fd.append("file", file);
+  fd.append("folder", folder);
+  const res = await fetch("/api/upload", { method: "POST", body: fd });
+  const j = await res.json().catch(() => ({}));
+  if (!res.ok || !j.url) return { error: j.error || `HTTP ${res.status}` };
+  return { url: j.url };
+}
+
+/** Завантажує файл банера через API (конвертація у WebP + R2). Повертає текст помилки або undefined. */
+export async function dbUploadBanner(file: File): Promise<string | undefined> {
+  const fd = new FormData();
+  fd.append("file", file);
+  const res = await fetch("/api/banners", { method: "POST", body: fd });
+  if (!res.ok) {
+    const j = await res.json().catch(() => ({}));
+    return j.error || `HTTP ${res.status}`;
+  }
+  return undefined;
+}
+
+export async function dbDeleteBanner(id: string): Promise<string | undefined> {
+  const res = await fetch("/api/banners", {
+    method: "DELETE", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ id }),
+  });
+  if (!res.ok) {
+    const j = await res.json().catch(() => ({}));
+    return j.error || `HTTP ${res.status}`;
+  }
+  return undefined;
+}
+
+export async function dbSetBannerActive(id: string, value: boolean) {
+  await createClient().from("banners").update({ is_active: value }).eq("id", id);
+}
+
+/** Перезаписує порядок банерів: sort_order = індекс у переданому масиві id. */
+export async function dbReorderBanners(ids: string[]) {
+  const supabase = createClient();
+  await Promise.all(ids.map((id, i) => supabase.from("banners").update({ sort_order: i }).eq("id", id)));
 }
 
 // ---------- Промокоди ----------

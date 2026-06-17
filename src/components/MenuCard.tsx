@@ -61,7 +61,8 @@ export default function MenuCard({
 
       <div style={{ display: "flex", alignItems: "flex-end", justifyContent: "space-between", gap: 10 }}>
         <div style={{ flex: 1, minWidth: 0 }}>
-          <div style={{ fontFamily: "var(--font-body)", fontSize: priceSize, fontWeight: 500, color: "var(--text-primary)", lineHeight: 1, whiteSpace: "nowrap" }}>
+          <div style={{ fontFamily: "var(--font-body)", fontSize: priceSize, fontWeight: 500, color: item.oldPrice ? "var(--accent)" : "var(--text-primary)", lineHeight: 1, whiteSpace: "nowrap" }}>
+            {item.oldPrice && <span style={{ fontSize: 11, fontWeight: 400, color: "var(--text-secondary)", textDecoration: "line-through", marginRight: 5 }}>{item.oldPrice}</span>}
             {item.price} <span style={{ fontSize: 11, fontWeight: 400, color: "var(--text-secondary)" }}>грн</span>
           </div>
           <div style={{ fontSize: compact ? 10 : 11, fontWeight: 400, color: "var(--text-secondary)", letterSpacing: 0.8, marginTop: 4, whiteSpace: "nowrap" }}>

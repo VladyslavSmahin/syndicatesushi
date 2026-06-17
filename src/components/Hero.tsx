@@ -2,16 +2,13 @@
 
 import HeroPromoSlider from "./HeroPromoSlider";
 import { CONTACTS, TEXTS } from "@/data/site";
-import type { Promo } from "@/lib/types";
 
 export default function Hero({
   onCtaOrder,
   onCtaMenu,
-  onPromoOrder,
 }: {
   onCtaOrder: () => void;
   onCtaMenu: () => void;
-  onPromoOrder: (p: Promo) => void;
 }) {
   return (
     <section
@@ -76,7 +73,7 @@ export default function Hero({
 
         {/* right — вертикальний промо-слайдер */}
         <div className="hero-slider">
-          <HeroPromoSlider onOrder={onPromoOrder} />
+          <HeroPromoSlider />
         </div>
       </div>
     </section>

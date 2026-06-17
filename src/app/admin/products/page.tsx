@@ -5,7 +5,7 @@ import Modal from "@/components/admin/Modal";
 import { computePortion } from "@/features/nutrition";
 import {
   useDbProducts, useDbIngredients, useDbCategories, useDbSubcategories,
-  dbCreateProduct, dbUpdateProduct, dbSetAvailable, dbSoftDelete, dbCreateIngredient,
+  dbCreateProduct, dbUpdateProduct, dbSetAvailable, dbSoftDelete, dbCreateIngredient, dbUploadImage,
   type DbProduct, type ProductInput,
 } from "@/features/admin/db";
 import { useAdminAuth } from "@/features/admin/AdminAuthContext";
@@ -51,6 +51,7 @@ export default function ProductsPage() {
   const [newIng, setNewIng] = useState("");
   const [setPick, setSetPick] = useState("");
   const [saving, setSaving] = useState(false);
+  const [photoBusy, setPhotoBusy] = useState(false);
   const [catFilter, setCatFilter] = useState<string>("all"); // id категорії | "all" | "__none__"
   const [query, setQuery] = useState("");
 
@@ -144,12 +145,16 @@ export default function ProductsPage() {
 
   const set = <K extends keyof Draft>(k: K, v: Draft[K]) => setDraft((d) => (d ? { ...d, [k]: v } : d));
 
-  const handlePhotoFile = (file?: File) => {
+  const handlePhotoFile = async (file?: File) => {
     if (!file) return;
-    if (file.size > 2 * 1024 * 1024) { alert("Файл завеликий (макс. 2 МБ)."); return; }
-    const reader = new FileReader();
-    reader.onload = () => set("photo", typeof reader.result === "string" ? reader.result : null);
-    reader.readAsDataURL(file);
+    if (!file.type.startsWith("image/")) { alert("Оберіть зображення."); return; }
+    if (file.size > 8 * 1024 * 1024) { alert("Файл завеликий (макс. 8 МБ)."); return; }
+    // завантаження в R2 з конвертацією у WebP; у БД зберігається URL
+    setPhotoBusy(true);
+    const r = await dbUploadImage(file, "products");
+    setPhotoBusy(false);
+    if (r.error) { alert("Помилка завантаження: " + r.error); return; }
+    set("photo", r.url ?? null);
   };
 
   const toggleIng = (id: string) =>
@@ -301,9 +306,9 @@ export default function ProductsPage() {
                   {!draft.photo && "Немає"}
                 </div>
                 <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-                  <label className={`${s.btn} ${s.btnGhost} ${s.btnSmall}`} style={{ cursor: "pointer", textAlign: "center" }}>
-                    {draft.photo ? "Замінити" : "Завантажити"}
-                    <input type="file" accept="image/*" hidden onChange={(e) => handlePhotoFile(e.target.files?.[0])} />
+                  <label className={`${s.btn} ${s.btnGhost} ${s.btnSmall}`} style={{ cursor: photoBusy ? "wait" : "pointer", textAlign: "center", opacity: photoBusy ? 0.6 : 1 }}>
+                    {photoBusy ? "Завантаження…" : draft.photo ? "Замінити" : "Завантажити"}
+                    <input type="file" accept="image/*" hidden disabled={photoBusy} onChange={(e) => handlePhotoFile(e.target.files?.[0])} />
                   </label>
                   {draft.photo && (
                     <button type="button" className={`${s.btn} ${s.btnDanger} ${s.btnSmall}`} onClick={() => set("photo", null)}>Прибрати</button>
@@ -311,7 +316,7 @@ export default function ProductsPage() {
                 </div>
               </div>
               <p className={s.hint} style={{ fontSize: 11, marginTop: 8 }}>
-                Фото поки зберігається як data URL у БД. Окремим кроком підключимо Supabase Storage.
+                Фото автоматично конвертується у WebP і зберігається у хмарному сховищі (R2). До 8 МБ.
               </p>
             </Field>
 

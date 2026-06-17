@@ -1,6 +1,6 @@
 import "server-only";
 import { createClient } from "@/lib/supabase/server";
-import type { Product, Badge, Portion, Promo } from "@/lib/types";
+import type { Product, Badge, Portion, Promo, Banner } from "@/lib/types";
 import type { PublicData, PubCategory, PubSubcategory, PubReview } from "@/features/publicData";
 import { parseDeliverySettings } from "@/lib/delivery";
 import { NAV_SPECIALS, parseNavVisibility } from "@/lib/navSpecials";
@@ -54,7 +54,7 @@ function mapProduct(p: ProductRow): Product {
 export async function fetchPublicData(): Promise<PublicData> {
   const supabase = await createClient();
 
-  const [catsRes, subsRes, prodsRes, promosRes, deliveryRes, reviewsRes] = await Promise.all([
+  const [catsRes, subsRes, prodsRes, promosRes, bannersRes, deliveryRes, reviewsRes] = await Promise.all([
     supabase.from("categories").select("id, name, slug, sort_order, show_in_nav, is_active").order("sort_order"),
     supabase.from("subcategories").select("id, name, slug, sort_order, category:categories(slug)").eq("is_active", true).order("sort_order"),
     supabase
@@ -63,7 +63,8 @@ export async function fetchPublicData(): Promise<PublicData> {
       .is("deleted_at", null)
       .eq("is_available", true)
       .order("sort_order"),
-    supabase.from("promos").select("id, label, title, promo_price, old_price, banner_image_path, product:products(id)").eq("is_active", true).order("sort_order"),
+    supabase.from("promos").select("id, label, title, promo_price, old_price, banner_image_path, valid_from, valid_until, product:products(id)").eq("is_active", true).order("sort_order"),
+    supabase.from("banners").select("id, image_path").eq("is_active", true).order("sort_order"),
     supabase.from("settings").select("key, value").in("key", ["delivery", "nav_specials", "glossary"]),
     supabase.from("reviews").select("id, author_name, rating, text, created_at").eq("status", "approved").order("created_at", { ascending: false }).limit(24),
   ]);
@@ -72,6 +73,7 @@ export async function fetchPublicData(): Promise<PublicData> {
   if (subsRes.error) console.error("subcategories fetch:", subsRes.error.message);
   if (prodsRes.error) console.error("products fetch:", prodsRes.error.message);
   if (promosRes.error) console.error("promos fetch:", promosRes.error.message);
+  if (bannersRes.error) console.error("banners fetch:", bannersRes.error.message);
   if (reviewsRes.error) console.error("reviews fetch:", reviewsRes.error.message);
 
   const categories: PubCategory[] = (catsRes.data ?? []).map((c) => ({
@@ -84,7 +86,23 @@ export async function fetchPublicData(): Promise<PublicData> {
     return { id: s.id, categorySlug, name: s.name, slug: s.slug, sortOrder: s.sort_order };
   });
 
-  const catalog = ((prodsRes.data ?? []) as unknown as ProductRow[]).map(mapProduct);
+  // ефективна акційна ціна на товар: активна акція в межах дат і нижча за каталожну
+  const now = Date.now();
+  const promoByProduct = new Map<string, number>();
+  for (const pr of (promosRes.data ?? []) as { promo_price: number | string; valid_from: string | null; valid_until: string | null; product: { id: string } | { id: string }[] | null }[]) {
+    const prod = pr.product;
+    const pid = Array.isArray(prod) ? prod[0]?.id : prod?.id;
+    if (!pid) continue;
+    if (pr.valid_from && new Date(pr.valid_from).getTime() > now) continue;
+    if (pr.valid_until && new Date(pr.valid_until).getTime() < now) continue;
+    const pp = Number(pr.promo_price);
+    if (pp > 0) promoByProduct.set(pid, Math.min(promoByProduct.get(pid) ?? Infinity, pp));
+  }
+
+  const catalog = ((prodsRes.data ?? []) as unknown as ProductRow[]).map(mapProduct).map((p) => {
+    const pp = promoByProduct.get(p.id);
+    return pp != null && pp < p.price ? { ...p, oldPrice: p.price, price: pp } : p;
+  });
 
   const promos: Promo[] = (promosRes.data ?? []).map((p) => {
     const prod = p.product as { id: string } | { id: string }[] | null;
@@ -94,6 +112,9 @@ export async function fetchPublicData(): Promise<PublicData> {
       price: Number(p.promo_price), oldPrice: Number(p.old_price ?? 0), linkedItemId,
     };
   });
+
+  const banners: Banner[] = ((bannersRes.data ?? []) as { id: string; image_path: string }[])
+    .map((b) => ({ id: b.id, image: b.image_path }));
 
   const settingsRows = (deliveryRes.data ?? []) as { key: string; value: unknown }[];
   const delivery = parseDeliverySettings(settingsRows.find((r) => r.key === "delivery")?.value);
@@ -107,5 +128,5 @@ export async function fetchPublicData(): Promise<PublicData> {
     id: r.id, authorName: r.author_name, rating: r.rating, text: r.text, createdAt: r.created_at,
   }));
 
-  return { catalog, categories, subcategories, promos, delivery, navSpecials, glossary, reviews };
+  return { catalog, categories, subcategories, promos, banners, delivery, navSpecials, glossary, reviews };
 }

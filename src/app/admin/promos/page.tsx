@@ -7,15 +7,19 @@ import {
   type DbPromo, type PromoInput,
 } from "@/features/admin/db";
 import { useAdminAuth } from "@/features/admin/AdminAuthContext";
+import BannersPanel from "@/components/admin/BannersPanel";
+import AdminSelect from "@/components/admin/AdminSelect";
 import s from "@/components/admin/admin.module.css";
 
 type Draft = PromoInput;
+type Tab = "promos" | "banners";
 
 export default function PromosPage() {
   const { promos, loading, refetch } = useDbPromos();
   const { products } = useDbProducts();
   const { user } = useAdminAuth();
   const isAdmin = user?.role === "admin";
+  const [tab, setTab] = useState<Tab>("promos");
 
   const active = products.filter((p) => !p.deletedAt);
   const [editing, setEditing] = useState<DbPromo | null>(null);
@@ -23,20 +27,23 @@ export default function PromosPage() {
   const [saving, setSaving] = useState(false);
 
   const productName = (id: string | null) => products.find((p) => p.id === id)?.name ?? "—";
+  // стара ціна = поточна ціна товару з БД (read-only, не вводиться вручну)
+  const priceOf = (id: string | null) => products.find((p) => p.id === id)?.price ?? 0;
 
   const openNew = () => {
     setEditing(null);
-    setDraft({ productId: active[0]?.id ?? null, label: "", title: "", price: 0, oldPrice: 0, bannerImagePath: "", isActive: true });
+    const pid = active[0]?.id ?? null;
+    setDraft({ productId: pid, price: 0, oldPrice: priceOf(pid), isActive: true, validFrom: null, validUntil: null });
   };
   const openEdit = (p: DbPromo) => {
     setEditing(p);
-    setDraft({ productId: p.productId, label: p.label, title: p.title, price: p.price, oldPrice: p.oldPrice, bannerImagePath: p.bannerImagePath, isActive: p.isActive });
+    setDraft({ productId: p.productId, price: p.price, oldPrice: priceOf(p.productId), isActive: p.isActive, validFrom: p.validFrom, validUntil: p.validUntil });
   };
   const close = () => { setDraft(null); setEditing(null); };
   const set = <K extends keyof Draft>(k: K, v: Draft[K]) => setDraft((d) => (d ? { ...d, [k]: v } : d));
 
   const save = async () => {
-    if (!draft || !draft.title.trim()) return;
+    if (!draft || !draft.productId) return;
     setSaving(true);
     const err = editing ? await dbUpdatePromo(editing.id, draft) : await dbCreatePromo(draft);
     setSaving(false);
@@ -48,9 +55,16 @@ export default function PromosPage() {
 
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 20 }}>
+      <div style={{ display: "flex", gap: 8 }}>
+        <button className={`${s.btn} ${s.btnSmall} ${tab === "promos" ? "" : s.btnGhost}`} onClick={() => setTab("promos")}>Акції</button>
+        <button className={`${s.btn} ${s.btnSmall} ${tab === "banners" ? "" : s.btnGhost}`} onClick={() => setTab("banners")}>Баннери</button>
+      </div>
+
+      {tab === "banners" ? <BannersPanel /> : (
+      <>
       <p className={s.hint}>
-        Акції — банери-слайдер на головній + спецціна на товар. Активні акції одразу зʼявляються на сайті.
-        Банер поки задається шляхом (напр. <code>/assets/promo-imperia.png</code>); завантаження в Storage додамо окремо.
+        Акції — спецціна на товар (перерахунок на сервері). Банер головної — у вкладці «Баннери»
+        (клієнт завантажує готову картинку, сайт конвертує у WebP).
       </p>
 
       <div className={s.card}>
@@ -60,15 +74,13 @@ export default function PromosPage() {
         </div>
         <div className={s.tableWrap}>
           <table className={s.table}>
-            <thead><tr><th>Заголовок</th><th>Плашка</th><th>Товар</th><th>Ціна</th><th>Стара</th><th>Активна</th><th style={{ textAlign: "right" }}>Дії</th></tr></thead>
+            <thead><tr><th>Товар</th><th>Ціна</th><th>Стара</th><th>Активна</th><th style={{ textAlign: "right" }}>Дії</th></tr></thead>
             <tbody>
               {loading ? (
-                <tr><td colSpan={7} style={{ padding: 20, color: "var(--text-secondary)" }}>Завантаження…</td></tr>
+                <tr><td colSpan={5} style={{ padding: 20, color: "var(--text-secondary)" }}>Завантаження…</td></tr>
               ) : promos.map((p) => (
                 <tr key={p.id}>
-                  <td style={{ fontFamily: "var(--font-display)", fontSize: 15, fontWeight: 600 }}>{p.title}</td>
-                  <td>{p.label ? <span className={`${s.pill} ${s.pillEditor}`}>{p.label}</span> : "—"}</td>
-                  <td style={{ color: "var(--text-secondary)" }}>{productName(p.productId)}</td>
+                  <td style={{ fontFamily: "var(--font-display)", fontSize: 15, fontWeight: 600 }}>{productName(p.productId)}</td>
                   <td style={{ color: "var(--accent)" }}>{p.price} грн</td>
                   <td style={{ color: "var(--text-secondary)", textDecoration: "line-through" }}>{p.oldPrice || "—"}</td>
                   <td>
@@ -95,31 +107,37 @@ export default function PromosPage() {
           onClose={close}
           footer={<>
             <button className={`${s.btn} ${s.btnGhost}`} onClick={close}>Скасувати</button>
-            <button className={s.btn} onClick={save} disabled={!draft.title.trim() || saving}>{saving ? "Збереження…" : "Зберегти"}</button>
+            <button className={s.btn} onClick={save} disabled={!draft.productId || saving}>{saving ? "Збереження…" : "Зберегти"}</button>
           </>}
         >
           <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
-            <div className={s.field}><span className={s.fieldLabel}>Заголовок</span>
-              <input className={s.input} value={draft.title} onChange={(e) => set("title", e.target.value)} /></div>
-            <div className={s.field}><span className={s.fieldLabel}>Плашка</span>
-              <input className={s.input} placeholder="РОЛ ДНЯ" value={draft.label} onChange={(e) => set("label", e.target.value)} /></div>
             <div className={s.field}><span className={s.fieldLabel}>Товар</span>
-              <select className={s.input} value={draft.productId ?? ""} onChange={(e) => set("productId", e.target.value || null)}>
-                {active.map((p) => <option key={p.id} value={p.id}>{p.name}</option>)}
-              </select></div>
-            <div className={s.field}><span className={s.fieldLabel}>Банер (шлях до зображення)</span>
-              <input className={s.input} placeholder="/assets/promo-imperia.png" value={draft.bannerImagePath} onChange={(e) => set("bannerImagePath", e.target.value)} /></div>
+              <AdminSelect
+                value={draft.productId}
+                onChange={(v) => setDraft((d) => (d ? { ...d, productId: v, oldPrice: priceOf(v) } : d))}
+                options={active.map((p) => ({ value: p.id, label: p.name }))}
+                placeholder="Оберіть товар"
+                searchPlaceholder="Пошук товару…"
+              /></div>
             <div style={{ display: "flex", gap: 14 }}>
               <div className={s.field} style={{ flex: 1 }}><span className={s.fieldLabel}>Акційна ціна</span>
                 <input className={`${s.input} no-spin`} type="number" value={draft.price || ""} onChange={(e) => set("price", e.target.value === "" ? 0 : Number(e.target.value))} /></div>
-              <div className={s.field} style={{ flex: 1 }}><span className={s.fieldLabel}>Стара ціна</span>
-                <input className={`${s.input} no-spin`} type="number" value={draft.oldPrice || ""} onChange={(e) => set("oldPrice", e.target.value === "" ? 0 : Number(e.target.value))} /></div>
+              <div className={s.field} style={{ flex: 1 }}><span className={s.fieldLabel}>Стара ціна (з БД)</span>
+                <input className={`${s.input} no-spin`} type="number" value={draft.oldPrice || ""} readOnly disabled title="Підтягується з ціни товару" style={{ opacity: 0.6, cursor: "not-allowed" }} /></div>
+            </div>
+            <div style={{ display: "flex", gap: 14 }}>
+              <div className={s.field} style={{ flex: 1 }}><span className={s.fieldLabel}>Діє з (необовʼязково)</span>
+                <input className={s.input} type="date" value={draft.validFrom ?? ""} onChange={(e) => set("validFrom", e.target.value || null)} /></div>
+              <div className={s.field} style={{ flex: 1 }}><span className={s.fieldLabel}>Діє до (необовʼязково)</span>
+                <input className={s.input} type="date" value={draft.validUntil ?? ""} onChange={(e) => set("validUntil", e.target.value || null)} /></div>
             </div>
             <label style={{ display: "flex", alignItems: "center", gap: 8, color: "var(--text-primary)", fontSize: 13, cursor: "pointer" }}>
               <input type="checkbox" checked={draft.isActive} onChange={(e) => set("isActive", e.target.checked)} /> Активна
             </label>
           </div>
         </Modal>
+      )}
+      </>
       )}
     </div>
   );

@@ -23,7 +23,10 @@ export interface Product {
   fullDesc: string;
   /** склад текстом */
   composition: string;
+  /** поточна ціна (акційна, якщо на товар діє активна акція) */
   price: number;
+  /** звичайна ціна до акції (показуємо закресленою); відсутня — акції немає */
+  oldPrice?: number;
   /** напр. "290 г" */
   weight: string;
   /** напр. "8 шт" */
@@ -53,6 +56,13 @@ export interface Promo {
   linkedItemId: string;
 }
 
+/** Банер головної сторінки (Hero-слайдер). Просто картинка, без кліку/ціни. */
+export interface Banner {
+  id: string;
+  /** публічний URL зображення (WebP у R2) */
+  image: string;
+}
+
 export interface NavCategory {
   id: string;
   label: string;
@@ -64,5 +74,7 @@ export interface CartItem {
   id: string;
   name: string;
   price: number;
+  /** звичайна ціна до акції (закреслена в кошику); відсутня — акції немає */
+  oldPrice?: number;
   qty: number;
 }

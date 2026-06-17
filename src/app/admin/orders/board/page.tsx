@@ -21,14 +21,21 @@ export default function OrdersBoardPage() {
   const [dragId, setDragId] = useState<string | null>(null);
   const [overCol, setOverCol] = useState<OrderStatus | null>(null);
   const pending = useRef<Set<string>>(new Set());
+  // фільтр за датою; дефолт — сьогодні (виставляємо на клієнті, щоб не ламати гідрацію)
+  const [dateFilter, setDateFilter] = useState<string>("");
+  useEffect(() => { setDateFilter(new Date().toLocaleDateString("en-CA")); }, []);
 
   useEffect(() => { setLocal(orders); }, [orders]);
 
   const byCol = useMemo(() => {
     const map: Record<OrderStatus, DbOrder[]> = { new: [], confirmed: [], done: [], canceled: [] };
-    for (const o of local) map[o.status].push(o);
+    for (const o of local) {
+      // фільтр за датою замовлення (локальна дата)
+      if (dateFilter && new Date(o.createdAt).toLocaleDateString("en-CA") !== dateFilter) continue;
+      map[o.status].push(o);
+    }
     return map;
-  }, [local]);
+  }, [local, dateFilter]);
 
   const move = async (id: string, to: OrderStatus) => {
     const cur = local.find((o) => o.id === id);
@@ -58,8 +65,10 @@ export default function OrdersBoardPage() {
           Перетягуйте картки між колонками, щоб змінити статус. Або стрілками ‹ › на картці.
           Зміни одразу зберігаються в БД.
         </p>
-        <div style={{ display: "flex", gap: 8 }}>
-          <button className={`${s.btn} ${s.btnGhost} ${s.btnSmall}`} onClick={() => refetch()}>Оновити</button>
+        <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
+          <input type="date" className={s.input} value={dateFilter} onChange={(e) => setDateFilter(e.target.value)}
+            style={{ width: "auto", padding: "7px 10px", fontSize: 12 }} title="Фільтр за датою замовлення" />
+          {dateFilter && <button className={`${s.btn} ${s.btnGhost} ${s.btnSmall}`} onClick={() => setDateFilter("")}>Всі дати</button>}
           <Link href="/admin/orders" className={`${s.btn} ${s.btnGhost} ${s.btnSmall}`}>Список</Link>
         </div>
       </div>

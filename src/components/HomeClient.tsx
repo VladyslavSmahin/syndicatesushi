@@ -14,9 +14,8 @@ import CartDrawer from "./CartDrawer";
 import ProductModal from "./ProductModal";
 import MobileMenu from "./MobileMenu";
 import MobileCategoryBar from "./MobileCategoryBar";
-import { usePublicCatalog } from "@/features/publicData";
 import { useCart } from "@/features/cart/CartContext";
-import type { Product, NavCategory, Promo } from "@/lib/types";
+import type { Product, NavCategory } from "@/lib/types";
 
 type NavFilter = NonNullable<NavCategory["filter"]>;
 
@@ -24,7 +23,6 @@ const HEADER_OFFSET = 84;
 
 export default function HomeClient() {
   const { add } = useCart();
-  const catalog = usePublicCatalog();
   const [cartOpen, setCartOpen] = useState(false);
   const [modalItem, setModalItem] = useState<Product | null>(null);
   const [navFilter, setNavFilter] = useState<NavFilter | null>(null);
@@ -50,14 +48,6 @@ export default function HomeClient() {
     }
   };
 
-  const handlePromoOrder = (p: Promo) => {
-    const target = catalog.find((m) => m.id === p.linkedItemId);
-    if (target) {
-      add(target, p.price);
-      setCartOpen(true);
-    }
-  };
-
   return (
     <>
       <Header
@@ -69,7 +59,6 @@ export default function HomeClient() {
       <Hero
         onCtaOrder={() => setCartOpen(true)}
         onCtaMenu={() => scrollTo("menu")}
-        onPromoOrder={handlePromoOrder}
       />
       <Hits onAdd={add} onCardClick={setModalItem} />
       <FullMenu

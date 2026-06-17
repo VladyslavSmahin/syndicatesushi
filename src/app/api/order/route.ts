@@ -2,7 +2,6 @@ import { NextResponse } from "next/server";
 import { sendTelegramMessage, esc } from "@/lib/telegram";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { rateLimit, clientIp } from "@/lib/rateLimit";
-import { quoteDelivery, parseDeliverySettings } from "@/lib/delivery";
 
 interface IncomingItem {
   id: string;        // uuid товару з каталогу
@@ -19,8 +18,6 @@ interface OrderBody {
   comment?: string;
   promo?: string;
   consent?: boolean;
-  lat?: number;
-  lng?: number;
   items: IncomingItem[];
 }
 
@@ -122,20 +119,12 @@ export async function POST(req: Request) {
     }
   }
 
-  // ---- Вартість доставки (перерахунок на сервері з координат + налаштувань) ----
-  let deliveryCost = 0;
-  if (delivery === "delivery") {
-    const { data: ds } = await supabase.from("settings").select("value").eq("key", "delivery").maybeSingle();
-    const settings = parseDeliverySettings(ds?.value);
-    if (typeof body.lat === "number" && typeof body.lng === "number") {
-      const q = quoteDelivery(settings, body.lat, body.lng, subtotal);
-      deliveryCost = q.free ? 0 : q.price;
-    } else {
-      deliveryCost = settings.basePrice; // адреса без координат — базова ціна
-    }
-  }
+  // ---- Доставка ----
+  // Вартість доставки рахується менеджером окремо (від 100 грн, залежно від відстані),
+  // тому в замовленні delivery_cost = 0, а адреса йде в Telegram/адмінку для прорахунку.
+  const deliveryCost = 0;
 
-  const total = Math.max(0, subtotal - discount + deliveryCost);
+  const total = Math.max(0, subtotal - discount);
 
   // ---- Запис замовлення в БД (service role обходить RLS) ----
   let orderId: string | null = null;

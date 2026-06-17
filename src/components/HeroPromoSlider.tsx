@@ -1,19 +1,18 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useRef, useState, type CSSProperties } from "react";
-import { usePublicPromos } from "@/features/publicData";
-import type { Promo } from "@/lib/types";
+import { useCallback, useEffect, useRef, useState, type CSSProperties } from "react";
+import { usePublicBanners } from "@/features/publicData";
 
 const AUTO_MS = 5000;        // авто-перемикання кожні 5с
 const AFTER_MANUAL_MS = 5000; // після ручного — пауза (≥ 3с) до авто
 
-export default function HeroPromoSlider({ onOrder }: { onOrder: (p: Promo) => void }) {
-  const allPromos = usePublicPromos();
-  // у слайдер — лише акції з банером (без зображення показувати нічого)
-  const PROMOS = useMemo(() => allPromos.filter((p) => p.bannerImage), [allPromos]);
+// Hero-слайдер банерів: просто картинки, які клієнт завантажує в адмінці.
+// Без кліку/ціни — банер генерується клієнтом цілком як зображення.
+export default function HeroPromoSlider() {
+  const banners = usePublicBanners();
   const [current, setCurrent] = useState(0);
   const timer = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const len = PROMOS.length;
+  const len = banners.length;
 
   const schedule = useCallback((delay: number) => {
     if (timer.current) clearTimeout(timer.current);
@@ -43,7 +42,7 @@ export default function HeroPromoSlider({ onOrder }: { onOrder: (p: Promo) => vo
     return o;
   };
 
-  if (!len) return null; // немає активних акцій — слайдер не показуємо
+  if (!len) return null; // немає активних банерів — слайдер не показуємо
 
   const styleFor = (o: number): CSSProperties => {
     const base: CSSProperties = {
@@ -54,17 +53,17 @@ export default function HeroPromoSlider({ onOrder }: { onOrder: (p: Promo) => vo
       willChange: "transform, opacity",
     };
     if (o === 0) {
-      return { ...base, transform: "translateY(0) translateZ(0) scale(1)", opacity: 1, filter: "brightness(1)", zIndex: 30, pointerEvents: "auto" };
+      return { ...base, transform: "translateY(0) translateZ(0) scale(1)", opacity: 1, filter: "brightness(1)", zIndex: 30 };
     }
     if (Math.abs(o) === 1) {
       return {
         ...base,
         transform: `translateY(${o * 52}%) translateZ(-170px) scale(0.8)`,
-        opacity: 0.85, filter: "brightness(0.4)", zIndex: 20, pointerEvents: "auto",
+        opacity: 0.85, filter: "brightness(0.4)", zIndex: 20,
       };
     }
     // далі за межами — ховаємо
-    return { ...base, transform: `translateY(${o > 0 ? 90 : -90}%) translateZ(-340px) scale(0.65)`, opacity: 0, zIndex: 10, pointerEvents: "none" };
+    return { ...base, transform: `translateY(${o > 0 ? 90 : -90}%) translateZ(-340px) scale(0.65)`, opacity: 0, zIndex: 10 };
   };
 
   return (
@@ -77,30 +76,27 @@ export default function HeroPromoSlider({ onOrder }: { onOrder: (p: Promo) => vo
         maskImage: "linear-gradient(180deg, transparent 0%, #000 16%, #000 84%, transparent 100%)",
       }}
     >
-      {PROMOS.map((p, i) => (
-        <div key={p.id} style={styleFor(offsetOf(i))}>
-          <button
-            onClick={() => onOrder(p)}
-            aria-label={p.title}
-            style={{
-              width: "100%", height: "100%", padding: 0, border: "1px solid var(--border)", borderRadius: 8,
-              overflow: "hidden", cursor: "pointer", background: "#0A0908", display: "block",
-              boxShadow: offsetOf(i) === 0 ? "0 16px 50px rgba(0,0,0,0.55)" : "none",
-            }}
-          >
-            {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img src={p.bannerImage} alt={p.title} style={{ width: "100%", height: "100%", objectFit: "cover", display: "block" }} />
-          </button>
+      {banners.map((b, i) => (
+        <div
+          key={b.id}
+          style={{
+            ...styleFor(offsetOf(i)),
+            border: "1px solid var(--border)", borderRadius: 8, overflow: "hidden", background: "#0A0908",
+            boxShadow: offsetOf(i) === 0 ? "0 16px 50px rgba(0,0,0,0.55)" : "none",
+          }}
+        >
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img src={b.image} alt="" style={{ width: "100%", height: "100%", objectFit: "cover", display: "block" }} />
         </div>
       ))}
 
       {/* індикатори — вертикально, збоку справа */}
       <div style={{ position: "absolute", top: 0, bottom: 0, right: 14, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 8, zIndex: 40 }}>
-        {PROMOS.map((_, i) => (
+        {banners.map((_, i) => (
           <button
             key={i}
             onClick={() => goTo(i)}
-            aria-label={`Акція ${i + 1}`}
+            aria-label={`Банер ${i + 1}`}
             style={{
               width: 8, height: i === current ? 22 : 8, borderRadius: 4, padding: 0, cursor: "pointer",
               border: "none", background: i === current ? "var(--accent)" : "rgba(255,255,255,0.45)", transition: "all 0.3s",

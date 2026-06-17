@@ -1,11 +1,10 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useState, type CSSProperties } from "react";
+import { useEffect, useMemo, useState, type CSSProperties } from "react";
 import Link from "next/link";
 import { Icon } from "./icons";
 import { useCart } from "@/features/cart/CartContext";
-import { usePublicDelivery, usePublicCatalog, useGloss } from "@/features/publicData";
-import { quoteDelivery } from "@/lib/delivery";
+import { usePublicCatalog, useGloss } from "@/features/publicData";
 import type { Product, CartItem } from "@/lib/types";
 
 const EXTRAS_CATEGORY = "додатково";
@@ -17,12 +16,6 @@ const qtyBtn: CSSProperties = {
 
 type Step = "cart" | "checkout" | "done";
 type Delivery = "delivery" | "pickup";
-interface Suggestion { label: string; lat: number; lng: number; }
-
-interface PhotonFeature {
-  geometry: { coordinates: [number, number] };
-  properties: { name?: string; street?: string; housenumber?: string; city?: string; town?: string; village?: string; county?: string };
-}
 
 // Український номер: лише цифри, формат «093 728 42 98» (10 цифр, починається з 0).
 function phoneDigits(raw: string): string {
@@ -40,15 +33,8 @@ function isPhoneValid(raw: string): boolean {
   return d.length === 10 && d.startsWith("0");
 }
 
-function suggestionLabel(p: PhotonFeature["properties"]): string {
-  const line1 = [p.street ?? p.name, p.housenumber].filter(Boolean).join(", ");
-  const line2 = p.city ?? p.town ?? p.village ?? p.county ?? "";
-  return [line1 || p.name, line2].filter(Boolean).join(", ");
-}
-
 export default function CartDrawer({ isOpen, onClose }: { isOpen: boolean; onClose: () => void }) {
   const { items, total, changeQty, remove, clear, add } = useCart();
-  const ds = usePublicDelivery();
   const catalog = usePublicCatalog();
   const extras = useMemo(
     () => catalog.filter((p) => p.category === EXTRAS_CATEGORY).sort((a, b) => a.price - b.price),
@@ -60,16 +46,15 @@ export default function CartDrawer({ isOpen, onClose }: { isOpen: boolean; onClo
   const [name, setName] = useState("");
   const [phone, setPhone] = useState("");
   const [address, setAddress] = useState("");
-  const [house, setHouse] = useState(""); // номер будинку — окремо (геокодер вулиць не дає номерів)
-  const [coords, setCoords] = useState<{ lat: number; lng: number } | null>(null);
-  const [suggestions, setSuggestions] = useState<Suggestion[]>([]);
-  const [searching, setSearching] = useState(false);
   const [comment, setComment] = useState("");
   const [promo, setPromo] = useState("");
+  // застосований промокод (підтверджений сервером) + повідомлення/стан перевірки
+  const [promoInfo, setPromoInfo] = useState<{ code: string; discountType: "percent" | "fixed"; value: number } | null>(null);
+  const [promoMsg, setPromoMsg] = useState<{ ok: boolean; text: string } | null>(null);
+  const [promoChecking, setPromoChecking] = useState(false);
   const [consent, setConsent] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState("");
-  const skipSearch = useRef(false); // не шукати після вибору підказки
 
   useEffect(() => {
     document.body.style.overflow = isOpen ? "hidden" : "";
@@ -77,61 +62,63 @@ export default function CartDrawer({ isOpen, onClose }: { isOpen: boolean; onClo
     return () => { document.body.style.overflow = ""; };
   }, [isOpen]);
 
-  // автопідказки адреси (Photon/OSM) — debounce
-  useEffect(() => {
-    if (delivery !== "delivery" || skipSearch.current) { skipSearch.current = false; return; }
-    const q = address.trim();
-    if (q.length < 3) { setSuggestions([]); return; }
-    const ctrl = new AbortController();
-    setSearching(true);
-    const t = setTimeout(async () => {
-      try {
-        // Photon підтримує lang лише default/de/en/fr — для України беремо default (локальні назви укр.)
-        const url = `https://photon.komoot.io/api/?q=${encodeURIComponent(q)}&lat=${ds.originLat}&lon=${ds.originLng}&limit=5&lang=default`;
-        const res = await fetch(url, { signal: ctrl.signal });
-        const data = await res.json();
-        const sugg: Suggestion[] = (data.features ?? []).map((f: PhotonFeature) => ({
-          label: suggestionLabel(f.properties), lat: f.geometry.coordinates[1], lng: f.geometry.coordinates[0],
-        })).filter((x: Suggestion) => x.label);
-        setSuggestions(sugg);
-      } catch { /* abort / network — ignore */ } finally { setSearching(false); }
-    }, 350);
-    return () => { clearTimeout(t); ctrl.abort(); };
-  }, [address, delivery, ds.originLat, ds.originLng]);
-
   if (!isOpen) return null;
 
-  const dq = delivery === "delivery" && coords ? quoteDelivery(ds, coords.lat, coords.lng, total) : null;
-  const deliveryFee = dq && !dq.outOfRange ? (dq.free ? 0 : dq.price) : 0;
-  const payable = total + (delivery === "delivery" ? deliveryFee : 0);
+  // знижка рахується наживо з поточної суми (працює при зміні кількості)
+  const discount = promoInfo
+    ? Math.min(total, promoInfo.discountType === "percent" ? Math.round((total * promoInfo.value) / 100) : promoInfo.value)
+    : 0;
+  // вартість доставки рахується менеджером окремо (від 100 грн, залежно від відстані)
+  const payable = Math.max(0, total - discount);
 
-  const addrOk = delivery === "pickup" || (!!coords && !dq?.outOfRange && !!house.trim());
+  // зміна поля промокоду — скидаємо застосований код і повідомлення
+  const onPromoChange = (v: string) => {
+    setPromo(v);
+    if (promoInfo) setPromoInfo(null);
+    if (promoMsg) setPromoMsg(null);
+  };
+
+  // перевірка промокоду на сервері (без створення замовлення)
+  const applyPromo = async () => {
+    const code = promo.trim();
+    if (!code || promoChecking) return;
+    setPromoChecking(true);
+    setPromoMsg(null);
+    try {
+      const res = await fetch("/api/promo/check", {
+        method: "POST", headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ code, subtotal: total }),
+      });
+      const j = await res.json();
+      if (res.status === 429) { setPromoMsg({ ok: false, text: "Забагато спроб, зачекайте хвилину." }); return; }
+      if (j.valid) {
+        setPromoInfo({ code, discountType: j.discountType, value: j.value });
+        setPromoMsg({ ok: true, text: `Промокод застосовано: −${j.discount} грн` });
+      } else {
+        setPromoInfo(null);
+        setPromoMsg({ ok: false, text: "Промокод неактуальний." });
+      }
+    } catch {
+      setPromoMsg({ ok: false, text: "Не вдалося перевірити промокод." });
+    } finally {
+      setPromoChecking(false);
+    }
+  };
+
+  const addrOk = delivery === "pickup" || !!address.trim();
   const phoneOk = isPhoneValid(phone);
   const canSubmit = !!name.trim() && phoneOk && addrOk && consent;
 
-  // повна адреса: вулиця (з підказки) + номер будинку (вручну)
-  const fullAddress = delivery === "delivery"
-    ? [address.trim(), house.trim() && `буд. ${house.trim()}`].filter(Boolean).join(", ")
-    : "";
+  const fullAddress = delivery === "delivery" ? address.trim() : "";
 
   // причина, чому кнопка «Підтвердити» неактивна (показуємо користувачу)
   const submitHint =
     !name.trim() ? "Вкажіть ім'я"
     : !phone.trim() ? "Вкажіть телефон"
     : !phoneOk ? "Невірний формат номера (напр. 093 728 42 98)"
-    : delivery === "delivery" && !coords ? "Оберіть вулицю зі списку підказок"
-    : delivery === "delivery" && dq?.outOfRange ? "Адреса поза зоною доставки"
-    : delivery === "delivery" && !house.trim() ? "Вкажіть номер будинку"
+    : delivery === "delivery" && !address.trim() ? "Вкажіть адресу доставки"
     : !consent ? "Підтвердіть згоду на обробку персональних даних"
     : "";
-
-  const pickSuggestion = (sg: Suggestion) => {
-    skipSearch.current = true;
-    setAddress(sg.label);
-    setCoords({ lat: sg.lat, lng: sg.lng });
-    setSuggestions([]);
-  };
-  const onAddressChange = (v: string) => { setAddress(v); setCoords(null); };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -142,11 +129,12 @@ export default function CartDrawer({ isOpen, onClose }: { isOpen: boolean; onClo
       const res = await fetch("/api/order", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ delivery, name, phone, address: fullAddress, comment, promo, consent, items, lat: coords?.lat, lng: coords?.lng }),
+        body: JSON.stringify({ delivery, name, phone, address: fullAddress, comment, promo: promoInfo?.code ?? "", consent, items }),
       });
       if (!res.ok) throw new Error("request_failed");
       setStep("done");
       clear();
+      setPromo(""); setPromoInfo(null); setPromoMsg(null);
     } catch {
       setError("Не вдалося надіслати замовлення. Спробуйте ще раз або зателефонуйте нам.");
     } finally {
@@ -195,7 +183,10 @@ export default function CartDrawer({ isOpen, onClose }: { isOpen: boolean; onClo
                   <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 10 }}>
                     <div style={{ flex: 1, paddingRight: 16 }}>
                       <div style={{ fontFamily: "var(--font-display)", fontSize: 17, fontWeight: 600, color: "var(--text-primary)", lineHeight: 1.2 }}>{item.name}</div>
-                      <div style={{ fontSize: 10, color: "var(--text-secondary)", marginTop: 6, letterSpacing: 1 }}>{item.price} грн</div>
+                      <div style={{ fontSize: 10, color: "var(--text-secondary)", marginTop: 6, letterSpacing: 1 }}>
+                        {item.oldPrice && <span style={{ textDecoration: "line-through", marginRight: 5 }}>{item.oldPrice}</span>}
+                        <span style={{ color: item.oldPrice ? "var(--accent)" : "var(--text-secondary)" }}>{item.price} грн</span>
+                      </div>
                     </div>
                     <button onClick={() => remove(item.id)} aria-label="Видалити"
                       style={{ background: "transparent", border: "none", color: "var(--text-secondary)", cursor: "pointer", padding: 4 }}>
@@ -243,36 +234,45 @@ export default function CartDrawer({ isOpen, onClose }: { isOpen: boolean; onClo
                 onChange={(e) => setPhone(formatPhone(e.target.value))} />
 
               {delivery === "delivery" && (
-                <>
-                <div style={{ position: "relative" }}>
-                  <input className="form-input" placeholder="Вулиця * (оберіть зі списку)"
-                    value={address} onChange={(e) => onAddressChange(e.target.value)} autoComplete="off" />
-                  {suggestions.length > 0 && !coords && (
-                    <div style={{ position: "absolute", top: "100%", left: 0, right: 0, zIndex: 10, background: "var(--bg-elevated)", border: "1px solid var(--border-light)", borderTop: "none", maxHeight: 220, overflowY: "auto" }}>
-                      {suggestions.map((sg, i) => (
-                        <button key={i} type="button" onClick={() => pickSuggestion(sg)}
-                          style={{ display: "block", width: "100%", textAlign: "left", padding: "10px 14px", background: "transparent", border: "none", borderBottom: "1px solid var(--border)", color: "var(--text-primary)", fontSize: 13, cursor: "pointer" }}>
-                          {sg.label}
-                        </button>
-                      ))}
-                    </div>
-                  )}
-                  {searching && !coords && <p className="hint" style={{ fontSize: 11, color: "var(--text-secondary)", marginTop: 4 }}>Пошук…</p>}
-                  {delivery === "delivery" && coords && dq && (
-                    <p style={{ fontSize: 12, marginTop: 6, color: dq.outOfRange ? "#E0726A" : "var(--accent)" }}>
-                      {dq.outOfRange ? `Поза зоною доставки (~${dq.km} км)` : dq.free ? `Безкоштовна доставка (~${dq.km} км)` : `Доставка: ${dq.price} грн (~${dq.km} км)`}
-                    </p>
-                  )}
+                <div>
+                  <input className="form-input" placeholder="Адреса доставки * (вулиця, будинок, квартира)"
+                    value={address} onChange={(e) => setAddress(e.target.value)} autoComplete="off" />
+                  <p style={{ fontSize: 11, color: "var(--text-secondary)", marginTop: 6, lineHeight: 1.5 }}>
+                    Доставка — від 100 грн, далі залежно від відстані. Точну вартість підтвердимо при дзвінку.
+                  </p>
                 </div>
-                <input className="form-input" placeholder="Номер будинку * (кв., під'їзд — у коментарі)"
-                  value={house} onChange={(e) => setHouse(e.target.value)} autoComplete="off" />
-                {coords && !house.trim() && (
-                  <p style={{ fontSize: 11, color: "var(--text-secondary)", marginTop: -4 }}>Вкажіть номер будинку — вартість рахується за вулицею.</p>
-                )}
-                </>
               )}
 
-              <input className="form-input" placeholder="Промокод" value={promo} onChange={(e) => setPromo(e.target.value)} />
+              <div>
+                <div style={{ position: "relative" }}>
+                  <input
+                    className="form-input"
+                    placeholder="Промокод"
+                    value={promo}
+                    onChange={(e) => onPromoChange(e.target.value)}
+                    onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); applyPromo(); } }}
+                    style={{ paddingRight: 124, textTransform: "uppercase" }}
+                  />
+                  <button
+                    type="button"
+                    onClick={applyPromo}
+                    disabled={!promo.trim() || promoChecking || !!promoInfo}
+                    style={{
+                      position: "absolute", right: 8, top: "50%", transform: "translateY(-50%)",
+                      padding: "8px 16px", fontSize: 11, letterSpacing: 1.5, textTransform: "uppercase",
+                      border: "1px solid var(--border-light)", borderRadius: 4, cursor: "pointer",
+                      background: promoInfo ? "transparent" : "var(--bg-elevated)",
+                      color: promoInfo ? "var(--accent)" : "var(--text-primary)",
+                      opacity: !promo.trim() || promoChecking ? 0.5 : 1, transition: "all 0.2s",
+                    }}
+                  >
+                    {promoChecking ? "…" : promoInfo ? "✓" : "Застосувати"}
+                  </button>
+                </div>
+                {promoMsg && (
+                  <p style={{ fontSize: 11, marginTop: 6, lineHeight: 1.4, color: promoMsg.ok ? "var(--accent)" : "#E0726A" }}>{promoMsg.text}</p>
+                )}
+              </div>
               <textarea className="form-input" placeholder="Коментар до замовлення" value={comment} onChange={(e) => setComment(e.target.value)} style={{ minHeight: 80 }} />
             </div>
 
@@ -281,8 +281,14 @@ export default function CartDrawer({ isOpen, onClose }: { isOpen: boolean; onClo
 
               {delivery === "delivery" && (
                 <div style={{ display: "flex", justifyContent: "space-between", fontSize: 12, color: "var(--text-secondary)", marginBottom: 6 }}>
-                  <span>Сума · Доставка</span>
-                  <span>{total} грн · {coords ? (deliveryFee === 0 ? "безкоштовно" : `${deliveryFee} грн`) : "—"}</span>
+                  <span>Доставка</span>
+                  <span>від 100 грн (за відстанню)</span>
+                </div>
+              )}
+              {discount > 0 && (
+                <div style={{ display: "flex", justifyContent: "space-between", fontSize: 12, color: "var(--accent)", marginBottom: 6 }}>
+                  <span>Знижка{promoInfo ? ` (${promoInfo.code})` : ""}</span>
+                  <span>−{discount} грн</span>
                 </div>
               )}
               <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", marginBottom: 16 }}>

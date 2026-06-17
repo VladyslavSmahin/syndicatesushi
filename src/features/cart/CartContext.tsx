@@ -45,6 +45,8 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
 
   const add = useCallback((product: Product, priceOverride?: number) => {
     const price = priceOverride ?? product.price;
+    // стара ціна для закреслення (лише якщо реально є знижка)
+    const oldPrice = product.oldPrice != null && product.oldPrice > price ? product.oldPrice : undefined;
     setItems((prev) => {
       const existing = prev.find((i) => i.id === product.id);
       if (existing) {
@@ -52,7 +54,7 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
           i.id === product.id ? { ...i, qty: i.qty + 1 } : i
         );
       }
-      return [...prev, { id: product.id, name: product.name, price, qty: 1 }];
+      return [...prev, { id: product.id, name: product.name, price, oldPrice, qty: 1 }];
     });
   }, []);
 
