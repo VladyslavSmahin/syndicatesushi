@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { Cormorant_Garamond, Jost } from "next/font/google";
 import { Analytics } from "@vercel/analytics/next";
+import { SpeedInsights } from "@vercel/speed-insights/next";
 import { CartProvider } from "@/features/cart/CartContext";
 import "./globals.css";
 
@@ -35,6 +36,7 @@ export default function RootLayout({
       <body>
         <CartProvider>{children}</CartProvider>
         <Analytics />
+        <SpeedInsights />
       </body>
     </html>
   );
