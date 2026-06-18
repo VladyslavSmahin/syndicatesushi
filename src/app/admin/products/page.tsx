@@ -53,7 +53,9 @@ export default function ProductsPage() {
   const [saving, setSaving] = useState(false);
   const [photoBusy, setPhotoBusy] = useState(false);
   const [catFilter, setCatFilter] = useState<string>("all"); // id категорії | "all" | "__none__"
+  const [subFilter, setSubFilter] = useState<string>("all"); // id підкатегорії | "all" | "__none__"
   const [query, setQuery] = useState("");
+  const pickCat = (id: string) => { setCatFilter(id); setSubFilter("all"); };
 
   const active = useMemo(() => products.filter((p) => !p.deletedAt), [products]);
   const setyCat = useMemo(() => categories.find((c) => c.slug === SET_SLUG), [categories]);
@@ -67,7 +69,21 @@ export default function ProductsPage() {
   const prodById = useMemo(() => new Map(products.map((p) => [p.id, p] as const)), [products]);
   const portion = draft ? computePortion(draft.ingredientGrams, ingById) : null;
 
+  // сумарна грамовка порції (сума грамовок інгредієнтів); 0 якщо не задано
+  const totalGrams = (p: DbProduct) => Object.values(p.ingredientGrams).reduce((sum, g) => sum + (Number(g) || 0), 0);
+  // вага сета рахується автоматично як сума грамовок ролів, що до нього входять
+  const setGramsTotal = (ids: string[]) =>
+    ids.reduce((sum, id) => { const r = prodById.get(id); return sum + (r ? totalGrams(r) : 0); }, 0);
+  // авто-грамовка (реальна сума): для сета — сума ролів, для решти — сума інгредієнтів
+  const displayGrams = (p: DbProduct) => (p.setItemIds.length ? setGramsTotal(p.setItemIds) : totalGrams(p));
+  // що показувати як вагу: ручне значення поля «Вага» = істина; авто — лише фолбек
+  const effectiveWeight = (p: DbProduct) => p.weight.trim() || `${displayGrams(p)} г`;
+
   const isSetDraft = !!draft && !!setyCat && draft.categoryId === setyCat.id;
+  // авто-вага драфта: для сета — сума ролів, для решти — сума грамовок інгредієнтів.
+  // КБЖУ рахується окремо з грамів, тож ручна правка поля «Вага» його не змінює.
+  const draftSetGrams = draft ? setGramsTotal(draft.setItemIds) : 0;
+  const draftAutoWeight = isSetDraft ? draftSetGrams : (portion?.weight ?? 0);
   // доступні роли для складу сету (категорія «Роли», не сам редагований сет)
   const rollOptions = useMemo(
     () => active.filter((p) => roliCat && p.categoryId === roliCat.id && p.id !== editing?.id)
@@ -78,11 +94,25 @@ export default function ProductsPage() {
   const ingName = (id: string) => ingredients.find((i) => i.id === id)?.name ?? "";
   const prodName = (id: string) => prodById.get(id)?.name ?? "—";
 
-  // фільтр за категорією + пошук + групування
+  // товари обраної категорії (база для підкатегорійних чипів) та її підкатегорії
+  const catProducts = useMemo(
+    () => (catFilter !== "all" && catFilter !== "__none__" ? active.filter((p) => p.categoryId === catFilter) : []),
+    [active, catFilter]
+  );
+  const activeSubs = useMemo(
+    () => (catFilter !== "all" && catFilter !== "__none__" ? subcategories.filter((sc) => sc.categoryId === catFilter) : []),
+    [subcategories, catFilter]
+  );
+
+  // фільтр за категорією + підкатегорією + пошук + групування
   const filtered = useMemo(() => {
     let list = active;
     if (catFilter === "__none__") list = list.filter((p) => !p.categoryId);
-    else if (catFilter !== "all") list = list.filter((p) => p.categoryId === catFilter);
+    else if (catFilter !== "all") {
+      list = list.filter((p) => p.categoryId === catFilter);
+      if (subFilter === "__none__") list = list.filter((p) => !p.subcategoryId);
+      else if (subFilter !== "all") list = list.filter((p) => p.subcategoryId === subFilter);
+    }
     const q = query.trim().toLowerCase();
     if (q) {
       list = list.filter((p) =>
@@ -93,7 +123,7 @@ export default function ProductsPage() {
       );
     }
     return list;
-  }, [active, catFilter, query, prodById, ingredients]);
+  }, [active, catFilter, subFilter, query, prodById, ingredients]);
   const groups = useMemo(() => {
     const gs = categories
       .map((c) => ({ id: c.id, name: c.name, items: filtered.filter((p) => p.categoryId === c.id) }))
@@ -129,7 +159,9 @@ export default function ProductsPage() {
   const save = async () => {
     if (!draft || !draft.name.trim()) return;
     setSaving(true);
-    const input = { ...toInput(draft), composition: compositionAuto };
+    // якщо «Вага» не задана вручну — підставляємо авто-розрахунок (сума ролів / інгредієнтів)
+    const weight = draft.weight.trim() || (draftAutoWeight > 0 ? `${draftAutoWeight} г` : "");
+    const input = { ...toInput(draft), weight, composition: compositionAuto };
     const err = editing ? await dbUpdateProduct(editing.id, input) : await dbCreateProduct(input);
     setSaving(false);
     if (err) { alert("Помилка збереження: " + err); return; }
@@ -204,19 +236,45 @@ export default function ProductsPage() {
 
       {/* фільтр за категорією */}
       <div style={{ display: "flex", gap: 8, flexWrap: "wrap", alignItems: "center" }}>
-        <button className={`chip square ${catFilter === "all" ? "active" : ""}`} onClick={() => setCatFilter("all")}>
+        <button className={`chip square ${catFilter === "all" ? "active" : ""}`} onClick={() => pickCat("all")}>
           Усі ({active.length})
         </button>
         {categories.map((c) => {
           const n = active.filter((p) => p.categoryId === c.id).length;
           if (!n) return null;
           return (
-            <button key={c.id} className={`chip square ${catFilter === c.id ? "active" : ""}`} onClick={() => setCatFilter(c.id)}>
+            <button key={c.id} className={`chip square ${catFilter === c.id ? "active" : ""}`} onClick={() => pickCat(c.id)}>
               {c.name} ({n})
             </button>
           );
         })}
       </div>
+
+      {/* фільтр за підкатегорією (як на сайті) — горизонтальний слайдер в один рядок */}
+      {activeSubs.length > 0 && (
+        <div style={{ display: "flex", gap: 8, alignItems: "center", overflowX: "auto", flexWrap: "nowrap", paddingLeft: 4, paddingBottom: 4, scrollbarWidth: "thin" }}>
+          <button className={`chip square ${subFilter === "all" ? "active" : ""}`} style={{ flexShrink: 0 }} onClick={() => setSubFilter("all")}>
+            Усі ({catProducts.length})
+          </button>
+          {activeSubs.map((sc) => {
+            const n = catProducts.filter((p) => p.subcategoryId === sc.id).length;
+            if (!n) return null;
+            return (
+              <button key={sc.id} className={`chip square ${subFilter === sc.id ? "active" : ""}`} style={{ flexShrink: 0 }} onClick={() => setSubFilter(sc.id)}>
+                {sc.name} ({n})
+              </button>
+            );
+          })}
+          {(() => {
+            const n = catProducts.filter((p) => !p.subcategoryId).length;
+            return n ? (
+              <button className={`chip square ${subFilter === "__none__" ? "active" : ""}`} style={{ flexShrink: 0 }} onClick={() => setSubFilter("__none__")}>
+                Без підкатегорії ({n})
+              </button>
+            ) : null;
+          })()}
+        </div>
+      )}
 
       <div className={s.card}>
         <div className={s.cardHead}>
@@ -273,6 +331,7 @@ export default function ProductsPage() {
                       </td>
                       <td>
                         <div className={s.rowActions}>
+                          <span style={{ fontSize: 13, fontWeight: 600, color: "var(--text-secondary)", whiteSpace: "nowrap", marginRight: "auto" }}>{effectiveWeight(p)}</span>
                           <button className={`${s.btn} ${s.btnGhost} ${s.btnSmall}`} onClick={() => openEdit(p)}>Редагувати</button>
                           {isAdmin && (
                             <button className={`${s.btn} ${s.btnDanger} ${s.btnSmall}`} onClick={() => remove(p)}>Видалити</button>
@@ -344,7 +403,22 @@ export default function ProductsPage() {
             </div>
             <div style={{ display: "flex", gap: 14, flexWrap: "wrap" }}>
               <Field label="Вага, гр" grow>
-                <input className={s.input} placeholder="290 г" value={draft.weight} onChange={(e) => set("weight", e.target.value)} />
+                <input className={s.input} placeholder={draftAutoWeight > 0 ? `${draftAutoWeight} г (авто)` : "290 г"}
+                  value={draft.weight} onChange={(e) => set("weight", e.target.value)} />
+                {draftAutoWeight > 0 && (
+                  <span className={s.hint} style={{ fontSize: 11, marginTop: 4 }}>
+                    {draft.weight.trim() ? (
+                      <>Вручну (це значення — істина). Реальна грамовка: {draftAutoWeight} г ·{" "}
+                        <button type="button" onClick={() => set("weight", "")}
+                          style={{ background: "none", border: "none", padding: 0, color: "var(--accent)", cursor: "pointer", font: "inherit", textDecoration: "underline" }}>
+                          скинути до реальної
+                        </button>
+                      </>
+                    ) : (
+                      <>Буде збережено реальну грамовку: {draftAutoWeight} г. КБЖУ рахується з грамовки і не залежить від цього поля.</>
+                    )}
+                  </span>
+                )}
               </Field>
               <Field label="Кількість" grow>
                 <input className={s.input} placeholder="8 шт" value={draft.pieces} onChange={(e) => set("pieces", e.target.value)} />
@@ -374,12 +448,13 @@ export default function ProductsPage() {
                     {draft.setItemIds.map((id) => (
                       <div key={id} style={{ display: "flex", alignItems: "center", gap: 10, padding: "8px 12px", background: "var(--bg-elevated)", border: "1px solid var(--border)", borderRadius: 6 }}>
                         <span style={{ flex: 1, fontSize: 13, color: "var(--text-primary)" }}>{prodName(id)}</span>
-                        <span style={{ fontSize: 12, color: "var(--text-secondary)" }}>{prodById.get(id)?.price ?? 0} грн</span>
+                        <span style={{ fontSize: 12, color: "var(--text-secondary)", whiteSpace: "nowrap" }}>{(() => { const r = prodById.get(id); return r ? totalGrams(r) : 0; })()} г</span>
+                        <span style={{ fontSize: 12, color: "var(--text-secondary)", whiteSpace: "nowrap" }}>{prodById.get(id)?.price ?? 0} грн</span>
                         <button type="button" className={`${s.btn} ${s.btnDanger} ${s.btnSmall}`} onClick={() => removeSetItem(id)}>Прибрати</button>
                       </div>
                     ))}
                     <div style={{ marginTop: 4, fontSize: 12, color: "var(--text-secondary)" }}>
-                      Ролів у сеті: <b>{draft.setItemIds.length}</b> · сума за прайсом ролів: {setItemsTotal} грн
+                      Ролів у сеті: <b>{draft.setItemIds.length}</b> · сума за прайсом ролів: {setItemsTotal} грн · авто-вага: <b>{draftSetGrams} г</b>
                     </div>
                   </div>
                 ) : (
