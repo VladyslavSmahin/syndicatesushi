@@ -27,6 +27,10 @@ export async function POST(req: Request) {
   if (!name?.trim() || !contact?.trim() || !text?.trim()) {
     return NextResponse.json({ ok: false, error: "missing_fields" }, { status: 400 });
   }
+  // ліміти довжини текстових полів (анти-спам/абʼюз)
+  if (name.length > 100 || contact.length > 100 || text.length > 2000) {
+    return NextResponse.json({ ok: false, error: "field_too_long" }, { status: 400 });
+  }
 
   const r = Number(rating);
   const ratingVal = r >= 1 && r <= 5 ? Math.floor(r) : null;

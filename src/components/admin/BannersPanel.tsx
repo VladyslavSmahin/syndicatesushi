@@ -6,6 +6,7 @@ import {
   type DbBanner,
 } from "@/features/admin/db";
 import s from "@/components/admin/admin.module.css";
+import { downscaleImage } from "@/lib/clientImage";
 
 const MAX_MB = 8;
 
@@ -48,9 +49,15 @@ export default function BannersPanel() {
     if (!file) return;
     setError(null);
     if (!file.type.startsWith("image/")) { setError("Оберіть зображення."); return; }
-    if (file.size > MAX_MB * 1024 * 1024) { setError(`Файл завеликий (макс. ${MAX_MB} МБ).`); return; }
     setBusy(true);
-    const err = await dbUploadBanner(file);
+    // стискаємо у браузері до відправки (обхід ліміту тіла запиту Vercel ~4.5 МБ)
+    const prepared = await downscaleImage(file, 2000, 0.85);
+    if (prepared.size > 4 * 1024 * 1024) {
+      setBusy(false);
+      setError("Файл завеликий навіть після стиснення. Оберіть інше зображення.");
+      return;
+    }
+    const err = await dbUploadBanner(prepared);
     setBusy(false);
     if (err) { setError(errText(err)); return; }
     refetch();

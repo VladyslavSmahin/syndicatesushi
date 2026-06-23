@@ -2,6 +2,8 @@
 
 import { useMemo, useState } from "react";
 import Modal from "@/components/admin/Modal";
+import CatalogDownloadModal from "@/components/admin/CatalogDownloadModal";
+import { downscaleImage } from "@/lib/clientImage";
 import { computePortion } from "@/features/nutrition";
 import {
   useDbProducts, useDbIngredients, useDbCategories, useDbSubcategories,
@@ -52,6 +54,7 @@ export default function ProductsPage() {
   const [setPick, setSetPick] = useState("");
   const [saving, setSaving] = useState(false);
   const [photoBusy, setPhotoBusy] = useState(false);
+  const [showCatalog, setShowCatalog] = useState(false);
   const [catFilter, setCatFilter] = useState<string>("all"); // id категорії | "all" | "__none__"
   const [subFilter, setSubFilter] = useState<string>("all"); // id підкатегорії | "all" | "__none__"
   const [query, setQuery] = useState("");
@@ -180,10 +183,16 @@ export default function ProductsPage() {
   const handlePhotoFile = async (file?: File) => {
     if (!file) return;
     if (!file.type.startsWith("image/")) { alert("Оберіть зображення."); return; }
-    if (file.size > 8 * 1024 * 1024) { alert("Файл завеликий (макс. 8 МБ)."); return; }
     // завантаження в R2 з конвертацією у WebP; у БД зберігається URL
     setPhotoBusy(true);
-    const r = await dbUploadImage(file, "products");
+    // стискаємо у браузері до відправки (обхід ліміту тіла запиту Vercel ~4.5 МБ)
+    const prepared = await downscaleImage(file, 1600, 0.82);
+    if (prepared.size > 4 * 1024 * 1024) {
+      setPhotoBusy(false);
+      alert("Фото завелике навіть після стиснення. Оберіть інше або менше за розміром.");
+      return;
+    }
+    const r = await dbUploadImage(prepared, "products");
     setPhotoBusy(false);
     if (r.error) { alert("Помилка завантаження: " + r.error); return; }
     set("photo", r.url ?? null);
@@ -227,10 +236,13 @@ export default function ProductsPage() {
 
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 20 }}>
-      <p className={s.hint}>
-        Товари згруповані за категоріями. Для сетів (категорія «Сети») склад задається ролами,
-        для решти — інгредієнтами (за ними працює фільтр на сайті).
-      </p>
+      <div style={{ display: "flex", alignItems: "flex-start", gap: 12 }}>
+        <p className={s.hint} style={{ flex: 1, margin: 0 }}>
+          Товари згруповані за категоріями. Для сетів (категорія «Сети») склад задається ролами,
+          для решти — інгредієнтами (за ними працює фільтр на сайті).
+        </p>
+        <button className={`${s.btn} ${s.btnGhost} ${s.btnSmall}`} style={{ flexShrink: 0 }} onClick={() => setShowCatalog(true)} disabled={!products.length}>↓ Каталог PDF</button>
+      </div>
 
       <BulkPriceTool products={active} ingredients={ingredients} categories={categories} subcategories={subcategories} onApplied={refetch} />
 
@@ -518,6 +530,16 @@ export default function ProductsPage() {
             </p>
           </div>
         </Modal>
+      )}
+
+      {showCatalog && (
+        <CatalogDownloadModal
+          products={products}
+          categories={categories}
+          subcategories={subcategories}
+          ingredients={ingredients}
+          onClose={() => setShowCatalog(false)}
+        />
       )}
     </div>
   );

@@ -25,6 +25,9 @@ const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/
 // екранує спецсимволи LIKE (%, _, \), щоб ввід не змінював семантику пошуку
 const escapeLike = (s: string) => s.replace(/[\\%_]/g, (m) => "\\" + m);
 
+const MAX_LINE_ITEMS = 100; // макс. різних позицій у замовленні
+const MAX_QTY = 100;        // макс. кількість однієї позиції
+
 export async function POST(req: Request) {
   const rl = rateLimit(`order:${clientIp(req)}`, 6, 60_000); // 6 замовлень / хв з IP
   if (!rl.ok) {
@@ -43,11 +46,21 @@ export async function POST(req: Request) {
   if (!name?.trim() || !phone?.trim() || !Array.isArray(items) || items.length === 0) {
     return NextResponse.json({ ok: false, error: "missing_fields" }, { status: 400 });
   }
+  if (items.length > MAX_LINE_ITEMS) {
+    return NextResponse.json({ ok: false, error: "too_many_items" }, { status: 400 });
+  }
+  if (items.some((i) => !i || typeof i.id !== "string")) {
+    return NextResponse.json({ ok: false, error: "bad_items" }, { status: 400 });
+  }
   if (consent !== true) {
     return NextResponse.json({ ok: false, error: "consent_required" }, { status: 400 });
   }
   if (delivery === "delivery" && !address?.trim()) {
     return NextResponse.json({ ok: false, error: "address_required" }, { status: 400 });
+  }
+  // ліміти довжини текстових полів (анти-спам/абʼюз)
+  if (name.length > 100 || phone.length > 30 || (address?.length ?? 0) > 300 || (comment?.length ?? 0) > 1000) {
+    return NextResponse.json({ ok: false, error: "field_too_long" }, { status: 400 });
   }
 
   const supabase = createAdminClient();
@@ -83,19 +96,27 @@ export async function POST(req: Request) {
     }
   }
 
-  const lineItems = items.map((i) => {
+  // Кожна позиція мусить резолвитись у доступний товар з БД.
+  // Ціна й назва — ВИКЛЮЧНО з БД (ніколи з клієнта), інакше — відмова.
+  const lineItems: { productId: string; name: string; price: number; qty: number }[] = [];
+  for (const i of items) {
     const db = fromDb.get(i.id);
-    const qty = Math.max(1, Math.floor(Number(i.qty) || 1));
-    const catalogPrice = db ? db.price : Math.max(0, Number(i.price) || 0);
-    const promoP = db ? promoPrice.get(i.id) : undefined;
-    return {
-      productId: db ? i.id : null,
-      name: db?.name ?? i.name,
+    if (!db) {
+      return NextResponse.json({ ok: false, error: "item_unavailable" }, { status: 400 });
+    }
+    const qty = Math.floor(Number(i.qty) || 0);
+    if (qty < 1 || qty > MAX_QTY) {
+      return NextResponse.json({ ok: false, error: "invalid_qty" }, { status: 400 });
+    }
+    const promoP = promoPrice.get(i.id);
+    lineItems.push({
+      productId: i.id,
+      name: db.name,
       // акційна ціна, якщо вона є й нижча за каталожну
-      price: promoP != null ? Math.min(catalogPrice, promoP) : catalogPrice,
+      price: promoP != null ? Math.min(db.price, promoP) : db.price,
       qty,
-    };
-  });
+    });
+  }
   const subtotal = lineItems.reduce((s, i) => s + i.price * i.qty, 0);
 
   // ---- Промокод (валідація + знижка на сервері) ----
