@@ -3,6 +3,7 @@ import { Cormorant_Garamond, Jost } from "next/font/google";
 import { Analytics } from "@vercel/analytics/next";
 import { SpeedInsights } from "@vercel/speed-insights/next";
 import { CartProvider } from "@/features/cart/CartContext";
+import ScrollTopButton from "@/components/ScrollTopButton";
 import "./globals.css";
 
 const cormorant = Cormorant_Garamond({
@@ -35,6 +36,7 @@ export default function RootLayout({
     <html lang="uk" className={`${cormorant.variable} ${jost.variable}`}>
       <body>
         <CartProvider>{children}</CartProvider>
+        <ScrollTopButton />
         <Analytics />
         <SpeedInsights />
       </body>

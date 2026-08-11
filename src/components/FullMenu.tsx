@@ -56,6 +56,18 @@ export default function FullMenu({
   // при зміні категорії скидаємо інгредієнт-фільтр і підкатегорію
   useEffect(() => { setSelected([]); setSelectedSub(null); }, [navFilter]);
 
+  // ширина FAB «Фільтр» → у --fab-w, щоб кнопка «вгору» (root layout) стала праворуч від нього
+  const fabRef = useRef<HTMLButtonElement>(null);
+  useEffect(() => {
+    const el = fabRef.current;
+    if (!isMobile || !el) return;
+    const apply = () => document.documentElement.style.setProperty("--fab-w", `${Math.round(el.getBoundingClientRect().width) + 10}px`);
+    apply();
+    const ro = new ResizeObserver(apply);
+    ro.observe(el);
+    return () => { ro.disconnect(); document.documentElement.style.removeProperty("--fab-w"); };
+  }, [isMobile]);
+
   // мобільна панель фільтрів: блокуємо скрол сторінки під нею + закриття по Esc
   useEffect(() => {
     if (!sheetOpen) return;
@@ -235,10 +247,11 @@ export default function FullMenu({
       {isMobile && (
         <>
           <button
+            ref={fabRef}
             onClick={() => setSheetOpen(true)}
             aria-label="Фільтри"
             style={{
-              position: "fixed", left: 14, bottom: 78, zIndex: 95,
+              position: "fixed", left: "var(--scrolltop-left, 14px)", bottom: "var(--scrolltop-bottom, 78px)", zIndex: 95,
               height: 40, padding: "0 13px", borderRadius: 20,
               background: "var(--accent)", color: "#0A0908", border: "none", cursor: "pointer",
               display: "flex", alignItems: "center", gap: 6, boxShadow: "0 6px 18px rgba(0,0,0,0.45)",

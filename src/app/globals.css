@@ -44,6 +44,8 @@
   --py: 60px;           /* вертикальні відступи секцій */
   --hero-pt: 150px;     /* верхній відступ hero (під фіксованою шапкою) */
   --form-2col: 1fr 1fr; /* двоколонкові поля форм → 1fr на мобільному */
+  --scrolltop-left: 18px;   /* кнопка «вгору»: відступ зліва */
+  --scrolltop-bottom: 24px; /* кнопка «вгору»: відступ знизу */
   --head-mb: 32px;      /* відступ під заголовком секції */
   --logo-h: 48px;       /* висота лого у шапці */
 }
@@ -222,6 +224,8 @@ textarea.form-input { resize: vertical; min-height: 120px; font-family: var(--fo
     --hero-pt: 120px;
     --form-2col: 1fr;
     --head-mb: 16px;
+    --scrolltop-left: 14px;   /* в один ряд із FAB «Фільтр» */
+    --scrolltop-bottom: 78px; /* над нижньою панеллю категорій */
   }
   .desktop-only { display: none !important; }
   .mobile-only { display: initial; }

@@ -3,7 +3,6 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
-import ScrollTop from "./ScrollTop";
 import RefreshButton from "./RefreshButton";
 import { useAdminAuth } from "@/features/admin/AdminAuthContext";
 import { refreshAdminAction } from "@/features/admin/actions/common";
@@ -157,7 +156,6 @@ export default function AdminShell({ children }: { children: React.ReactNode }) 
 
         <div className={s.content}>{children}</div>
       </div>
-      <ScrollTop />
     </div>
   );
 }
