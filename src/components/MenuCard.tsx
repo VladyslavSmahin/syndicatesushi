@@ -19,7 +19,6 @@ export default function MenuCard({
   const badgeHit = useGloss("badge_hit");
   const badgeNew = useGloss("badge_new");
   const badgeLabel = item.badge === "ХІТ" ? badgeHit : item.badge === "НОВЕ" ? badgeNew : item.badge;
-  const photoH = compact ? 124 : 160;
   const pad = compact ? 10 : 14;
   const titleSize = compact ? 15 : 18;
   const priceSize = compact ? 16 : 18;
@@ -35,8 +34,8 @@ export default function MenuCard({
         cursor: "pointer", display: "flex", flexDirection: "column", padding: pad,
       }}
     >
-      <div style={{ position: "relative", background: "var(--bg-dark)", aspectRatio: compact ? undefined : "var(--card-ar, 16 / 9)" }}>
-        <PhotoSlot h={compact ? photoH : "100%"} photo={item.photo} />
+      <div style={{ position: "relative", background: "var(--bg-dark)", aspectRatio: "var(--card-ar, 1 / 1)" }}>
+        <PhotoSlot h="100%" photo={item.photo} />
         {item.badge && (
           <div
             style={{

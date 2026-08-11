@@ -56,6 +56,15 @@ export default function FullMenu({
   // при зміні категорії скидаємо інгредієнт-фільтр і підкатегорію
   useEffect(() => { setSelected([]); setSelectedSub(null); }, [navFilter]);
 
+  // мобільна панель фільтрів: блокуємо скрол сторінки під нею + закриття по Esc
+  useEffect(() => {
+    if (!sheetOpen) return;
+    document.body.style.overflow = "hidden";
+    const onKey = (e: KeyboardEvent) => { if (e.key === "Escape") setSheetOpen(false); };
+    document.addEventListener("keydown", onKey);
+    return () => { document.body.style.overflow = ""; document.removeEventListener("keydown", onKey); };
+  }, [sheetOpen]);
+
   const toggle = (ing: string) =>
     setSelected((prev) => (prev.includes(ing) ? prev.filter((x) => x !== ing) : [...prev, ing]));
 
@@ -171,6 +180,34 @@ export default function FullMenu({
           </div>
         )}
 
+        {/* активні фільтри — видно після закриття панелі, кожен знімається кліком */}
+        {selected.length > 0 && (
+          <div style={{ display: "flex", flexWrap: "wrap", alignItems: "center", gap: 8, marginBottom: 20 }}>
+            {selected.map((s) => (
+              <button
+                key={s}
+                onClick={() => toggle(s)}
+                aria-label={`Прибрати фільтр ${s}`}
+                className="chip active"
+                style={{ display: "inline-flex", alignItems: "center", gap: 6 }}
+              >
+                {s}
+                <span aria-hidden style={{ fontSize: 13, lineHeight: 1, opacity: 0.7 }}>×</span>
+              </button>
+            ))}
+            <button
+              onClick={() => setSelected([])}
+              style={{
+                background: "transparent", border: "none", cursor: "pointer", padding: "0 4px",
+                fontFamily: "var(--font-body)", fontSize: 10, letterSpacing: 1.5, textTransform: "uppercase",
+                color: "var(--text-secondary)", textDecoration: "underline", textUnderlineOffset: 3,
+              }}
+            >
+              Очистити все
+            </button>
+          </div>
+        )}
+
         {items.length === 0 ? (
           <div style={{ padding: "60px 0", textAlign: "center", color: "var(--text-secondary)" }}>
             <p style={{ fontFamily: "var(--font-display)", fontStyle: "italic", fontSize: 22 }}>Нічого не знайдено за цим фільтром</p>
@@ -194,14 +231,14 @@ export default function FullMenu({
         )}
       </div>
 
-      {/* ===== Мобільний фільтр: FAB + нижній лист ===== */}
+      {/* ===== Мобільний фільтр: FAB зліва + бічна панель справа ===== */}
       {isMobile && (
         <>
           <button
             onClick={() => setSheetOpen(true)}
             aria-label="Фільтри"
             style={{
-              position: "fixed", right: 14, bottom: 78, zIndex: 95,
+              position: "fixed", left: 14, bottom: 78, zIndex: 95,
               height: 40, padding: "0 13px", borderRadius: 20,
               background: "var(--accent)", color: "#0A0908", border: "none", cursor: "pointer",
               display: "flex", alignItems: "center", gap: 6, boxShadow: "0 6px 18px rgba(0,0,0,0.45)",
@@ -217,38 +254,55 @@ export default function FullMenu({
               {/* клік по фону закриває лист */}
               <div className="fade-in" onClick={() => setSheetOpen(false)}
                 style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.6)", zIndex: 120 }} />
-              <div
+              <aside
+                role="dialog"
+                aria-modal="true"
+                aria-label="Фільтри"
                 style={{
-                  position: "fixed", left: 0, right: 0, bottom: 0, zIndex: 121,
-                  background: "var(--bg-card)", borderTop: "1px solid var(--border-light)",
-                  borderRadius: "16px 16px 0 0", padding: "20px 20px 24px",
-                  animation: "fadeUp 0.25s ease both",
+                  position: "fixed", top: 0, right: 0, bottom: 0, zIndex: 121,
+                  width: "min(88vw, 380px)", maxWidth: "100%",
+                  background: "var(--bg-card)", borderLeft: "1px solid var(--border-light)",
+                  display: "flex", flexDirection: "column",
+                  animation: "slideInRight 0.28s ease both",
                 }}
               >
-                <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 18 }}>
-                  <span style={{ fontFamily: "var(--font-display)", fontSize: 20, fontWeight: 700, color: "var(--text-primary)" }}>
-                    Фільтр за інгредієнтами
-                  </span>
+                {/* шапка — прибита зверху */}
+                <div style={{
+                  flexShrink: 0, display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12,
+                  padding: "16px 18px", borderBottom: "1px solid var(--border)",
+                }}>
                   <button onClick={() => setSheetOpen(false)} aria-label="Закрити"
-                    style={{ width: 36, height: 36, border: "1px solid var(--border-light)", background: "transparent", color: "var(--text-primary)", cursor: "pointer", fontSize: 18 }}>×</button>
+                    style={{ width: 36, height: 36, flexShrink: 0, border: "1px solid var(--border-light)", background: "transparent", color: "var(--text-primary)", cursor: "pointer", fontSize: 18, lineHeight: 1 }}>×</button>
+                  <span style={{ fontFamily: "var(--font-display)", fontSize: 20, fontWeight: 700, color: "var(--text-primary)" }}>
+                    Фільтри
+                  </span>
                 </div>
 
-                <div style={{ marginBottom: 16 }}>
-                  <span className="eyebrow" style={{ display: "block", marginBottom: 8 }}>Сортування</span>
-                  <SortControl sort={sort} setSort={setSort} />
+                {/* тіло — єдина зона, що скролиться */}
+                <div style={{ flex: 1, overflowY: "auto", WebkitOverflowScrolling: "touch", padding: 18 }}>
+                  <span className="eyebrow" style={{ display: "block", marginBottom: 10 }}>Сортування</span>
+                  <div style={{ marginBottom: 24 }}>
+                    <SortControl sort={sort} setSort={setSort} full />
+                  </div>
+
+                  <span className="eyebrow" style={{ display: "block", marginBottom: 10 }}>Інгредієнти</span>
+                  <IngredientPicker options={INGREDIENTS} selected={selected} toggle={toggle} clear={() => setSelected([])} />
                 </div>
 
-                {Chips}
-
-                <div style={{ display: "flex", gap: 10, marginTop: 20 }}>
-                  <button className="btn-secondary" style={{ flex: "0 0 auto" }} onClick={() => setSelected([])}>
+                {/* дії — прибиті знизу, з урахуванням safe-area на iOS */}
+                <div style={{
+                  flexShrink: 0, display: "flex", gap: 10,
+                  padding: "14px 18px calc(14px + env(safe-area-inset-bottom, 0px))",
+                  borderTop: "1px solid var(--border)", background: "var(--bg-card)",
+                }}>
+                  <button className="btn-secondary" style={{ flex: "0 0 auto" }} onClick={() => { setSelected([]); setSort("default"); }}>
                     Скинути
                   </button>
                   <button className="btn-primary" style={{ flex: 1 }} onClick={() => setSheetOpen(false)}>
                     Готово{items.length ? ` · ${items.length}` : ""}
                   </button>
                 </div>
-              </div>
+              </aside>
             </>
           )}
         </>
@@ -257,15 +311,16 @@ export default function FullMenu({
   );
 }
 
-const SORT_OPTIONS: { value: Sort; label: string }[] = [
-  { value: "default", label: "Сортування" },
+// label — текст на кнопці, menuLabel — у списку (щоб «Сортування» не дублювалось саме з собою)
+const SORT_OPTIONS: { value: Sort; label: string; menuLabel?: string }[] = [
+  { value: "default", label: "Сортування", menuLabel: "За замовчуванням" },
   { value: "price-asc", label: "Ціна: спочатку дешевші" },
   { value: "price-desc", label: "Ціна: спочатку дорожчі" },
   { value: "weight-asc", label: "Вага: спочатку менші" },
   { value: "weight-desc", label: "Вага: спочатку більші" },
 ];
 
-function SortControl({ sort, setSort }: { sort: Sort; setSort: (s: Sort) => void }) {
+function SortControl({ sort, setSort, full = false }: { sort: Sort; setSort: (s: Sort) => void; full?: boolean }) {
   const [open, setOpen] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
   const active = sort !== "default";
@@ -281,14 +336,17 @@ function SortControl({ sort, setSort }: { sort: Sort; setSort: (s: Sort) => void
   }, [open]);
 
   return (
-    <div ref={ref} style={{ position: "relative" }}>
+    <div ref={ref} style={{ position: "relative", width: full ? "100%" : undefined }}>
       <button
         type="button"
         onClick={() => setOpen((v) => !v)}
         aria-haspopup="listbox"
         aria-expanded={open}
         className={`chip square ${active ? "active" : ""}`}
-        style={{ display: "inline-flex", alignItems: "center", gap: 8 }}
+        style={{
+          display: full ? "flex" : "inline-flex", alignItems: "center", gap: 8,
+          width: full ? "100%" : undefined, justifyContent: full ? "space-between" : undefined, textAlign: "left",
+        }}
       >
         {current.label}
         <Chevron open={open} />
@@ -298,7 +356,8 @@ function SortControl({ sort, setSort }: { sort: Sort; setSort: (s: Sort) => void
         <div
           role="listbox"
           style={{
-            position: "absolute", top: "calc(100% + 6px)", left: 0, zIndex: 60, minWidth: 240,
+            position: "absolute", top: "calc(100% + 6px)", left: 0, zIndex: 60,
+            minWidth: full ? undefined : 240, width: full ? "100%" : undefined,
             background: "var(--bg-card)", border: "1px solid var(--border-light)",
             boxShadow: "0 12px 32px rgba(0,0,0,0.55)", padding: 6,
           }}
@@ -323,10 +382,140 @@ function SortControl({ sort, setSort }: { sort: Sort; setSort: (s: Sort) => void
                 onMouseLeave={(e) => { e.currentTarget.style.background = "transparent"; if (!selected) e.currentTarget.style.color = "var(--text-secondary)"; }}
               >
                 <span style={{ width: 14, flexShrink: 0, color: "var(--accent)" }}>{selected ? "✓" : ""}</span>
-                {o.label}
+                {o.menuLabel ?? o.label}
               </button>
             );
           })}
+        </div>
+      )}
+    </div>
+  );
+}
+
+/** Мультивибір інгредієнтів: згорнутий дропдаун з пошуком + обрані чипами під ним. */
+function IngredientPicker({
+  options,
+  selected,
+  toggle,
+  clear,
+}: {
+  options: string[];
+  selected: string[];
+  toggle: (ing: string) => void;
+  clear: () => void;
+}) {
+  const [open, setOpen] = useState(false);
+  const [query, setQuery] = useState("");
+  const ref = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (!open) return;
+    const onDocClick = (e: MouseEvent) => { if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false); };
+    const onKey = (e: KeyboardEvent) => { if (e.key === "Escape") setOpen(false); };
+    document.addEventListener("mousedown", onDocClick);
+    document.addEventListener("keydown", onKey);
+    return () => { document.removeEventListener("mousedown", onDocClick); document.removeEventListener("keydown", onKey); };
+  }, [open]);
+
+  const q = query.trim().toLowerCase();
+  const filtered = q ? options.filter((o) => o.toLowerCase().includes(q)) : options;
+
+  return (
+    <div>
+      <div ref={ref} style={{ position: "relative" }}>
+        <button
+          type="button"
+          onClick={() => setOpen((v) => !v)}
+          aria-haspopup="listbox"
+          aria-expanded={open}
+          className={`chip square ${selected.length ? "active" : ""}`}
+          style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 8, width: "100%", textAlign: "left" }}
+        >
+          {selected.length ? `Обрано · ${selected.length}` : "Обрати інгредієнти"}
+          <Chevron open={open} />
+        </button>
+
+        {open && (
+          <div
+            style={{
+              position: "absolute", top: "calc(100% + 6px)", left: 0, width: "100%", zIndex: 60,
+              background: "var(--bg-card)", border: "1px solid var(--border-light)",
+              boxShadow: "0 12px 32px rgba(0,0,0,0.55)", display: "flex", flexDirection: "column", maxHeight: 300,
+            }}
+          >
+            <div style={{ flexShrink: 0, padding: 8, borderBottom: "1px solid var(--border)" }}>
+              {/* без autoFocus: на мобілці клавіатура з'їдала б половину списку одразу при відкритті */}
+              <input
+                value={query}
+                onChange={(e) => setQuery(e.target.value)}
+                placeholder="Пошук інгредієнта…"
+                aria-label="Пошук інгредієнта"
+                style={{
+                  width: "100%", padding: "10px 12px", background: "var(--bg-elevated)",
+                  border: "1px solid var(--border-light)", color: "var(--text-primary)",
+                  fontFamily: "var(--font-body)", fontSize: 12, letterSpacing: 0.5, outline: "none",
+                }}
+              />
+            </div>
+
+            <div role="listbox" aria-multiselectable style={{ flex: 1, overflowY: "auto", padding: 6 }}>
+              {filtered.length === 0 ? (
+                <div style={{ padding: "14px 12px", fontSize: 11, letterSpacing: 1, color: "var(--text-secondary)" }}>
+                  Нічого не знайдено
+                </div>
+              ) : (
+                filtered.map((o) => {
+                  const on = selected.includes(o);
+                  return (
+                    <button
+                      key={o}
+                      type="button"
+                      role="option"
+                      aria-selected={on}
+                      onClick={() => toggle(o)}
+                      style={{
+                        width: "100%", display: "flex", alignItems: "center", gap: 10, textAlign: "left",
+                        background: "transparent", border: "none", cursor: "pointer",
+                        padding: "10px 12px", fontFamily: "var(--font-body)", fontSize: 11, letterSpacing: 1.5,
+                        textTransform: "uppercase", color: on ? "var(--accent)" : "var(--text-secondary)",
+                      }}
+                    >
+                      <span style={{ width: 14, flexShrink: 0, color: "var(--accent)" }}>{on ? "✓" : ""}</span>
+                      {o}
+                    </button>
+                  );
+                })
+              )}
+            </div>
+          </div>
+        )}
+      </div>
+
+      {/* обрані інгредієнти — знімаються кліком */}
+      {selected.length > 0 && (
+        <div style={{ display: "flex", flexWrap: "wrap", alignItems: "center", gap: 8, marginTop: 12 }}>
+          {selected.map((s) => (
+            <button
+              key={s}
+              onClick={() => toggle(s)}
+              aria-label={`Прибрати ${s}`}
+              className="chip active"
+              style={{ display: "inline-flex", alignItems: "center", gap: 6 }}
+            >
+              {s}
+              <span aria-hidden style={{ fontSize: 13, lineHeight: 1, opacity: 0.7 }}>×</span>
+            </button>
+          ))}
+          <button
+            onClick={clear}
+            style={{
+              background: "transparent", border: "none", cursor: "pointer", padding: "0 4px",
+              fontFamily: "var(--font-body)", fontSize: 10, letterSpacing: 1.5, textTransform: "uppercase",
+              color: "var(--text-secondary)", textDecoration: "underline", textUnderlineOffset: 3,
+            }}
+          >
+            Очистити
+          </button>
         </div>
       )}
     </div>
