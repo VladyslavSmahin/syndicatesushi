@@ -119,13 +119,13 @@ export default function PromosPage() {
                 placeholder="Оберіть товар"
                 searchPlaceholder="Пошук товару…"
               /></div>
-            <div style={{ display: "flex", gap: 14 }}>
+            <div style={{ display: "flex", gap: 14, flexWrap: "wrap" }}>
               <div className={s.field} style={{ flex: 1 }}><span className={s.fieldLabel}>Акційна ціна</span>
                 <input className={`${s.input} no-spin`} type="number" value={draft.price || ""} onChange={(e) => set("price", e.target.value === "" ? 0 : Number(e.target.value))} /></div>
               <div className={s.field} style={{ flex: 1 }}><span className={s.fieldLabel}>Стара ціна (з БД)</span>
                 <input className={`${s.input} no-spin`} type="number" value={draft.oldPrice || ""} readOnly disabled title="Підтягується з ціни товару" style={{ opacity: 0.6, cursor: "not-allowed" }} /></div>
             </div>
-            <div style={{ display: "flex", gap: 14 }}>
+            <div style={{ display: "flex", gap: 14, flexWrap: "wrap" }}>
               <div className={s.field} style={{ flex: 1 }}><span className={s.fieldLabel}>Діє з (необовʼязково)</span>
                 <input className={s.input} type="date" value={draft.validFrom ?? ""} onChange={(e) => set("validFrom", e.target.value || null)} /></div>
               <div className={s.field} style={{ flex: 1 }}><span className={s.fieldLabel}>Діє до (необовʼязково)</span>

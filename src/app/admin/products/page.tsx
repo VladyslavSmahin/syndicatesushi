@@ -485,7 +485,7 @@ export default function ProductsPage() {
                     );
                   })}
                 </div>
-                <div style={{ display: "flex", gap: 8 }}>
+                <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
                   <input className={s.input} placeholder="Новий інгредієнт…" value={newIng}
                     onChange={(e) => setNewIng(e.target.value)}
                     onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); addNewIngredient(); } }} />

@@ -65,7 +65,7 @@ export default function OrdersBoardPage() {
           Перетягуйте картки між колонками, щоб змінити статус. Або стрілками ‹ › на картці.
           Зміни одразу зберігаються в БД.
         </p>
-        <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
+        <div style={{ display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap" }}>
           <input type="date" className={s.input} value={dateFilter} onChange={(e) => setDateFilter(e.target.value)}
             style={{ width: "auto", padding: "7px 10px", fontSize: 12 }} title="Фільтр за датою замовлення" />
           {dateFilter && <button className={`${s.btn} ${s.btnGhost} ${s.btnSmall}`} onClick={() => setDateFilter("")}>Всі дати</button>}
