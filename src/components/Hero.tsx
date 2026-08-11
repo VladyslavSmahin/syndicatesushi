@@ -1,7 +1,8 @@
 "use client";
 
 import HeroPromoSlider from "./HeroPromoSlider";
-import { CONTACTS, TEXTS } from "@/data/site";
+import { TEXTS } from "@/data/site";
+import { useContacts } from "@/features/publicData";
 
 export default function Hero({
   onCtaOrder,
@@ -10,6 +11,7 @@ export default function Hero({
   onCtaOrder: () => void;
   onCtaMenu: () => void;
 }) {
+  const contacts = useContacts();
   return (
     <section
       id="hero"
@@ -43,7 +45,7 @@ export default function Hero({
       >
         {/* left */}
         <div className="fade-up hero-copy">
-          <div className="eyebrow hero-eyebrow" style={{ marginBottom: 28, fontSize: 15, letterSpacing: 4 }}>{CONTACTS.addressShort}</div>
+          <div className="eyebrow hero-eyebrow" style={{ marginBottom: 28, fontSize: 15, letterSpacing: 4 }}>{contacts.addressShort}</div>
           <h1
             className="hero-title"
             style={{

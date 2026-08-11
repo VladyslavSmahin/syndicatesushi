@@ -2,9 +2,9 @@
 
 import { useEffect, useState } from "react";
 import { Icon } from "./icons";
-import { CONTACTS, ASSET_ICONS } from "@/data/site";
+import { ASSET_ICONS } from "@/data/site";
 import { useCart } from "@/features/cart/CartContext";
-import { usePublicCategories, usePublicNavSpecials } from "@/features/publicData";
+import { usePublicCategories, usePublicNavSpecials, useContacts } from "@/features/publicData";
 import type { NavCategory } from "@/lib/types";
 
 function BrandMark() {
@@ -39,6 +39,7 @@ export default function Header({
   menuOpen: boolean;
   onMenuToggle: () => void;
 }) {
+  const contacts = useContacts();
   const { count } = useCart();
   const cats = usePublicCategories({ navOnly: true });
   const specials = usePublicNavSpecials();
@@ -91,11 +92,11 @@ export default function Header({
           <div className="desktop-only" style={{ textAlign: "right" }}>
             <div style={{ display: "flex", alignItems: "center", gap: 8, justifyContent: "flex-end", whiteSpace: "nowrap" }}>
               <Icon.Phone width="13" height="13" style={{ color: "var(--accent)" }} />
-              <span style={{ fontSize: 13, fontWeight: 400, color: "var(--text-primary)", letterSpacing: 0.5 }}>{CONTACTS.phone}</span>
+              <span style={{ fontSize: 13, fontWeight: 400, color: "var(--text-primary)", letterSpacing: 0.5 }}>{contacts.phone}</span>
             </div>
             <div style={{ display: "flex", alignItems: "center", gap: 8, justifyContent: "flex-end", marginTop: 4, whiteSpace: "nowrap" }}>
               <Icon.Clock width="11" height="11" style={{ color: "var(--text-secondary)" }} />
-              <span style={{ fontSize: 11, fontWeight: 400, color: "var(--text-secondary)", letterSpacing: 1 }}>{CONTACTS.hours}</span>
+              <span style={{ fontSize: 11, fontWeight: 400, color: "var(--text-secondary)", letterSpacing: 1 }}>{contacts.hours}</span>
             </div>
           </div>
 

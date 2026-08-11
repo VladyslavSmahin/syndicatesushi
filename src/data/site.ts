@@ -8,19 +8,6 @@
 
 const A = (name: string) => `/assets/${name}`;
 
-// ===== Контакти =====
-export const CONTACTS = {
-  phone: "+38 (050) 000-00-00",
-  hours: "11:00 — 22:00",
-  address: "вул. Незалежності, 7, м. Тульчин",
-  addressShort: "Тульчин · Доставка та самовивіз",
-  // запит для вбудованої Google-карти (без API-ключа)
-  mapQuery: "вул. Незалежності, 7, Тульчин, Вінницька область, Україна",
-  instagram: "#",
-  telegram: "#",
-  facebook: "#",
-};
-
 // ===== Тексти =====
 export const TEXTS = {
   tagline: "смакуй кожен момент",

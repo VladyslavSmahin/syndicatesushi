@@ -8,6 +8,7 @@ import { createContext, useContext } from "react";
 import type { Product, Promo, Banner, NavCategory } from "@/lib/types";
 import { DEFAULT_DELIVERY, type DeliverySettings } from "@/lib/delivery";
 import { GLOSSARY_DEFAULTS, type Glossary } from "@/lib/glossary";
+import { CONTACTS_DEFAULTS, type SiteContacts } from "@/lib/contacts";
 
 export interface PubCategory {
   id: string;
@@ -43,10 +44,11 @@ export interface PublicData {
   delivery: DeliverySettings;
   navSpecials: NavCategory[];
   glossary: Glossary;
+  contacts: SiteContacts;
   reviews: PubReview[];
 }
 
-const Ctx = createContext<PublicData>({ catalog: [], categories: [], subcategories: [], promos: [], banners: [], delivery: DEFAULT_DELIVERY, navSpecials: [], glossary: GLOSSARY_DEFAULTS, reviews: [] });
+const Ctx = createContext<PublicData>({ catalog: [], categories: [], subcategories: [], promos: [], banners: [], delivery: DEFAULT_DELIVERY, navSpecials: [], glossary: GLOSSARY_DEFAULTS, contacts: CONTACTS_DEFAULTS, reviews: [] });
 
 export function PublicDataProvider({ value, children }: { value: PublicData; children: React.ReactNode }) {
   return <Ctx.Provider value={value}>{children}</Ctx.Provider>;
@@ -92,4 +94,9 @@ export function usePublicReviews(): PubReview[] {
 /** Значення глосарію за ключем (з фолбеком на дефолт). */
 export function useGloss(key: string): string {
   return useContext(Ctx).glossary[key] ?? GLOSSARY_DEFAULTS[key] ?? key;
+}
+
+/** Контакти закладу (телефон, адреса, соцмережі) — редагуються в адмінці. */
+export function useContacts(): SiteContacts {
+  return useContext(Ctx).contacts;
 }

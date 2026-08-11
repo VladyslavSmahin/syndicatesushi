@@ -3,7 +3,9 @@
 import { useEffect } from "react";
 import Link from "next/link";
 import { Icon } from "./icons";
-import { CONTACTS, ASSET_ICONS } from "@/data/site";
+import { ASSET_ICONS } from "@/data/site";
+import { useContacts } from "@/features/publicData";
+import { telHref } from "@/lib/contacts";
 import type { NavCategory } from "@/lib/types";
 
 export default function MobileMenu({
@@ -15,6 +17,7 @@ export default function MobileMenu({
   onClose: () => void;
   onNavClick: (cat: NavCategory) => void;
 }) {
+  const contacts = useContacts();
   useEffect(() => {
     document.body.style.overflow = open ? "hidden" : "";
     return () => { document.body.style.overflow = ""; };
@@ -105,20 +108,20 @@ export default function MobileMenu({
           ))}
 
           <div style={{ marginTop: 26, display: "flex", flexDirection: "column", gap: 14 }}>
-            <a href={`tel:${CONTACTS.phone.replace(/[^+\d]/g, "")}`} style={{ display: "flex", alignItems: "center", gap: 10, textDecoration: "none", color: "var(--text-primary)" }}>
+            <a href={telHref(contacts.phone)} style={{ display: "flex", alignItems: "center", gap: 10, textDecoration: "none", color: "var(--text-primary)" }}>
               <Icon.Phone width="16" height="16" style={{ color: "var(--accent)" }} />
-              <span style={{ fontSize: 15 }}>{CONTACTS.phone}</span>
+              <span style={{ fontSize: 15 }}>{contacts.phone}</span>
             </a>
             <div style={{ display: "flex", alignItems: "center", gap: 10, color: "var(--text-secondary)" }}>
               <Icon.Clock width="14" height="14" style={{ color: "var(--text-secondary)" }} />
-              <span style={{ fontSize: 13 }}>Щодня {CONTACTS.hours}</span>
+              <span style={{ fontSize: 13 }}>Щодня {contacts.hours}</span>
             </div>
             <div style={{ display: "flex", alignItems: "center", gap: 10, color: "var(--text-secondary)" }}>
               <Icon.Pin width="14" height="14" style={{ color: "var(--accent)" }} />
-              <span style={{ fontSize: 13 }}>{CONTACTS.address}</span>
+              <span style={{ fontSize: 13 }}>{contacts.address}</span>
             </div>
             <div style={{ display: "flex", gap: 8, marginTop: 8 }}>
-              {([["Instagram", ASSET_ICONS.instagram, CONTACTS.instagram], ["Telegram", ASSET_ICONS.telegram, CONTACTS.telegram]] as const).map(([label, src, href]) => (
+              {([["Instagram", ASSET_ICONS.instagram, contacts.instagram], ["Telegram", ASSET_ICONS.telegram, contacts.telegram]] as const).filter(([, , href]) => href).map(([label, src, href]) => (
                 <a key={label} href={href} aria-label={label} style={{ width: 38, height: 38, border: "1px solid var(--border-light)", display: "flex", alignItems: "center", justifyContent: "center" }}>
                   {/* eslint-disable-next-line @next/next/no-img-element */}
                   <img src={src} alt={label} style={{ width: 18, height: 18 }} />

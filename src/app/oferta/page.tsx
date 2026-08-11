@@ -1,17 +1,19 @@
 import type { Metadata } from "next";
 import InfoPageShell from "@/components/InfoPageShell";
-import { CONTACTS } from "@/data/site";
+import { fetchContacts } from "@/features/contacts.server";
 
 export const metadata: Metadata = {
-  title: "Договір публічної оферти — Sushi Syndicate",
-  description: "Умови продажу та доставки. Договір публічної оферти Sushi Syndicate.",
+  title: "Публічна оферта",
+  description: "Умови замовлення та доставки суші Sushi Syndicate у Тульчині.",
+  alternates: { canonical: "/oferta" },
 };
 
 const h2: React.CSSProperties = { fontFamily: "var(--font-display)", fontSize: 22, fontWeight: 600, margin: "30px 0 12px", color: "var(--text-primary)" };
 const p: React.CSSProperties = { margin: "0 0 12px" };
 const li: React.CSSProperties = { margin: "0 0 8px" };
 
-export default function OfertaPage() {
+export default async function OfertaPage() {
+  const CONTACTS = await fetchContacts();
   return (
     <InfoPageShell title="Договір публічної оферти">
       <div style={{ padding: "14px 16px", marginBottom: 24, border: "1px solid var(--border-light)", borderRadius: 8, background: "var(--bg-elevated)", fontSize: 13, color: "var(--text-secondary)" }}>

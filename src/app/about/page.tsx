@@ -2,8 +2,9 @@ import type { Metadata } from "next";
 import InfoPageShell from "@/components/InfoPageShell";
 
 export const metadata: Metadata = {
-  title: "Про нас — Sushi Syndicate",
-  description: "Про Sushi Syndicate — преміальна доставка свіжих суші у Тульчині.",
+  title: "Про нас",
+  description: "Про Sushi Syndicate — суші-бар у Тульчині: свіжа риба, приготування після замовлення, доставка та самовивіз.",
+  alternates: { canonical: "/about" },
 };
 
 const p: React.CSSProperties = { margin: "0 0 16px" };

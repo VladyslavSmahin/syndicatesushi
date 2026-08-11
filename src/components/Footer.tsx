@@ -1,7 +1,8 @@
 "use client";
 
 import { Icon } from "./icons";
-import { CONTACTS, TEXTS } from "@/data/site";
+import { TEXTS } from "@/data/site";
+import { useContacts } from "@/features/publicData";
 
 function FooterCol({ title, items }: { title: string; items: { label: string; cb?: () => void }[] }) {
   return (
@@ -29,6 +30,7 @@ function FooterCol({ title, items }: { title: string; items: { label: string; cb
 }
 
 export default function Footer() {
+  const contacts = useContacts();
   return (
     <footer style={{ background: "var(--bg-dark)", borderTop: "1px solid var(--border)", padding: "var(--py) var(--page-pad) 40px" }}>
       <div style={{ maxWidth: 1440, margin: "0 auto" }}>
@@ -48,12 +50,12 @@ export default function Footer() {
             <h4 style={{ fontSize: 13, fontWeight: 500, letterSpacing: 3, textTransform: "uppercase", color: "var(--text-primary)", marginBottom: 22 }}>
               Контакти
             </h4>
-            <div style={{ fontSize: 17, fontWeight: 400, color: "var(--text-primary)", marginBottom: 10 }}>{CONTACTS.phone}</div>
+            <div style={{ fontSize: 17, fontWeight: 400, color: "var(--text-primary)", marginBottom: 10 }}>{contacts.phone}</div>
             <div style={{ fontSize: 15, fontWeight: 400, color: "var(--text-secondary)", lineHeight: 1.7, marginBottom: 20 }}>
-              {CONTACTS.address}<br />{CONTACTS.hours}
+              {contacts.address}<br />{contacts.hours}
             </div>
             <div style={{ display: "flex", gap: 10 }}>
-              {([["Instagram", Icon.Instagram, CONTACTS.instagram], ["Telegram", Icon.Telegram, CONTACTS.telegram]] as const).map(([label, IconC, href]) => (
+              {([["Instagram", Icon.Instagram, contacts.instagram], ["Telegram", Icon.Telegram, contacts.telegram], ["Facebook", Icon.Facebook, contacts.facebook]] as const).filter(([, , href]) => href).map(([label, IconC, href]) => (
                 <a
                   key={label}
                   href={href}

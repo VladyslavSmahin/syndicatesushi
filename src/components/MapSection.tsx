@@ -1,7 +1,9 @@
 "use client";
 
 import { Icon } from "./icons";
-import { CONTACTS } from "@/data/site";
+import { useContacts } from "@/features/publicData";
+import { telHref } from "@/lib/contacts";
+
 
 function ContactRow({
   icon,
@@ -27,6 +29,7 @@ function ContactRow({
 }
 
 export default function MapSection() {
+  const contacts = useContacts();
   return (
     <section id="map" style={{ padding: "var(--py) var(--page-pad)", borderTop: "1px solid var(--border)" }}>
       <div style={{ maxWidth: 1440, margin: "0 auto" }}>
@@ -40,16 +43,16 @@ export default function MapSection() {
         <div style={{ display: "grid", gridTemplateColumns: "var(--map-cols)", gap: 1, background: "var(--border)", border: "1px solid var(--border)" }}>
           <iframe
             title="Google Maps — Sushi Syndicate"
-            src={`https://www.google.com/maps?q=${encodeURIComponent(CONTACTS.mapQuery)}&z=16&output=embed`}
+            src={`https://www.google.com/maps?q=${encodeURIComponent(contacts.mapQuery)}&z=16&output=embed`}
             loading="lazy"
             referrerPolicy="no-referrer-when-downgrade"
             style={{ width: "100%", minHeight: 380, height: "100%", border: 0, display: "block", filter: "grayscale(0.2) contrast(1.05)" }}
           />
 
           <div style={{ background: "var(--bg-card)", padding: "48px 40px", display: "flex", flexDirection: "column", justifyContent: "space-between", gap: 24 }}>
-            <ContactRow icon={<Icon.Pin width="20" height="20" />} label="Адреса" value={CONTACTS.address} />
-            <ContactRow icon={<Icon.Clock width="20" height="20" />} label="Час роботи" value={`Щодня з ${CONTACTS.hours}`} />
-            <ContactRow icon={<Icon.Phone width="20" height="20" />} label="Телефон" value={CONTACTS.phone} link={`tel:${CONTACTS.phone.replace(/[^+\d]/g, "")}`} />
+            <ContactRow icon={<Icon.Pin width="20" height="20" />} label="Адреса" value={contacts.address} />
+            <ContactRow icon={<Icon.Clock width="20" height="20" />} label="Час роботи" value={`Щодня з ${contacts.hours}`} />
+            <ContactRow icon={<Icon.Phone width="20" height="20" />} label="Телефон" value={contacts.phone} link={telHref(contacts.phone)} />
           </div>
         </div>
       </div>

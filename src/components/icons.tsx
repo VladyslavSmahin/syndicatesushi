@@ -70,6 +70,12 @@ export const Icon = {
       <path d="M8 13.9l8.5-6.8-6.5 8" />
     </svg>
   ),
+  Facebook: (p: P) => (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" strokeLinejoin="round" {...p}>
+      <rect x="3" y="3" width="18" height="18" rx="4" />
+      <path d="M14.5 8.2h-1.2c-.9 0-1.5.6-1.5 1.5v1.4m-1.6 0h4.6m-3 0V18" />
+    </svg>
+  ),
 };
 
 export function PhotoSlot({

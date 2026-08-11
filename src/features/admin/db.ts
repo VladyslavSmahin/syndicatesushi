@@ -6,6 +6,7 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { createClient } from "@/lib/supabase/client";
 import { parseDeliverySettings, DEFAULT_DELIVERY, type DeliverySettings } from "@/lib/delivery";
+import { parseContacts, type SiteContacts } from "@/lib/contacts";
 import { NAV_SPECIALS, parseNavVisibility } from "@/lib/navSpecials";
 import { parseGlossary, type Glossary } from "@/lib/glossary";
 import type { Badge } from "@/lib/types";
@@ -567,5 +568,26 @@ export function useDbGlossary() {
 
 export async function dbSaveGlossary(glossary: Glossary): Promise<string | undefined> {
   const { error } = await createClient().from("settings").upsert({ key: "glossary", value: glossary }, { onConflict: "key" });
+  return error?.message;
+}
+
+// ---------- Контакти закладу (settings, key='contacts') ----------
+export function useDbContacts() {
+  const supabase = useMemo(() => createClient(), []);
+  const [contacts, setContacts] = useState<SiteContacts>(parseContacts(null));
+  const [loading, setLoading] = useState(true);
+  const refetch = useCallback(async () => {
+    setLoading(true);
+    const { data, error } = await supabase.from("settings").select("value").eq("key", "contacts").maybeSingle();
+    if (error) console.error("contacts:", error.message);
+    setContacts(parseContacts(data?.value));
+    setLoading(false);
+  }, [supabase]);
+  useEffect(() => { refetch(); }, [refetch]);
+  return { contacts, loading, refetch };
+}
+
+export async function dbSaveContacts(contacts: SiteContacts): Promise<string | undefined> {
+  const { error } = await createClient().from("settings").upsert({ key: "contacts", value: contacts }, { onConflict: "key" });
   return error?.message;
 }

@@ -5,6 +5,7 @@ import type { PublicData, PubCategory, PubSubcategory, PubReview } from "@/featu
 import { parseDeliverySettings } from "@/lib/delivery";
 import { NAV_SPECIALS, parseNavVisibility } from "@/lib/navSpecials";
 import { parseGlossary } from "@/lib/glossary";
+import { parseContacts } from "@/lib/contacts";
 
 const num = (v: unknown) => (v == null ? 0 : Number(v));
 const r1 = (n: number) => Math.round(n * 10) / 10;
@@ -65,7 +66,7 @@ export async function fetchPublicData(): Promise<PublicData> {
       .order("sort_order"),
     supabase.from("promos").select("id, label, title, promo_price, old_price, banner_image_path, valid_from, valid_until, product:products(id)").eq("is_active", true).order("sort_order"),
     supabase.from("banners").select("id, image_path").eq("is_active", true).order("sort_order"),
-    supabase.from("settings").select("key, value").in("key", ["delivery", "nav_specials", "glossary"]),
+    supabase.from("settings").select("key, value").in("key", ["delivery", "nav_specials", "glossary", "contacts"]),
     supabase.from("reviews").select("id, author_name, rating, text, created_at").eq("status", "approved").order("created_at", { ascending: false }).limit(24),
   ]);
 
@@ -120,6 +121,7 @@ export async function fetchPublicData(): Promise<PublicData> {
   const delivery = parseDeliverySettings(settingsRows.find((r) => r.key === "delivery")?.value);
   const navVis = parseNavVisibility(settingsRows.find((r) => r.key === "nav_specials")?.value);
   const glossary = parseGlossary(settingsRows.find((r) => r.key === "glossary")?.value);
+  const contacts = parseContacts(settingsRows.find((r) => r.key === "contacts")?.value);
   // підписи спец-пунктів навігації беремо з глосарію
   const navLabel: Record<string, string> = { novynky: glossary.nav_novynky, aktsii: glossary.nav_aktsii };
   const navSpecials = NAV_SPECIALS.filter((sp) => navVis[sp.id]).map((sp) => ({ ...sp, label: navLabel[sp.id] ?? sp.label }));
@@ -128,5 +130,5 @@ export async function fetchPublicData(): Promise<PublicData> {
     id: r.id, authorName: r.author_name, rating: r.rating, text: r.text, createdAt: r.created_at,
   }));
 
-  return { catalog, categories, subcategories, promos, banners, delivery, navSpecials, glossary, reviews };
+  return { catalog, categories, subcategories, promos, banners, delivery, navSpecials, glossary, contacts, reviews };
 }
