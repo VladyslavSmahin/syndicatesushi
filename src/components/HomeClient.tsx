@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import Header from "./Header";
 import Hero from "./Hero";
 import Hits from "./Hits";
@@ -9,6 +9,7 @@ import ReviewForm from "./ReviewForm";
 import ReviewsList from "./ReviewsList";
 import MapSection from "./MapSection";
 import AboutSection from "./AboutSection";
+import SeoTextBlock from "./SeoTextBlock";
 import Footer from "./Footer";
 import CartDrawer from "./CartDrawer";
 import ProductModal from "./ProductModal";
@@ -27,6 +28,13 @@ export default function HomeClient() {
   const [modalItem, setModalItem] = useState<Product | null>(null);
   const [navFilter, setNavFilter] = useState<NavFilter | null>(null);
   const [menuOpen, setMenuOpen] = useState(false);
+
+  // повернення зі сторінки страви з «Перейти до кошика» — /?cart=1 відкриває кошик
+  useEffect(() => {
+    if (!new URLSearchParams(window.location.search).has("cart")) return;
+    setCartOpen(true);
+    window.history.replaceState(null, "", window.location.pathname + window.location.hash);
+  }, []);
 
   const scrollTo = (id: string) => {
     const el = document.getElementById(id);
@@ -71,6 +79,7 @@ export default function HomeClient() {
       <ReviewsList />
       <MapSection />
       <AboutSection />
+      <SeoTextBlock />
       <Footer />
       <CartDrawer isOpen={cartOpen} onClose={() => setCartOpen(false)} />
       <ProductModal item={modalItem} onClose={() => setModalItem(null)} onAdd={add} />

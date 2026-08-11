@@ -6,13 +6,14 @@ import { parseDeliverySettings } from "@/lib/delivery";
 import { NAV_SPECIALS, parseNavVisibility } from "@/lib/navSpecials";
 import { parseGlossary } from "@/lib/glossary";
 import { parseContacts } from "@/lib/contacts";
+import { parseSeoBlock } from "@/lib/seoBlock";
 
 const num = (v: unknown) => (v == null ? 0 : Number(v));
 const r1 = (n: number) => Math.round(n * 10) / 10;
 
 type PIRow = { grams: number | null; ingredient: { name: string; kcal: number | null; protein: number | null; fat: number | null; carbs: number | null } | null };
 type ProductRow = {
-  id: string; name: string; short_desc: string | null; full_desc: string | null; composition: string | null;
+  id: string; name: string; slug: string; short_desc: string | null; full_desc: string | null; composition: string | null;
   price: number | string; weight: string | null; pieces: string | null; badge: string | null; image_path: string | null;
   category: { slug: string } | null; subcategory: { slug: string } | null; items: PIRow[] | null;
 };
@@ -37,6 +38,7 @@ function mapProduct(p: ProductRow): Product {
   return {
     id: p.id,
     name: p.name,
+    slug: p.slug,
     desc: p.short_desc ?? "",
     fullDesc: p.full_desc ?? "",
     composition: p.composition ?? "",
@@ -60,13 +62,13 @@ export async function fetchPublicData(): Promise<PublicData> {
     supabase.from("subcategories").select("id, name, slug, sort_order, category:categories(slug)").eq("is_active", true).order("sort_order"),
     supabase
       .from("products")
-      .select("id, name, short_desc, full_desc, composition, price, weight, pieces, badge, image_path, sort_order, category:categories(slug), subcategory:subcategories(slug), items:product_ingredients(grams, ingredient:ingredients(name, kcal, protein, fat, carbs))")
+      .select("id, name, slug, short_desc, full_desc, composition, price, weight, pieces, badge, image_path, sort_order, category:categories(slug), subcategory:subcategories(slug), items:product_ingredients(grams, ingredient:ingredients(name, kcal, protein, fat, carbs))")
       .is("deleted_at", null)
       .eq("is_available", true)
       .order("sort_order"),
     supabase.from("promos").select("id, label, title, promo_price, old_price, banner_image_path, valid_from, valid_until, product:products(id)").eq("is_active", true).order("sort_order"),
     supabase.from("banners").select("id, image_path").eq("is_active", true).order("sort_order"),
-    supabase.from("settings").select("key, value").in("key", ["delivery", "nav_specials", "glossary", "contacts"]),
+    supabase.from("settings").select("key, value").in("key", ["delivery", "nav_specials", "glossary", "contacts", "seo_block"]),
     supabase.from("reviews").select("id, author_name, rating, text, created_at").eq("status", "approved").order("created_at", { ascending: false }).limit(24),
   ]);
 
@@ -122,6 +124,7 @@ export async function fetchPublicData(): Promise<PublicData> {
   const navVis = parseNavVisibility(settingsRows.find((r) => r.key === "nav_specials")?.value);
   const glossary = parseGlossary(settingsRows.find((r) => r.key === "glossary")?.value);
   const contacts = parseContacts(settingsRows.find((r) => r.key === "contacts")?.value);
+  const seoBlock = parseSeoBlock(settingsRows.find((r) => r.key === "seo_block")?.value);
   // підписи спец-пунктів навігації беремо з глосарію
   const navLabel: Record<string, string> = { novynky: glossary.nav_novynky, aktsii: glossary.nav_aktsii };
   const navSpecials = NAV_SPECIALS.filter((sp) => navVis[sp.id]).map((sp) => ({ ...sp, label: navLabel[sp.id] ?? sp.label }));
@@ -130,5 +133,18 @@ export async function fetchPublicData(): Promise<PublicData> {
     id: r.id, authorName: r.author_name, rating: r.rating, text: r.text, createdAt: r.created_at,
   }));
 
-  return { catalog, categories, subcategories, promos, banners, delivery, navSpecials, glossary, contacts, reviews };
+  return { catalog, categories, subcategories, promos, banners, delivery, navSpecials, glossary, contacts, seoBlock, reviews };
+}
+
+/** Слаги доступних товарів — лише для sitemap (без важкого джойну інгредієнтів). */
+export async function fetchProductSlugs(): Promise<string[]> {
+  const supabase = await createClient();
+  const { data, error } = await supabase
+    .from("products")
+    .select("slug")
+    .is("deleted_at", null)
+    .eq("is_available", true)
+    .order("sort_order");
+  if (error) { console.error("product slugs:", error.message); return []; }
+  return (data ?? []).map((r) => (r as { slug: string }).slug).filter(Boolean);
 }

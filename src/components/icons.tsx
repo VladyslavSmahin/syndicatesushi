@@ -81,22 +81,37 @@ export const Icon = {
 export function PhotoSlot({
   h = 280,
   photo,
+  alt = "",
+  eager = false,
 }: {
   h?: number | string;
   photo?: string | null;
+  /** опис фото для пошуку та скрінрідерів; порожній = декоративне */
+  alt?: string;
+  /** true для фото «над згином» (модалка) — без ліниві́ї загрузки */
+  eager?: boolean;
 }) {
   return (
     <div
       style={{
         width: "100%",
         height: h,
-        background: photo
-          ? `#0A0908 url(${photo}) center/cover no-repeat`
-          : "linear-gradient(135deg, #1A1714 0%, #0E0C0A 100%)",
+        background: photo ? "#0A0908" : "linear-gradient(135deg, #1A1714 0%, #0E0C0A 100%)",
         position: "relative",
         overflow: "hidden",
       }}
     >
+      {photo && (
+        // фото — саме <img>, а не background: інакше в нього немає alt і його не бачить пошук
+        // eslint-disable-next-line @next/next/no-img-element
+        <img
+          src={photo}
+          alt={alt}
+          loading={eager ? "eager" : "lazy"}
+          decoding="async"
+          style={{ position: "absolute", inset: 0, width: "100%", height: "100%", objectFit: "cover", display: "block" }}
+        />
+      )}
       {!photo && (
         <div
           style={{

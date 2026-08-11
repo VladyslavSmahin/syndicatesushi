@@ -1,6 +1,7 @@
 import { SITE_URL, SITE_NAME, CITY, DEFAULT_DESCRIPTION } from "@/lib/seo";
 import { telHref, type SiteContacts } from "@/lib/contacts";
 import type { DeliverySettings } from "@/lib/delivery";
+import type { SeoBlock } from "@/lib/seoBlock";
 
 /** «11:00 — 22:00» → { opens: "11:00", closes: "22:00" }; невдалий парс → null. */
 function parseHours(hours: string): { opens: string; closes: string } | null {
@@ -21,10 +22,12 @@ function streetOnly(address: string): string {
 export default function StructuredData({
   contacts,
   delivery,
+  seoBlock,
   priceRange,
 }: {
   contacts: SiteContacts;
   delivery: DeliverySettings;
+  seoBlock?: SeoBlock;
   priceRange?: string;
 }) {
   const hours = parseHours(contacts.hours);
@@ -87,11 +90,24 @@ export default function StructuredData({
     publisher: { "@id": `${SITE_URL}/#restaurant` },
   };
 
+  // FAQ віддаємо Google лише коли він реально показаний на сторінці — інакше це порушення правил
+  const faq = seoBlock?.enabled && seoBlock.faq.length
+    ? {
+        "@context": "https://schema.org",
+        "@type": "FAQPage",
+        mainEntity: seoBlock.faq.map((f) => ({
+          "@type": "Question",
+          name: f.q,
+          acceptedAnswer: { "@type": "Answer", text: f.a },
+        })),
+      }
+    : null;
+
   return (
     <script
       type="application/ld+json"
       // дані наші (з БД), не користувацький ввід — але лишаємо екранування «<» на випадок HTML у полях
-      dangerouslySetInnerHTML={{ __html: JSON.stringify([restaurant, website]).replace(/</g, "\\u003c") }}
+      dangerouslySetInnerHTML={{ __html: JSON.stringify(faq ? [restaurant, website, faq] : [restaurant, website]).replace(/</g, "\\u003c") }}
     />
   );
 }

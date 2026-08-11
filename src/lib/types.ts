@@ -17,6 +17,8 @@ export interface Product {
   /** ідентифікатор товару (рядок — узгоджено з адмін-сховищем / майбутніми uuid Supabase) */
   id: string;
   name: string;
+  /** ЧПУ-адреса товару: /menu/<slug> */
+  slug: string;
   /** короткий опис на картці */
   desc: string;
   /** повний опис у модалці */

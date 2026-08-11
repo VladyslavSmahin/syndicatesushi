@@ -58,7 +58,7 @@ export default function GlossaryPage() {
                   <div key={e.key} className={s.field}>
                     <span className={s.fieldLabel}>{e.label}</span>
                     {e.multiline ? (
-                      <textarea className={s.input} placeholder={e.default} rows={8} style={{ resize: "vertical", lineHeight: 1.6 }}
+                      <textarea className={s.input} placeholder={e.default} rows={8} style={{ resize: "vertical", lineHeight: 1.6, maxWidth: "100%" }}
                         value={draft[e.key] ?? ""} onChange={(ev) => setDraft((d) => ({ ...d, [e.key]: ev.target.value }))} />
                     ) : (
                       <input className={s.input} placeholder={e.default}
@@ -74,7 +74,7 @@ export default function GlossaryPage() {
             </div>
           ))}
 
-          <div style={{ display: "flex", gap: 10, alignItems: "center" }}>
+          <div style={{ display: "flex", gap: 10, alignItems: "center", flexWrap: "wrap" }}>
             <button className={s.btn} onClick={save} disabled={saving || !dirty}>{saving ? "Збереження…" : "Зберегти"}</button>
             <button className={`${s.btn} ${s.btnGhost}`} onClick={reset} disabled={saving}>Скинути до дефолтних</button>
             {saved && <span className={s.hint} style={{ color: "#8fc98f" }}>Збережено ✓</span>}

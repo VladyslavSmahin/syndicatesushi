@@ -75,7 +75,7 @@ export default function ContactsPage() {
             </div>
           ))}
 
-          <div style={{ display: "flex", gap: 10, alignItems: "center" }}>
+          <div style={{ display: "flex", gap: 10, alignItems: "center", flexWrap: "wrap" }}>
             <button className={s.btn} onClick={save} disabled={saving || !dirty}>{saving ? "Збереження…" : "Зберегти"}</button>
             <button className={`${s.btn} ${s.btnGhost}`} onClick={reset} disabled={saving}>Скинути до дефолтних</button>
             {saved && <span className={s.hint} style={{ color: "#8fc98f" }}>Збережено ✓</span>}

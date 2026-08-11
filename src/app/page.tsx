@@ -14,7 +14,7 @@ export default async function Page() {
 
   return (
     <PublicDataProvider value={data}>
-      <StructuredData contacts={data.contacts} delivery={data.delivery} priceRange={priceRange} />
+      <StructuredData contacts={data.contacts} delivery={data.delivery} seoBlock={data.seoBlock} priceRange={priceRange} />
       <HomeClient />
     </PublicDataProvider>
   );

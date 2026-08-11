@@ -9,6 +9,7 @@ import type { Product, Promo, Banner, NavCategory } from "@/lib/types";
 import { DEFAULT_DELIVERY, type DeliverySettings } from "@/lib/delivery";
 import { GLOSSARY_DEFAULTS, type Glossary } from "@/lib/glossary";
 import { CONTACTS_DEFAULTS, type SiteContacts } from "@/lib/contacts";
+import { DEFAULT_SEO_BLOCK, type SeoBlock } from "@/lib/seoBlock";
 
 export interface PubCategory {
   id: string;
@@ -45,10 +46,11 @@ export interface PublicData {
   navSpecials: NavCategory[];
   glossary: Glossary;
   contacts: SiteContacts;
+  seoBlock: SeoBlock;
   reviews: PubReview[];
 }
 
-const Ctx = createContext<PublicData>({ catalog: [], categories: [], subcategories: [], promos: [], banners: [], delivery: DEFAULT_DELIVERY, navSpecials: [], glossary: GLOSSARY_DEFAULTS, contacts: CONTACTS_DEFAULTS, reviews: [] });
+const Ctx = createContext<PublicData>({ catalog: [], categories: [], subcategories: [], promos: [], banners: [], delivery: DEFAULT_DELIVERY, navSpecials: [], glossary: GLOSSARY_DEFAULTS, contacts: CONTACTS_DEFAULTS, seoBlock: DEFAULT_SEO_BLOCK, reviews: [] });
 
 export function PublicDataProvider({ value, children }: { value: PublicData; children: React.ReactNode }) {
   return <Ctx.Provider value={value}>{children}</Ctx.Provider>;
@@ -94,6 +96,11 @@ export function usePublicReviews(): PubReview[] {
 /** Значення глосарію за ключем (з фолбеком на дефолт). */
 export function useGloss(key: string): string {
   return useContext(Ctx).glossary[key] ?? GLOSSARY_DEFAULTS[key] ?? key;
+}
+
+/** SEO-блок унизу головної — редагується в адмінці. */
+export function useSeoBlock(): SeoBlock {
+  return useContext(Ctx).seoBlock;
 }
 
 /** Контакти закладу (телефон, адреса, соцмережі) — редагуються в адмінці. */

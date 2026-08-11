@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect } from "react";
+import Link from "next/link";
 import { Icon, PhotoSlot } from "./icons";
 import type { Product } from "@/lib/types";
 
@@ -57,7 +58,7 @@ export default function ProductModal({
         </button>
 
         <div style={{ position: "relative", minHeight: "var(--modal-photo-h, 320px)", aspectRatio: "var(--modal-photo-ar, 1 / 1)" }}>
-          <PhotoSlot h="100%" photo={item.photo} />
+          <PhotoSlot h="100%" photo={item.photo} alt={`${item.name} — суші та роли, Тульчин`} eager />
           {item.badge && (
             <div
               style={{
@@ -102,6 +103,12 @@ export default function ProductModal({
             <button className="btn-primary" style={{ width: "100%" }} onClick={() => { onAdd(item); onClose(); }}>
               Додати в кошик
             </button>
+            <Link
+              href={`/menu/${item.slug}`}
+              style={{ display: "block", marginTop: 10, textAlign: "center", fontSize: 11, letterSpacing: 1.5, textTransform: "uppercase", color: "var(--text-secondary)", textDecoration: "underline", textUnderlineOffset: 3 }}
+            >
+              Сторінка страви
+            </Link>
           </div>
         </div>
       </div>
