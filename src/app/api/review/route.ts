@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { sendTelegramMessage, esc } from "@/lib/telegram";
+import { SITE_URL } from "@/lib/seo";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { rateLimit, clientIp } from "@/lib/rateLimit";
 
@@ -55,6 +56,9 @@ export async function POST(req: Request) {
     `⭐ <b>Оцінка:</b> ${stars}`,
     "",
     esc(text),
+    "",
+    // відгук лежить у статусі «на модерації» — посилання веде одразу туди, де його схвалюють
+    `👉 <a href="${SITE_URL}/admin/reviews">Модерація відгуків</a>`,
   ].join("\n");
 
   const sent = await sendTelegramMessage(msg);
