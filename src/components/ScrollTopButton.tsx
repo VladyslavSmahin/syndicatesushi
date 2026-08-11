@@ -4,8 +4,7 @@ import { useEffect, useState } from "react";
 
 /**
  * Кнопка «вгору» — одна на весь проєкт (сайт + адмінка), підключена в root layout.
- * Стоїть знизу зліва; на сторінці меню зсувається праворуч від FAB «Фільтр»
- * (його фактичну ширину FullMenu пише у --fab-w).
+ * Стоїть знизу справа, на одній лінії з FAB «Фільтр» (той — зліва).
  */
 export default function ScrollTopButton() {
   const [show, setShow] = useState(false);
@@ -27,14 +26,13 @@ export default function ScrollTopButton() {
       className="fade-in"
       style={{
         position: "fixed",
-        left: "calc(var(--scrolltop-left, 18px) + var(--fab-w, 0px))",
-        bottom: "var(--scrolltop-bottom, 24px)",
+        right: "var(--fab-right, 18px)",
+        bottom: "var(--fab-bottom, 24px)",
         zIndex: 95, width: 40, height: 40, borderRadius: 20,
         background: "var(--bg-elevated)", border: "1px solid var(--border-light)",
         color: "var(--text-primary)", cursor: "pointer",
         display: "flex", alignItems: "center", justifyContent: "center",
         boxShadow: "0 6px 18px rgba(0,0,0,0.45)",
-        transition: "left 0.2s",
       }}
     >
       <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">

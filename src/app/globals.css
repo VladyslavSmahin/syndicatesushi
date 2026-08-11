@@ -44,8 +44,10 @@
   --py: 60px;           /* вертикальні відступи секцій */
   --hero-pt: 150px;     /* верхній відступ hero (під фіксованою шапкою) */
   --form-2col: 1fr 1fr; /* двоколонкові поля форм → 1fr на мобільному */
-  --scrolltop-left: 18px;   /* кнопка «вгору»: відступ зліва */
-  --scrolltop-bottom: 24px; /* кнопка «вгору»: відступ знизу */
+  /* плаваючі кнопки: «Фільтр» зліва, «вгору» справа — на одній лінії */
+  --fab-left: 18px;
+  --fab-right: 18px;
+  --fab-bottom: 24px;
   --head-mb: 32px;      /* відступ під заголовком секції */
   --logo-h: 48px;       /* висота лого у шапці */
 }
@@ -224,8 +226,9 @@ textarea.form-input { resize: vertical; min-height: 120px; font-family: var(--fo
     --hero-pt: 120px;
     --form-2col: 1fr;
     --head-mb: 16px;
-    --scrolltop-left: 14px;   /* в один ряд із FAB «Фільтр» */
-    --scrolltop-bottom: 78px; /* над нижньою панеллю категорій */
+    --fab-left: 14px;
+    --fab-right: 14px;
+    --fab-bottom: 78px;  /* над нижньою панеллю категорій */
   }
   .desktop-only { display: none !important; }
   .mobile-only { display: initial; }
