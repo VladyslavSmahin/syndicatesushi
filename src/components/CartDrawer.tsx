@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState, type CSSProperties } from "react";
+import { useEffect, useMemo, useRef, useState, type CSSProperties } from "react";
 import Link from "next/link";
 import { Icon } from "./icons";
 import { useCart } from "@/features/cart/CartContext";
@@ -9,6 +9,11 @@ import PickupPicker, { dayOptions, ymd } from "./PickupPicker";
 import type { Product, CartItem } from "@/lib/types";
 
 const EXTRAS_CATEGORY = "додатково";
+// категорії, для яких потрібні набори приборів (палички, серветки)
+const CUTLERY_CATEGORIES = ["сети", "роли", "hot/wok", "боули"];
+const CUTLERY_MAX = 6;
+/** Скільки наборів пропонуємо за замовчуванням, залежно від суми замовлення. */
+const autoCutlery = (sum: number) => (sum >= 2000 ? 4 : sum >= 1500 ? 3 : sum >= 1000 ? 2 : 1);
 
 const qtyBtn: CSSProperties = {
   width: 32, height: 32, background: "transparent", border: "none", color: "var(--text-primary)",
@@ -43,6 +48,8 @@ export default function CartDrawer({ isOpen, onClose }: { isOpen: boolean; onClo
     [catalog]
   );
   const [step, setStep] = useState<Step>("cart");
+  // категорія товару за id — щоб зрозуміти, чи потрібні прибори
+  const catById = useMemo(() => new Map(catalog.map((p) => [p.id, p.category] as const)), [catalog]);
 
   const [delivery, setDelivery] = useState<Delivery>("delivery");
   const [name, setName] = useState("");
@@ -59,6 +66,8 @@ export default function CartDrawer({ isOpen, onClose }: { isOpen: boolean; onClo
   const [promoMsg, setPromoMsg] = useState<{ ok: boolean; text: string } | null>(null);
   const [promoChecking, setPromoChecking] = useState(false);
   const [promoOpen, setPromoOpen] = useState(false); // поле промокоду згорнуте за замовчуванням
+  // прибори: null = авто за сумою; число = обрано вручну
+  const [cutlery, setCutlery] = useState<number | null>(null);
   const [consent, setConsent] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState("");
@@ -112,6 +121,9 @@ export default function CartDrawer({ isOpen, onClose }: { isOpen: boolean; onClo
     }
   };
 
+  const needsCutlery = items.some((i) => CUTLERY_CATEGORIES.includes(catById.get(i.id) ?? ""));
+  const cutleryQty = cutlery ?? autoCutlery(total);
+
   const addrOk = delivery === "pickup" || !!address.trim();
   const phoneOk = isPhoneValid(phone);
   const canSubmit = !!name.trim() && phoneOk && addrOk && consent;
@@ -140,13 +152,14 @@ export default function CartDrawer({ isOpen, onClose }: { isOpen: boolean; onClo
           delivery, name, phone, address: fullAddress, comment,
           pickupDate: delivery === "pickup" ? pickupDate : "",
           pickupTime: delivery === "pickup" ? pickupTime : "",
+          cutlery: needsCutlery ? cutleryQty : 0,
           promo: promoInfo?.code ?? "", consent, items,
         }),
       });
       if (!res.ok) throw new Error("request_failed");
       setStep("done");
       clear();
-      setPromo(""); setPromoInfo(null); setPromoMsg(null); setPromoOpen(false);
+      setPromo(""); setPromoInfo(null); setPromoMsg(null); setPromoOpen(false); setCutlery(null);
     } catch {
       setError("Не вдалося надіслати замовлення. Спробуйте ще раз або зателефонуйте нам.");
     } finally {
@@ -240,10 +253,14 @@ export default function CartDrawer({ isOpen, onClose }: { isOpen: boolean; onClo
                 ))}
               </div>
 
-              <input className="form-input" placeholder="Ім'я *" value={name} onChange={(e) => setName(e.target.value)} />
-              <input className="form-input" type="tel" inputMode="numeric" autoComplete="tel"
-                placeholder="093 728 42 98" value={phone}
-                onChange={(e) => setPhone(formatPhone(e.target.value))} />
+              {/* імʼя та телефон — в один рядок, кожне поле не тягне цілу ширину */}
+              <div style={{ display: "flex", gap: 8 }}>
+                <input className="form-input" placeholder="Ім'я *" value={name}
+                  onChange={(e) => setName(e.target.value)} style={{ flex: 1, minWidth: 0 }} />
+                <input className="form-input" type="tel" inputMode="numeric" autoComplete="tel"
+                  placeholder="093 728 42 98" value={phone}
+                  onChange={(e) => setPhone(formatPhone(e.target.value))} style={{ flex: 1, minWidth: 0 }} />
+              </div>
 
               {delivery === "pickup" && (
                 <PickupRow
@@ -261,6 +278,10 @@ export default function CartDrawer({ isOpen, onClose }: { isOpen: boolean; onClo
                     Доставка — від 100 грн, далі залежно від відстані. Точну вартість підтвердимо при дзвінку.
                   </p>
                 </div>
+              )}
+
+              {needsCutlery && (
+                <CutleryRow value={cutleryQty} onChange={setCutlery} />
               )}
 
               <div>
@@ -369,6 +390,64 @@ export default function CartDrawer({ isOpen, onClose }: { isOpen: boolean; onClo
         />
       )}
     </>
+  );
+}
+
+/** Кількість наборів приборів: за замовчуванням рахується від суми, можна змінити. */
+function CutleryRow({ value, onChange }: { value: number; onChange: (n: number) => void }) {
+  const [open, setOpen] = useState(false);
+  const ref = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (!open) return;
+    const onDown = (e: MouseEvent) => { if (!ref.current?.contains(e.target as Node)) setOpen(false); };
+    document.addEventListener("mousedown", onDown);
+    return () => document.removeEventListener("mousedown", onDown);
+  }, [open]);
+
+  return (
+    <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12 }}>
+      <div>
+        <span style={{ display: "block", fontSize: 10, letterSpacing: 2, textTransform: "uppercase", color: "var(--text-secondary)" }}>
+          Прибори
+        </span>
+        <span style={{ fontSize: 11, color: "var(--text-secondary)", opacity: 0.75 }}>палички та серветки</span>
+      </div>
+
+      <div ref={ref} style={{ position: "relative", width: 108, flexShrink: 0 }}>
+        <button type="button" onClick={() => setOpen((v) => !v)} aria-haspopup="listbox" aria-expanded={open}
+          style={{
+            width: "100%", display: "flex", alignItems: "center", justifyContent: "space-between", gap: 8,
+            padding: "12px 14px", cursor: "pointer", background: "var(--bg-card)",
+            border: `1px solid ${open ? "var(--accent)" : "var(--border-light)"}`,
+            color: "var(--text-primary)", fontFamily: "var(--font-body)", fontSize: 13, fontWeight: 300,
+          }}>
+          {value} шт
+          <span aria-hidden style={{ color: "var(--text-secondary)", fontSize: 11, transition: "transform 0.2s", transform: open ? "rotate(180deg)" : "none" }}>▾</span>
+        </button>
+
+        {open && (
+          <div role="listbox"
+            style={{
+              position: "absolute", right: 0, top: "calc(100% + 6px)", width: "100%", zIndex: 10,
+              background: "var(--bg-card)", border: "1px solid var(--border-light)",
+              boxShadow: "0 12px 32px rgba(0,0,0,0.55)", padding: 4,
+            }}>
+            {Array.from({ length: CUTLERY_MAX }, (_, i) => i + 1).map((n) => (
+              <button key={n} type="button" role="option" aria-selected={n === value}
+                onClick={() => { onChange(n); setOpen(false); }}
+                style={{
+                  width: "100%", padding: "9px 10px", textAlign: "left", cursor: "pointer",
+                  background: "transparent", border: "none", fontFamily: "var(--font-body)", fontSize: 13,
+                  color: n === value ? "var(--accent)" : "var(--text-primary)",
+                }}>
+                {n} шт
+              </button>
+            ))}
+          </div>
+        )}
+      </div>
+    </div>
   );
 }
 

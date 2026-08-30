@@ -19,6 +19,8 @@ interface OrderBody {
   /** самовивіз: бажаний день (YYYY-MM-DD) і час (HH:MM; порожньо = по готовності) */
   pickupDate?: string;
   pickupTime?: string;
+  /** кількість наборів приборів (0 = не потрібні) */
+  cutlery?: number;
   promo?: string;
   consent?: boolean;
   items: IncomingItem[];
@@ -44,6 +46,7 @@ function formatPickup(date?: string, time?: string): string {
   return t ? `${day} о ${t}` : `${day}, по готовності`;
 }
 
+const MAX_CUTLERY = 6;      // макс. наборів приборів
 const MAX_LINE_ITEMS = 100; // макс. різних позицій у замовленні
 const MAX_QTY = 100;        // макс. кількість однієї позиції
 
@@ -60,7 +63,7 @@ export async function POST(req: Request) {
     return NextResponse.json({ ok: false, error: "bad_json" }, { status: 400 });
   }
 
-  const { delivery, name, phone, address, comment, pickupDate, pickupTime, promo, consent, items } = body;
+  const { delivery, name, phone, address, comment, pickupDate, pickupTime, cutlery, promo, consent, items } = body;
 
   if (!name?.trim() || !phone?.trim() || !Array.isArray(items) || items.length === 0) {
     return NextResponse.json({ ok: false, error: "missing_fields" }, { status: 400 });
@@ -79,6 +82,9 @@ export async function POST(req: Request) {
   }
   // час самовивозу: приймаємо лише строгий формат, решту ігноруємо
   const pickup = delivery === "pickup" ? formatPickup(pickupDate, pickupTime) : "";
+
+  // прибори: ціле число в межах 0…MAX_CUTLERY, решту ігноруємо
+  const cutleryQty = Math.min(MAX_CUTLERY, Math.max(0, Math.floor(Number(cutlery) || 0)));
 
   // ліміти довжини текстових полів (анти-спам/абʼюз)
   if (name.length > 100 || phone.length > 30 || (address?.length ?? 0) > 300 || (comment?.length ?? 0) > 1000) {
@@ -181,7 +187,7 @@ export async function POST(req: Request) {
         delivery_type: delivery,
         address: delivery === "delivery" ? address?.trim() ?? null : null,
         // окремої колонки під час самовивозу немає — дописуємо його першим рядком коментаря
-        comment: [pickup && `Самовивіз: ${pickup}`, comment?.trim()].filter(Boolean).join("\n") || null,
+        comment: [pickup && `Самовивіз: ${pickup}`, cutleryQty > 0 && `Прибори: ${cutleryQty} шт`, comment?.trim()].filter(Boolean).join("\n") || null,
         subtotal,
         promo_code_id: promoCodeId,
         discount,
@@ -213,6 +219,7 @@ export async function POST(req: Request) {
     `🚚 <b>Спосіб:</b> ${delivery === "delivery" ? "Доставка" : "Самовивіз"}`,
     delivery === "delivery" && address ? `📍 <b>Адреса:</b> ${esc(address)}` : null,
     pickup ? `🕒 <b>Забрати:</b> ${esc(pickup)}` : null,
+    cutleryQty > 0 ? `🥢 <b>Прибори:</b> ${cutleryQty} шт` : null,
     code ? `🎟 <b>Промокод:</b> ${esc(code)}${discount ? ` (−${discount} грн)` : " (не застосовано)"}` : null,
     comment?.trim() ? `💬 <b>Коментар:</b> ${esc(comment)}` : null,
     "",
