@@ -1,13 +1,16 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import Modal from "@/components/admin/Modal";
+import AdminSelect from "@/components/admin/AdminSelect";
+import OrderHandle from "@/components/admin/OrderHandle";
+import { useDragOrder } from "@/components/admin/useDragOrder";
 import CatalogDownloadModal from "@/components/admin/CatalogDownloadModal";
 import { downscaleImage } from "@/lib/clientImage";
 import { computePortion } from "@/features/nutrition";
 import {
   useDbProducts, useDbIngredients, useDbCategories, useDbSubcategories,
-  dbCreateProduct, dbUpdateProduct, dbSetAvailable, dbSoftDelete, dbCreateIngredient, dbUploadImage,
+  dbCreateProduct, dbUpdateProduct, dbSetAvailable, dbSoftDelete, dbCreateIngredient, dbUploadImage, dbReorderProducts,
   type DbProduct, type ProductInput,
 } from "@/features/admin/db";
 import { useAdminAuth } from "@/features/admin/AdminAuthContext";
@@ -41,7 +44,10 @@ const toInput = (d: Draft): ProductInput => ({
 });
 
 export default function ProductsPage() {
-  const { products, loading, refetch } = useDbProducts();
+  const { products: dbProducts, loading, refetch } = useDbProducts();
+  // локальна копія — щоб перетягування відображалось миттєво, до відповіді БД
+  const [products, setProducts] = useState<DbProduct[]>([]);
+  useEffect(() => { setProducts(dbProducts); }, [dbProducts]);
   const { ingredients, refetch: refetchIngredients } = useDbIngredients();
   const { categories } = useDbCategories();
   const { subcategories } = useDbSubcategories();
@@ -51,7 +57,6 @@ export default function ProductsPage() {
   const [editing, setEditing] = useState<DbProduct | null>(null);
   const [draft, setDraft] = useState<Draft | null>(null);
   const [newIng, setNewIng] = useState("");
-  const [setPick, setSetPick] = useState("");
   const [saving, setSaving] = useState(false);
   const [photoBusy, setPhotoBusy] = useState(false);
   const [showCatalog, setShowCatalog] = useState(false);
@@ -136,6 +141,25 @@ export default function ProductsPage() {
     return gs;
   }, [categories, filtered]);
 
+  // Перетягування рядків міняє sort_order у межах групи (категорії).
+  // Під час пошуку вимкнено: видно лише частину групи, і порядок би поплив.
+  const reorderLocked = !!query.trim();
+  const applyOrder = async (ids: string[]) => {
+    setProducts((prev) => {
+      const byId = new Map(prev.map((p) => [p.id, p] as const));
+      const moved = ids.map((id) => byId.get(id)).filter((p): p is DbProduct => !!p);
+      const rest = prev.filter((p) => !ids.includes(p.id));
+      // ставимо перевпорядковану групу на місце першого її елемента
+      const at = prev.findIndex((p) => ids.includes(p.id));
+      const next = [...rest];
+      next.splice(at, 0, ...moved);
+      return next;
+    });
+    await dbReorderProducts(ids);
+    refetch();
+  };
+  const drag = useDragOrder(applyOrder);
+
   const openNew = () => {
     setEditing(null);
     const cat = catFilter !== "all" && catFilter !== "__none__" ? catFilter : categories[0]?.id ?? "";
@@ -150,13 +174,13 @@ export default function ProductsPage() {
       ingredientIds: [...p.ingredientIds], ingredientGrams: { ...p.ingredientGrams }, setItemIds: [...p.setItemIds],
     });
   };
-  const close = () => { setDraft(null); setEditing(null); setNewIng(""); setSetPick(""); };
+  const close = () => { setDraft(null); setEditing(null); setNewIng(""); };
 
   // «Склад» формується автоматично з обраних інгредієнтів (для сетів — з ролів)
   const compositionAuto = !draft
     ? ""
     : (setyCat && draft.categoryId === setyCat.id)
-      ? draft.setItemIds.map((id) => prodById.get(id)?.name ?? "").filter(Boolean).join(", ")
+      ? setComposition(draft.setItemIds.map((id) => prodById.get(id)?.name ?? "").filter(Boolean))
       : draft.ingredientIds.map((id) => ingName(id)).filter(Boolean).join(", ").toLowerCase();
 
   const save = async () => {
@@ -226,12 +250,10 @@ export default function ProductsPage() {
     setNewIng("");
   };
 
-  const addSetItem = (id: string) => setDraft((d) => (d && id && !d.setItemIds.includes(id) ? { ...d, setItemIds: [...d.setItemIds, id] } : d));
-  const removeSetItem = (id: string) => setDraft((d) => (d ? { ...d, setItemIds: d.setItemIds.filter((x) => x !== id) } : d));
-  const addPickedRoll = () => {
-    const r = rollOptions.find((o) => o.name === setPick.trim());
-    if (r) { addSetItem(r.id); setSetPick(""); }
-  };
+  // один і той самий рол можна додати кілька разів — прибираємо за позицією у списку
+  const addSetItem = (id: string) => setDraft((d) => (d && id ? { ...d, setItemIds: [...d.setItemIds, id] } : d));
+  const removeSetItemAt = (index: number) =>
+    setDraft((d) => (d ? { ...d, setItemIds: d.setItemIds.filter((_, i) => i !== index) } : d));
   const setItemsTotal = draft ? draft.setItemIds.reduce((sum, id) => sum + (prodById.get(id)?.price ?? 0), 0) : 0;
 
   return (
@@ -240,6 +262,8 @@ export default function ProductsPage() {
         <p className={s.hint} style={{ flex: 1, margin: 0 }}>
           Товари згруповані за категоріями. Для сетів (категорія «Сети») склад задається ролами,
           для решти — інгредієнтами (за ними працює фільтр на сайті).
+          Порядок товарів у категорії — перетягніть рядок за ⠿ або стрілками ▲▼; так само вони
+          показуються на сайті.
         </p>
         <button className={`${s.btn} ${s.btnGhost} ${s.btnSmall}`} style={{ flexShrink: 0 }} onClick={() => setShowCatalog(true)} disabled={!products.length}>↓ Каталог PDF</button>
       </div>
@@ -313,12 +337,26 @@ export default function ProductsPage() {
                 <tr><td colSpan={6} style={{ padding: 20, color: "var(--text-secondary)" }}>Завантаження…</td></tr>
               ) : groups.length === 0 ? (
                 <tr><td colSpan={6} style={{ padding: 20, color: "var(--text-secondary)" }}>Немає товарів.</td></tr>
-              ) : groups.map((g) => (
+              ) : groups.map((g) => {
+                const ids = g.items.map((p) => p.id);
+                return (
                 <GroupRows key={g.id} name={g.name} count={g.items.length}>
-                  {g.items.map((p) => (
-                    <tr key={p.id}>
+                  {g.items.map((p, i) => (
+                    <tr
+                      key={p.id}
+                      {...(reorderLocked ? {} : drag.rowProps(ids, p.id))}
+                      className={`${drag.dragId === p.id ? s.dragging : ""} ${drag.overId === p.id ? s.dropTarget : ""}`}
+                    >
                       <td>
                         <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+                          <OrderHandle
+                            handleProps={drag.handleProps(p.id)}
+                            disabled={reorderLocked}
+                            canUp={i > 0}
+                            canDown={i < ids.length - 1}
+                            onUp={() => drag.move(ids, p.id, -1)}
+                            onDown={() => drag.move(ids, p.id, 1)}
+                          />
                           <div style={{ width: 38, height: 38, borderRadius: 6, flexShrink: 0, border: "1px solid var(--border)", background: p.photo ? `#0A0908 url(${p.photo}) center/cover no-repeat` : "var(--bg-elevated)" }} />
                           <span style={{ fontFamily: "var(--font-display)", fontSize: 15, fontWeight: 600, flex: 1, minWidth: 0 }}>{p.name}</span>
                           {/* моб.: бейдж + ціна у верхньому рядку */}
@@ -331,7 +369,7 @@ export default function ProductsPage() {
                       <td data-label="Ціна" className={s.colHideMobile}>{p.price} грн</td>
                       <td className={s.composCell} style={{ color: "var(--text-secondary)", fontSize: 11, maxWidth: 320 }}>
                         {p.setItemIds.length
-                          ? `🍱 ${p.setItemIds.map(prodName).join(", ")}`
+                          ? `🍱 ${setComposition(p.setItemIds.map(prodName))}`
                           : p.ingredientIds.length ? p.ingredientIds.map(ingName).filter(Boolean).join(", ") : "—"}
                       </td>
                       <td data-label="Бейдж" className={s.colHideMobile}>{p.badge ? <span className={`${s.pill} ${s.pillEditor}`}>{p.badge}</span> : "—"}</td>
@@ -353,7 +391,8 @@ export default function ProductsPage() {
                     </tr>
                   ))}
                 </GroupRows>
-              ))}
+                );
+              })}
             </tbody>
           </table>
         </div>
@@ -396,17 +435,21 @@ export default function ProductsPage() {
             </Field>
             <div style={{ display: "flex", gap: 14, flexWrap: "wrap" }}>
               <Field label="Категорія" grow>
-                <select className={s.input} value={draft.categoryId}
-                  onChange={(e) => setDraft((d) => (d ? { ...d, categoryId: e.target.value, subcategoryId: "" } : d))}>
-                  {categories.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
-                </select>
+                <AdminSelect
+                  value={draft.categoryId}
+                  onChange={(v) => setDraft((d) => (d ? { ...d, categoryId: v, subcategoryId: "" } : d))}
+                  options={categories.map((c) => ({ value: c.id, label: c.name }))}
+                  placeholder="Оберіть категорію"
+                />
               </Field>
               {!isSetDraft && draftSubs.length > 0 && (
                 <Field label="Підкатегорія" grow>
-                  <select className={s.input} value={draft.subcategoryId} onChange={(e) => set("subcategoryId", e.target.value)}>
-                    <option value="">— Без підкатегорії —</option>
-                    {draftSubs.map((sc) => <option key={sc.id} value={sc.id}>{sc.name}</option>)}
-                  </select>
+                  <AdminSelect
+                    value={draft.subcategoryId}
+                    onChange={(v) => set("subcategoryId", v)}
+                    options={[{ value: "", label: "— Без підкатегорії —" }, ...draftSubs.map((sc) => ({ value: sc.id, label: sc.name }))]}
+                    placeholder="— Без підкатегорії —"
+                  />
                 </Field>
               )}
               <Field label="Ціна, грн">
@@ -436,33 +479,35 @@ export default function ProductsPage() {
                 <input className={s.input} placeholder="8 шт" value={draft.pieces} onChange={(e) => set("pieces", e.target.value)} />
               </Field>
               <Field label="Бейдж">
-                <select className={s.input} value={draft.badge} onChange={(e) => set("badge", e.target.value as Badge)}>
-                  {BADGES.map((b) => <option key={b} value={b}>{b || "—"}</option>)}
-                </select>
+                <AdminSelect
+                  value={draft.badge}
+                  onChange={(v) => set("badge", v as Badge)}
+                  options={BADGES.map((b) => ({ value: b, label: b || "— Без бейджа —" }))}
+                  placeholder="— Без бейджа —"
+                />
               </Field>
             </div>
 
             {isSetDraft ? (
               <Field label="Ролы в сеті">
-                <div style={{ display: "flex", gap: 8 }}>
-                  <input className={s.input} list="roll-options" placeholder="Почніть вводити рол…"
-                    value={setPick} onChange={(e) => setSetPick(e.target.value)}
-                    onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); addPickedRoll(); } }} />
-                  <datalist id="roll-options">
-                    {rollOptions.filter((r) => !draft.setItemIds.includes(r.id)).map((r) => <option key={r.id} value={r.name} />)}
-                  </datalist>
-                  <button type="button" className={`${s.btn} ${s.btnGhost}`} onClick={addPickedRoll}
-                    disabled={!rollOptions.some((o) => o.name === setPick.trim())}>+ Додати</button>
-                </div>
+                <AdminSelect
+                  value={null}
+                  onChange={addSetItem}
+                  options={rollOptions.map((r) => ({ value: r.id, label: r.name, hint: `${r.price} грн` }))}
+                  placeholder="+ Додати рол у сет"
+                  searchPlaceholder="Почніть вводити назву рола…"
+                  resetOnPick
+                  keepOpen
+                />
 
                 {draft.setItemIds.length > 0 ? (
                   <div style={{ marginTop: 12, display: "flex", flexDirection: "column", gap: 6 }}>
-                    {draft.setItemIds.map((id) => (
-                      <div key={id} style={{ display: "flex", alignItems: "center", gap: 10, padding: "8px 12px", background: "var(--bg-elevated)", border: "1px solid var(--border)", borderRadius: 6 }}>
+                    {draft.setItemIds.map((id, i) => (
+                      <div key={`${id}-${i}`} style={{ display: "flex", alignItems: "center", gap: 10, padding: "8px 12px", background: "var(--bg-elevated)", border: "1px solid var(--border)", borderRadius: 6 }}>
                         <span style={{ flex: 1, fontSize: 13, color: "var(--text-primary)" }}>{prodName(id)}</span>
                         <span style={{ fontSize: 12, color: "var(--text-secondary)", whiteSpace: "nowrap" }}>{(() => { const r = prodById.get(id); return r ? totalGrams(r) : 0; })()} г</span>
                         <span style={{ fontSize: 12, color: "var(--text-secondary)", whiteSpace: "nowrap" }}>{prodById.get(id)?.price ?? 0} грн</span>
-                        <button type="button" className={`${s.btn} ${s.btnDanger} ${s.btnSmall}`} onClick={() => removeSetItem(id)}>Прибрати</button>
+                        <button type="button" className={`${s.btn} ${s.btnDanger} ${s.btnSmall}`} onClick={() => removeSetItemAt(i)}>Прибрати</button>
                       </div>
                     ))}
                     <div style={{ marginTop: 4, fontSize: 12, color: "var(--text-secondary)" }}>
@@ -470,7 +515,7 @@ export default function ProductsPage() {
                     </div>
                   </div>
                 ) : (
-                  <p className={s.hint} style={{ fontSize: 11, marginTop: 8 }}>Додайте роли зі списку (категорія «Роли»).</p>
+                  <p className={s.hint} style={{ fontSize: 11, marginTop: 8 }}>Додайте роли зі списку (категорія «Роли»). Один рол можна додати кілька разів.</p>
                 )}
               </Field>
             ) : (
@@ -543,6 +588,16 @@ export default function ProductsPage() {
       )}
     </div>
   );
+}
+
+/** «Філадельфія, Каліфорнія, Філадельфія» → «Філадельфія ×2, Каліфорнія». */
+function setComposition(names: string[]): string {
+  const out: { name: string; n: number }[] = [];
+  for (const n of names) {
+    const row = out.find((o) => o.name === n);
+    if (row) row.n += 1; else out.push({ name: n, n: 1 });
+  }
+  return out.map((o) => (o.n > 1 ? `${o.name} ×${o.n}` : o.name)).join(", ");
 }
 
 function GroupRows({ name, count, children }: { name: string; count: number; children: React.ReactNode }) {

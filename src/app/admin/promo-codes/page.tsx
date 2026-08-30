@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import AdminSelect from "@/components/admin/AdminSelect";
 import {
   useDbPromoCodes, dbCreatePromoCode, dbSetPromoCodeActive, dbDeletePromoCode,
 } from "@/features/admin/db";
@@ -48,10 +49,11 @@ export default function PromoCodesPage() {
             </div>
             <div className={s.field}>
               <span className={s.fieldLabel}>Тип</span>
-              <select className={s.input} value={discountType} onChange={(e) => setDiscountType(e.target.value as "percent" | "fixed")}>
-                <option value="percent">Відсоток %</option>
-                <option value="fixed">Фікс. сума</option>
-              </select>
+              <AdminSelect
+                value={discountType}
+                onChange={(v) => setDiscountType(v as "percent" | "fixed")}
+                options={[{ value: "percent", label: "Відсоток %" }, { value: "fixed", label: "Фікс. сума" }]}
+              />
             </div>
             <div className={s.field}>
               <span className={s.fieldLabel}>{discountType === "percent" ? "Відсоток" : "Сума, грн"}</span>

@@ -41,7 +41,7 @@ export default function ProductModal({
         className="modal-pop"
         style={{
           background: "var(--bg-card)", border: "1px solid var(--border-light)",
-          width: 900, maxWidth: "100%", maxHeight: "90vh", overflow: "auto",
+          width: "var(--modal-w, 900px)", maxWidth: "100%", maxHeight: "90vh", overflow: "auto",
           display: "grid", gridTemplateColumns: "var(--modal-cols)", position: "relative",
         }}
       >
@@ -57,7 +57,12 @@ export default function ProductModal({
           <Icon.Close width="14" height="14" />
         </button>
 
-        <div style={{ position: "relative", minHeight: "var(--modal-photo-h, 320px)", aspectRatio: "var(--modal-photo-ar, 1 / 1)" }}>
+        <div style={{
+          position: "relative", minHeight: "var(--modal-photo-h, 320px)",
+          height: "var(--modal-photo-fixed-h, auto)",
+          aspectRatio: "var(--modal-photo-ar, 1 / 1)",
+          overflow: "hidden",
+        }}>
           <PhotoSlot h="100%" photo={item.photo} alt={`${item.name} — суші та роли, Тульчин`} eager />
           {item.badge && (
             <div

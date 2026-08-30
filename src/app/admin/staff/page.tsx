@@ -3,7 +3,10 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { createClient } from "@/lib/supabase/client";
 import { useAdminAuth, type Role } from "@/features/admin/AdminAuthContext";
+import AdminSelect from "@/components/admin/AdminSelect";
 import s from "@/components/admin/admin.module.css";
+
+const ROLE_OPTIONS = [{ value: "editor", label: "editor" }, { value: "admin", label: "admin" }];
 
 interface StaffRow {
   id: string;
@@ -143,10 +146,11 @@ export default function StaffPage() {
             </div>
             <div className={s.field}>
               <span className={s.fieldLabel}>Роль</span>
-              <select className={s.input} value={role} onChange={(e) => setRole(e.target.value as Role)}>
-                <option value="editor">editor</option>
-                <option value="admin">admin</option>
-              </select>
+              <AdminSelect
+                value={role}
+                onChange={(v) => setRole(v as Role)}
+                options={ROLE_OPTIONS}
+              />
             </div>
             <button className={s.btn} type="submit" disabled={!email.trim()}>Додати</button>
           </div>
@@ -172,12 +176,14 @@ export default function StaffPage() {
                   <tr key={m.id}>
                     <td>{m.email} {isSelf && <span className={s.hint} style={{ fontSize: 11 }}>(ви)</span>}</td>
                     <td>
-                      <select className={s.input} style={{ width: "auto", padding: "6px 10px" }}
-                        value={m.role} disabled={isSelf}
-                        onChange={(e) => updateRole(m.id, e.target.value as Role)}>
-                        <option value="editor">editor</option>
-                        <option value="admin">admin</option>
-                      </select>
+                      <div style={{ maxWidth: 160 }}>
+                        <AdminSelect
+                          value={m.role}
+                          disabled={isSelf}
+                          onChange={(v) => updateRole(m.id, v as Role)}
+                          options={ROLE_OPTIONS}
+                        />
+                      </div>
                     </td>
                     <td style={{ color: "var(--text-secondary)" }}>{new Date(m.created_at).toLocaleDateString("uk-UA")}</td>
                     <td>

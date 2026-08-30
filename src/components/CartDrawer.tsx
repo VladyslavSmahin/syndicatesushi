@@ -4,7 +4,8 @@ import { useEffect, useMemo, useState, type CSSProperties } from "react";
 import Link from "next/link";
 import { Icon } from "./icons";
 import { useCart } from "@/features/cart/CartContext";
-import { usePublicCatalog, useGloss } from "@/features/publicData";
+import { usePublicCatalog, useGloss, useContacts } from "@/features/publicData";
+import PickupPicker, { dayOptions, ymd } from "./PickupPicker";
 import type { Product, CartItem } from "@/lib/types";
 
 const EXTRAS_CATEGORY = "додатково";
@@ -36,6 +37,7 @@ function isPhoneValid(raw: string): boolean {
 export default function CartDrawer({ isOpen, onClose }: { isOpen: boolean; onClose: () => void }) {
   const { items, total, changeQty, remove, clear, add } = useCart();
   const catalog = usePublicCatalog();
+  const contacts = useContacts();
   const extras = useMemo(
     () => catalog.filter((p) => p.category === EXTRAS_CATEGORY).sort((a, b) => a.price - b.price),
     [catalog]
@@ -47,11 +49,16 @@ export default function CartDrawer({ isOpen, onClose }: { isOpen: boolean; onClo
   const [phone, setPhone] = useState("");
   const [address, setAddress] = useState("");
   const [comment, setComment] = useState("");
+  // самовивіз: дата (за замовчуванням сьогодні) і час ("" = по готовності)
+  const [pickupDate, setPickupDate] = useState(() => ymd(new Date()));
+  const [pickupTime, setPickupTime] = useState("");
+  const [pickerOpen, setPickerOpen] = useState(false);
   const [promo, setPromo] = useState("");
   // застосований промокод (підтверджений сервером) + повідомлення/стан перевірки
   const [promoInfo, setPromoInfo] = useState<{ code: string; discountType: "percent" | "fixed"; value: number } | null>(null);
   const [promoMsg, setPromoMsg] = useState<{ ok: boolean; text: string } | null>(null);
   const [promoChecking, setPromoChecking] = useState(false);
+  const [promoOpen, setPromoOpen] = useState(false); // поле промокоду згорнуте за замовчуванням
   const [consent, setConsent] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState("");
@@ -129,12 +136,17 @@ export default function CartDrawer({ isOpen, onClose }: { isOpen: boolean; onClo
       const res = await fetch("/api/order", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ delivery, name, phone, address: fullAddress, comment, promo: promoInfo?.code ?? "", consent, items }),
+        body: JSON.stringify({
+          delivery, name, phone, address: fullAddress, comment,
+          pickupDate: delivery === "pickup" ? pickupDate : "",
+          pickupTime: delivery === "pickup" ? pickupTime : "",
+          promo: promoInfo?.code ?? "", consent, items,
+        }),
       });
       if (!res.ok) throw new Error("request_failed");
       setStep("done");
       clear();
-      setPromo(""); setPromoInfo(null); setPromoMsg(null);
+      setPromo(""); setPromoInfo(null); setPromoMsg(null); setPromoOpen(false);
     } catch {
       setError("Не вдалося надіслати замовлення. Спробуйте ще раз або зателефонуйте нам.");
     } finally {
@@ -233,6 +245,14 @@ export default function CartDrawer({ isOpen, onClose }: { isOpen: boolean; onClo
                 placeholder="093 728 42 98" value={phone}
                 onChange={(e) => setPhone(formatPhone(e.target.value))} />
 
+              {delivery === "pickup" && (
+                <PickupRow
+                  date={pickupDate}
+                  time={pickupTime}
+                  onOpen={() => setPickerOpen(true)}
+                />
+              )}
+
               {delivery === "delivery" && (
                 <div>
                   <input className="form-input" placeholder="Адреса доставки * (вулиця, будинок, квартира)"
@@ -244,6 +264,22 @@ export default function CartDrawer({ isOpen, onClose }: { isOpen: boolean; onClo
               )}
 
               <div>
+                <button
+                  type="button"
+                  onClick={() => setPromoOpen((v) => !v)}
+                  style={{
+                    display: "flex", alignItems: "center", gap: 6, background: "transparent", border: "none",
+                    padding: 0, cursor: "pointer", fontFamily: "var(--font-body)", fontSize: 11,
+                    letterSpacing: 1.5, textTransform: "uppercase",
+                    color: promoInfo ? "var(--accent)" : "var(--text-secondary)",
+                  }}
+                >
+                  {promoInfo ? `Промокод ${promoInfo.code} · −${discount} грн` : "У мене є промокод"}
+                  <span aria-hidden style={{ fontSize: 11, transition: "transform 0.2s", transform: promoOpen ? "rotate(180deg)" : "none" }}>▾</span>
+                </button>
+
+                {promoOpen && (
+                <div style={{ marginTop: 10 }}>
                 <div style={{ position: "relative" }}>
                   <input
                     className="form-input"
@@ -271,6 +307,8 @@ export default function CartDrawer({ isOpen, onClose }: { isOpen: boolean; onClo
                 </div>
                 {promoMsg && (
                   <p style={{ fontSize: 11, marginTop: 6, lineHeight: 1.4, color: promoMsg.ok ? "var(--accent)" : "#E0726A" }}>{promoMsg.text}</p>
+                )}
+                </div>
                 )}
               </div>
               <textarea className="form-input" placeholder="Коментар до замовлення" value={comment} onChange={(e) => setComment(e.target.value)} style={{ minHeight: 80 }} />
@@ -320,7 +358,49 @@ export default function CartDrawer({ isOpen, onClose }: { isOpen: boolean; onClo
           </form>
         )}
       </aside>
+
+      {pickerOpen && (
+        <PickupPicker
+          date={pickupDate}
+          time={pickupTime}
+          hours={contacts.hours}
+          onApply={(d, t) => { setPickupDate(d); setPickupTime(t); setPickerOpen(false); }}
+          onClose={() => setPickerOpen(false)}
+        />
+      )}
     </>
+  );
+}
+
+/** Рядок «коли забрати»: дата + час, обидві кнопки відкривають той самий пікер. */
+function PickupRow({ date, time, onOpen }: { date: string; time: string; onOpen: () => void }) {
+  const dayLabel = dayOptions().find((d) => d.value === date)?.label ?? date;
+  return (
+    <div>
+      <span style={{ display: "block", fontSize: 10, letterSpacing: 2, textTransform: "uppercase", color: "var(--text-secondary)", marginBottom: 8 }}>
+        Коли забрати
+      </span>
+      <div style={{ display: "flex", gap: 8 }}>
+        <PickupButton label={dayLabel} onClick={onOpen} />
+        <PickupButton label={time || "По готовності"} onClick={onOpen} accent={!!time} />
+      </div>
+    </div>
+  );
+}
+
+function PickupButton({ label, onClick, accent = false }: { label: string; onClick: () => void; accent?: boolean }) {
+  return (
+    <button type="button" onClick={onClick}
+      style={{
+        flex: 1, display: "flex", alignItems: "center", justifyContent: "space-between", gap: 8,
+        padding: "14px 14px", cursor: "pointer", textAlign: "left",
+        background: "var(--bg-card)", border: "1px solid var(--border-light)",
+        color: accent ? "var(--accent)" : "var(--text-primary)",
+        fontFamily: "var(--font-body)", fontSize: 13, fontWeight: 300,
+      }}>
+      <span style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{label}</span>
+      <span aria-hidden style={{ flexShrink: 0, color: "var(--text-secondary)", fontSize: 11 }}>▾</span>
+    </button>
   );
 }
 

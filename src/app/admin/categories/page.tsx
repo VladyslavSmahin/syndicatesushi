@@ -1,10 +1,12 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import Modal from "@/components/admin/Modal";
 import Collapsible from "@/components/admin/Collapsible";
+import OrderHandle from "@/components/admin/OrderHandle";
+import { useDragOrder } from "@/components/admin/useDragOrder";
 import {
-  useDbCategories, dbCreateCategory, dbUpdateCategory, dbDeleteCategory,
+  useDbCategories, dbCreateCategory, dbUpdateCategory, dbDeleteCategory, dbReorderCategories,
   useDbNavSpecials, dbSetNavSpecialVisible, type DbCategory,
 } from "@/features/admin/db";
 import { useAdminAuth } from "@/features/admin/AdminAuthContext";
@@ -15,7 +17,19 @@ interface EditDraft { id: string; name: string; slug: string; sortOrder: number;
 const slugify = (v: string) => v.trim().toLowerCase().replace(/\s+/g, "-");
 
 export default function CategoriesPage() {
-  const { categories: cats, loading, refetch } = useDbCategories();
+  const { categories: dbCats, loading, refetch } = useDbCategories();
+  // локальна копія — щоб перетягування було миттєвим, до відповіді БД
+  const [cats, setCats] = useState<DbCategory[]>([]);
+  useEffect(() => { setCats(dbCats); }, [dbCats]);
+
+  const ids = cats.map((c) => c.id);
+  const applyOrder = async (next: string[]) => {
+    const byId = new Map(cats.map((c) => [c.id, c] as const));
+    setCats(next.map((id) => byId.get(id)).filter((c): c is DbCategory => !!c));
+    await dbReorderCategories(next);
+    refetch();
+  };
+  const drag = useDragOrder(applyOrder);
   const { specials, refetch: refetchSpecials } = useDbNavSpecials();
   const { user } = useAdminAuth();
   const isAdmin = user?.role === "admin";
@@ -64,6 +78,8 @@ export default function CategoriesPage() {
       <p className={s.hint}>
         Категорії одразу зʼявляються в навігації сайту (у шапці та бургер-меню).
         Вимкніть «У навігації» або «Активна», щоб приховати без видалення.
+        Порядок — перетягніть рядок за ⠿ або стрілками ▲▼: у цьому ж порядку йдуть
+        пункти меню та товари в «Повному меню».
       </p>
 
       <Collapsible title="Нова категорія">
@@ -90,12 +106,23 @@ export default function CategoriesPage() {
             <tbody>
               {loading ? (
                 <tr><td colSpan={4} style={{ padding: 20, color: "var(--text-secondary)" }}>Завантаження…</td></tr>
-              ) : cats.map((c) => (
-                <tr key={c.id}>
+              ) : cats.map((c, i) => (
+                <tr
+                  key={c.id}
+                  {...drag.rowProps(ids, c.id)}
+                  className={`${drag.dragId === c.id ? s.dragging : ""} ${drag.overId === c.id ? s.dropTarget : ""}`}
+                >
                   <td style={{ fontFamily: "var(--font-display)", fontSize: 15, fontWeight: 600 }}>
-                    <span style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", gap: 10 }}>
-                      <span>{c.name}</span>
-                      <span style={{ fontFamily: "var(--font-body)", fontSize: 12, fontWeight: 400, color: "var(--text-tertiary)" }}>№{c.sortOrder}</span>
+                    <span style={{ display: "flex", alignItems: "center", gap: 10 }}>
+                      <OrderHandle
+                        handleProps={drag.handleProps(c.id)}
+                        canUp={i > 0}
+                        canDown={i < cats.length - 1}
+                        onUp={() => drag.move(ids, c.id, -1)}
+                        onDown={() => drag.move(ids, c.id, 1)}
+                      />
+                      <span style={{ flex: 1 }}>{c.name}</span>
+                      <span style={{ fontFamily: "var(--font-body)", fontSize: 12, fontWeight: 400, color: "var(--text-tertiary)" }}>№{i + 1}</span>
                     </span>
                   </td>
                   <td data-label="У навігації">
@@ -160,8 +187,7 @@ export default function CategoriesPage() {
               <input className={s.input} value={edit.name} onChange={(e) => setEdit({ ...edit, name: e.target.value, slug: slugify(e.target.value) })} /></div>
             <div className={s.field}><span className={s.fieldLabel}>Slug (авто з назви)</span>
               <input className={s.input} value={edit.slug} disabled readOnly style={{ opacity: 0.6 }} /></div>
-            <div className={s.field}><span className={s.fieldLabel}>Порядок</span>
-              <input className={`${s.input} no-spin`} type="number" value={edit.sortOrder || ""} onChange={(e) => setEdit({ ...edit, sortOrder: e.target.value === "" ? 0 : Number(e.target.value) })} /></div>
+            <p className={s.hint} style={{ fontSize: 11 }}>Порядок задається перетягуванням у списку.</p>
             {editErr && <p className={s.error}>{editErr}</p>}
           </div>
         </Modal>

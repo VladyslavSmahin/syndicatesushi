@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import Modal from "@/components/admin/Modal";
+import AdminSelect from "@/components/admin/AdminSelect";
 import Collapsible from "@/components/admin/Collapsible";
 import {
   useDbCategories, useDbSubcategories,
@@ -62,9 +63,12 @@ export default function SubcategoriesPage() {
           <div className={s.formRow}>
             <div className={s.field} style={{ minWidth: 180 }}>
               <span className={s.fieldLabel}>Категорія</span>
-              <select className={s.input} value={categoryId} onChange={(e) => setCategoryId(e.target.value)}>
-                {categories.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
-              </select>
+              <AdminSelect
+                value={categoryId}
+                onChange={setCategoryId}
+                options={categories.map((c) => ({ value: c.id, label: c.name }))}
+                placeholder="Оберіть категорію"
+              />
             </div>
             <div className={s.field} style={{ flex: 1, minWidth: 200 }}>
               <span className={s.fieldLabel}>Назва</span>
@@ -122,9 +126,12 @@ export default function SubcategoriesPage() {
             <div className={s.field}><span className={s.fieldLabel}>Назва</span>
               <input className={s.input} value={edit.name} onChange={(e) => setEdit({ ...edit, name: e.target.value })} /></div>
             <div className={s.field}><span className={s.fieldLabel}>Категорія</span>
-              <select className={s.input} value={edit.categoryId} onChange={(e) => setEdit({ ...edit, categoryId: e.target.value })}>
-                {categories.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
-              </select></div>
+              <AdminSelect
+                value={edit.categoryId}
+                onChange={(v) => setEdit({ ...edit, categoryId: v })}
+                options={categories.map((c) => ({ value: c.id, label: c.name }))}
+                placeholder="Оберіть категорію"
+              /></div>
             <div className={s.field}><span className={s.fieldLabel}>Порядок</span>
               <input className={`${s.input} no-spin`} type="number" value={edit.sortOrder || ""} onChange={(e) => setEdit({ ...edit, sortOrder: e.target.value === "" ? 0 : Number(e.target.value) })} /></div>
             <p className={s.hint} style={{ fontSize: 11 }}>Slug лишається незмінним (на нього посилаються товари).</p>

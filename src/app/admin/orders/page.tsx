@@ -3,6 +3,7 @@
 import { useMemo, useState } from "react";
 import Link from "next/link";
 import Modal from "@/components/admin/Modal";
+import AdminSelect from "@/components/admin/AdminSelect";
 import { useDbOrders, dbSetOrderStatus, type DbOrder, type OrderStatus } from "@/features/admin/db";
 import s from "@/components/admin/admin.module.css";
 
@@ -96,9 +97,11 @@ export default function OrdersPage() {
 
             <div className={s.field}>
               <span className={s.fieldLabel}>Статус</span>
-              <select className={s.input} value={selected.status} onChange={(e) => setStatus(selected.id, e.target.value as OrderStatus)}>
-                {STATUSES.map((x) => <option key={x.value} value={x.value}>{x.label}</option>)}
-              </select>
+              <AdminSelect
+                value={selected.status}
+                onChange={(v) => setStatus(selected.id, v as OrderStatus)}
+                options={STATUSES.map((x) => ({ value: x.value, label: x.label }))}
+              />
             </div>
 
             {selected.address && <p className={s.hint}>📍 {selected.address}</p>}

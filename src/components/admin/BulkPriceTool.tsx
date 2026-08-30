@@ -3,6 +3,7 @@
 import { useMemo, useState } from "react";
 import Modal from "./Modal";
 import Collapsible from "./Collapsible";
+import AdminSelect from "./AdminSelect";
 import { dbUpdatePrice, type DbProduct, type DbIngredient, type DbCategory, type DbSubcategory } from "@/features/admin/db";
 import { dbLogPriceChange } from "@/features/admin/priceHistory";
 import s from "./admin.module.css";
@@ -94,25 +95,33 @@ export default function BulkPriceTool({
         <div className={s.formRow}>
           <div className={s.field}>
             <span className={s.fieldLabel}>Фільтр за</span>
-            <select className={s.input} value={filterType}
-              onChange={(e) => { setFilterType(e.target.value as FilterType); setTargetId(""); setRows(null); }}>
-              <option value="ingredient">Інгредієнтом</option>
-              <option value="category">Категорією</option>
-              <option value="subcategory">Підкатегорією</option>
-            </select>
+            <AdminSelect
+              value={filterType}
+              onChange={(v) => { setFilterType(v as FilterType); setTargetId(""); setRows(null); }}
+              options={[
+                { value: "ingredient", label: "Інгредієнтом" },
+                { value: "category", label: "Категорією" },
+                { value: "subcategory", label: "Підкатегорією" },
+              ]}
+            />
           </div>
           <div className={s.field} style={{ flex: 1, minWidth: 180 }}>
             <span className={s.fieldLabel}>{filterType === "ingredient" ? "Інгредієнт" : filterType === "category" ? "Категорія" : "Підкатегорія"}</span>
-            <select className={s.input} value={effectiveId} onChange={(e) => setTargetId(e.target.value)}>
-              {options.map((o) => <option key={o.id} value={o.id}>{o.name}</option>)}
-            </select>
+            <AdminSelect
+              value={effectiveId}
+              onChange={setTargetId}
+              options={options.map((o) => ({ value: o.id, label: o.name }))}
+              placeholder="Оберіть…"
+              searchPlaceholder="Пошук…"
+            />
           </div>
           <div className={s.field}>
             <span className={s.fieldLabel}>Тип</span>
-            <select className={s.input} value={mode} onChange={(e) => setMode(e.target.value as Mode)}>
-              <option value="amount">Гривні (+/−)</option>
-              <option value="percent">Відсоток (+/−)</option>
-            </select>
+            <AdminSelect
+              value={mode}
+              onChange={(v) => setMode(v as Mode)}
+              options={[{ value: "amount", label: "Гривні (+/−)" }, { value: "percent", label: "Відсоток (+/−)" }]}
+            />
           </div>
           <div className={s.field}>
             <span className={s.fieldLabel}>{mode === "amount" ? "Сума, грн" : "Відсоток"}</span>

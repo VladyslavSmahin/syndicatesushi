@@ -4,7 +4,7 @@
 // Роль береться з таблиці profiles (її заповнює тригер handle_new_user лише для
 // email із білого списку allowed_staff). Якщо профілю немає — доступу немає (denied).
 
-import { createContext, useContext, useEffect, useState, useCallback, useMemo } from "react";
+import { createContext, useContext, useEffect, useRef, useState, useCallback, useMemo } from "react";
 import { createClient } from "@/lib/supabase/client";
 
 export type Role = "admin" | "editor";
@@ -32,11 +32,15 @@ export function AdminAuthProvider({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<CurrentUser | null>(null);
   const [denied, setDenied] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
+  // id користувача, для якого вже розібрано роль — щоб не перевизначати стан на
+  // подіях, які не змінюють користувача (див. коментар нижче)
+  const resolvedUidRef = useRef<string | null | undefined>(undefined);
 
   useEffect(() => {
     let active = true;
 
     const resolve = async (session: { user: { id: string; email?: string; user_metadata?: Record<string, unknown> } } | null) => {
+      resolvedUidRef.current = session?.user?.id ?? null;
       if (!session?.user) {
         if (active) { setUser(null); setDenied(null); setLoading(false); }
         return;
@@ -62,6 +66,13 @@ export function AdminAuthProvider({ children }: { children: React.ReactNode }) {
 
     supabase.auth.getSession().then(({ data }) => resolve(data.session));
     const { data: sub } = supabase.auth.onAuthStateChange((_event, session) => {
+      // Supabase перевіряє сесію при поверненні фокуса на вкладку і шле
+      // SIGNED_IN / TOKEN_REFRESHED для ТОГО САМОГО користувача. Раніше на це
+      // вмикався loading → AdminShell показував «Завантаження…» і розмонтовував
+      // сторінку, а з нею гинув увесь незбережений стан (відкрита модалка товару).
+      // Тому реагуємо лише на реальну зміну користувача (вхід/вихід/інший акаунт).
+      const uid = session?.user?.id ?? null;
+      if (resolvedUidRef.current !== undefined && uid === resolvedUidRef.current) return;
       setLoading(true);
       resolve(session);
     });

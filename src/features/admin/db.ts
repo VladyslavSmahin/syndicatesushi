@@ -46,14 +46,17 @@ interface ProductRow {
   short_desc: string | null; full_desc: string | null; composition: string | null; image_path: string | null;
   is_available: boolean; deleted_at: string | null; sort_order: number;
   items: { ingredient_id: string; grams: number | string | null }[] | null;
-  setItems: { product_id: string; sort_order: number }[] | null;
+  setItems: { product_id: string; qty: number | null; sort_order: number }[] | null;
 }
 
 function mapProduct(p: ProductRow): DbProduct {
   const items = p.items ?? [];
   const grams: Record<string, number> = {};
   for (const it of items) if (it.grams != null) grams[it.ingredient_id] = Number(it.grams);
+  // один рядок set_items = рол + кількість; розгортаємо у плаский список,
+  // щоб «два однакових роли в сеті» були двома пунктами у складі
   const setItems = (p.setItems ?? []).slice().sort((a, b) => a.sort_order - b.sort_order);
+  const setItemIds = setItems.flatMap((it) => Array.from({ length: Math.max(1, Number(it.qty) || 1) }, () => it.product_id));
   return {
     id: p.id, categoryId: p.category_id, subcategoryId: p.subcategory_id,
     name: p.name, slug: p.slug, price: Number(p.price), weight: p.weight ?? "", pieces: p.pieces ?? "",
@@ -61,12 +64,12 @@ function mapProduct(p: ProductRow): DbProduct {
     fullDesc: p.full_desc ?? "", photo: p.image_path ?? null, isAvailable: p.is_available,
     deletedAt: p.deleted_at, sortOrder: p.sort_order,
     ingredientIds: items.map((it) => it.ingredient_id), ingredientGrams: grams,
-    setItemIds: setItems.map((it) => it.product_id),
+    setItemIds,
   };
 }
 
 const PRODUCT_SELECT =
-  "id, category_id, subcategory_id, name, slug, price, weight, pieces, badge, short_desc, full_desc, composition, image_path, is_available, deleted_at, sort_order, items:product_ingredients(ingredient_id, grams), setItems:set_items!set_id(product_id, sort_order)";
+  "id, category_id, subcategory_id, name, slug, price, weight, pieces, badge, short_desc, full_desc, composition, image_path, is_available, deleted_at, sort_order, items:product_ingredients(ingredient_id, grams), setItems:set_items!set_id(product_id, qty, sort_order)";
 
 // ---------- Хуки читання ----------
 export function useDbProducts() {
@@ -144,12 +147,20 @@ async function syncIngredients(
 }
 
 // Склад сету: зв'язки set_items (set_id -> product_id ролів).
+// Один і той самий рол може бути в сеті кілька разів — у БД це один рядок із qty,
+// бо первинний ключ таблиці — (set_id, product_id). Порядок — за першою появою.
 async function syncSetItems(supabase: ReturnType<typeof createClient>, setId: string, productIds: string[]): Promise<string | undefined> {
   const del = await supabase.from("set_items").delete().eq("set_id", setId);
   if (del.error) return del.error.message;
-  if (productIds.length) {
+  const grouped: { product_id: string; qty: number }[] = [];
+  for (const pid of productIds) {
+    const row = grouped.find((g) => g.product_id === pid);
+    if (row) row.qty += 1;
+    else grouped.push({ product_id: pid, qty: 1 });
+  }
+  if (grouped.length) {
     const ins = await supabase.from("set_items").insert(
-      productIds.map((pid, i) => ({ set_id: setId, product_id: pid, qty: 1, sort_order: i }))
+      grouped.map((g, i) => ({ set_id: setId, product_id: g.product_id, qty: g.qty, sort_order: i }))
     );
     if (ins.error) return ins.error.message;
   }
@@ -190,6 +201,12 @@ export async function dbUpdatePrice(id: string, price: number): Promise<string |
   const { error } = await createClient().from("products").update({ price }).eq("id", id);
   return error?.message;
 }
+/** Перезаписує порядок товарів: sort_order = індекс у переданому масиві id. */
+export async function dbReorderProducts(ids: string[]) {
+  const supabase = createClient();
+  await Promise.all(ids.map((id, i) => supabase.from("products").update({ sort_order: i }).eq("id", id)));
+}
+
 export async function dbSetAvailable(id: string, value: boolean) {
   await createClient().from("products").update({ is_available: value }).eq("id", id);
 }
@@ -246,6 +263,12 @@ export async function dbUpdateCategory(id: string, patch: Partial<{ name: string
   if (patch.isActive !== undefined) row.is_active = patch.isActive;
   await createClient().from("categories").update(row).eq("id", id);
 }
+/** Перезаписує порядок категорій: sort_order = індекс у переданому масиві id. */
+export async function dbReorderCategories(ids: string[]) {
+  const supabase = createClient();
+  await Promise.all(ids.map((id, i) => supabase.from("categories").update({ sort_order: i }).eq("id", id)));
+}
+
 export async function dbDeleteCategory(id: string) {
   await createClient().from("categories").delete().eq("id", id);
 }

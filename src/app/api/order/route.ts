@@ -16,6 +16,9 @@ interface OrderBody {
   phone: string;
   address?: string;
   comment?: string;
+  /** самовивіз: бажаний день (YYYY-MM-DD) і час (HH:MM; порожньо = по готовності) */
+  pickupDate?: string;
+  pickupTime?: string;
   promo?: string;
   consent?: boolean;
   items: IncomingItem[];
@@ -24,6 +27,22 @@ interface OrderBody {
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 // екранує спецсимволи LIKE (%, _, \), щоб ввід не змінював семантику пошуку
 const escapeLike = (s: string) => s.replace(/[\\%_]/g, (m) => "\\" + m);
+
+const DATE_RE = /^\d{4}-\d{2}-\d{2}$/;
+const TIME_RE = /^([01]\d|2[0-3]):[0-5]\d$/;
+
+/** «2026-08-30» + «18:30» → «30.08 о 18:30» (сьогодні/завтра — словами). */
+function formatPickup(date?: string, time?: string): string {
+  if (!date || !DATE_RE.test(date)) return "";
+  const t = time && TIME_RE.test(time) ? time : "";
+  const now = new Date();
+  const pad = (n: number) => String(n).padStart(2, "0");
+  const ymd = (d: Date) => `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
+  const tomorrow = new Date(now.getFullYear(), now.getMonth(), now.getDate() + 1);
+  const [y, m, d] = date.split("-");
+  const day = date === ymd(now) ? "сьогодні" : date === ymd(tomorrow) ? "завтра" : `${d}.${m}.${y}`;
+  return t ? `${day} о ${t}` : `${day}, по готовності`;
+}
 
 const MAX_LINE_ITEMS = 100; // макс. різних позицій у замовленні
 const MAX_QTY = 100;        // макс. кількість однієї позиції
@@ -41,7 +60,7 @@ export async function POST(req: Request) {
     return NextResponse.json({ ok: false, error: "bad_json" }, { status: 400 });
   }
 
-  const { delivery, name, phone, address, comment, promo, consent, items } = body;
+  const { delivery, name, phone, address, comment, pickupDate, pickupTime, promo, consent, items } = body;
 
   if (!name?.trim() || !phone?.trim() || !Array.isArray(items) || items.length === 0) {
     return NextResponse.json({ ok: false, error: "missing_fields" }, { status: 400 });
@@ -58,6 +77,9 @@ export async function POST(req: Request) {
   if (delivery === "delivery" && !address?.trim()) {
     return NextResponse.json({ ok: false, error: "address_required" }, { status: 400 });
   }
+  // час самовивозу: приймаємо лише строгий формат, решту ігноруємо
+  const pickup = delivery === "pickup" ? formatPickup(pickupDate, pickupTime) : "";
+
   // ліміти довжини текстових полів (анти-спам/абʼюз)
   if (name.length > 100 || phone.length > 30 || (address?.length ?? 0) > 300 || (comment?.length ?? 0) > 1000) {
     return NextResponse.json({ ok: false, error: "field_too_long" }, { status: 400 });
@@ -158,7 +180,8 @@ export async function POST(req: Request) {
         phone: phone.trim(),
         delivery_type: delivery,
         address: delivery === "delivery" ? address?.trim() ?? null : null,
-        comment: comment?.trim() || null,
+        // окремої колонки під час самовивозу немає — дописуємо його першим рядком коментаря
+        comment: [pickup && `Самовивіз: ${pickup}`, comment?.trim()].filter(Boolean).join("\n") || null,
         subtotal,
         promo_code_id: promoCodeId,
         discount,
@@ -189,6 +212,7 @@ export async function POST(req: Request) {
     `📞 <b>Телефон:</b> ${esc(phone)}`,
     `🚚 <b>Спосіб:</b> ${delivery === "delivery" ? "Доставка" : "Самовивіз"}`,
     delivery === "delivery" && address ? `📍 <b>Адреса:</b> ${esc(address)}` : null,
+    pickup ? `🕒 <b>Забрати:</b> ${esc(pickup)}` : null,
     code ? `🎟 <b>Промокод:</b> ${esc(code)}${discount ? ` (−${discount} грн)` : " (не застосовано)"}` : null,
     comment?.trim() ? `💬 <b>Коментар:</b> ${esc(comment)}` : null,
     "",
