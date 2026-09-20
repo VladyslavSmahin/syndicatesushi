@@ -39,3 +39,16 @@ export function computePortion(
 
   return { weight: r1(weight), kcal: Math.round(kcal), protein: r1(protein), fat: r1(fat), carbs: r1(carbs) };
 }
+
+/**
+ * КБЖУ набору (сета) = сума порцій його складових.
+ * Вага тут — теж сума реальних грамовок ролів; поле «Вага» товару це не чіпає
+ * (ручне значення завжди пріоритетніше, див. mapProduct/adminForm).
+ */
+export function sumPortions(parts: Iterable<Portion>): Portion {
+  let weight = 0, kcal = 0, protein = 0, fat = 0, carbs = 0;
+  for (const p of parts) {
+    weight += p.weight; kcal += p.kcal; protein += p.protein; fat += p.fat; carbs += p.carbs;
+  }
+  return { weight: r1(weight), kcal: Math.round(kcal), protein: r1(protein), fat: r1(fat), carbs: r1(carbs) };
+}

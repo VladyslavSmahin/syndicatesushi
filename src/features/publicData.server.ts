@@ -1,6 +1,7 @@
 import "server-only";
 import { createClient } from "@/lib/supabase/server";
 import type { Product, Badge, Portion, Promo, Banner } from "@/lib/types";
+import { sumPortions } from "@/features/nutrition";
 import type { PublicData, PubCategory, PubSubcategory, PubReview } from "@/features/publicData";
 import { parseDeliverySettings } from "@/lib/delivery";
 import { NAV_SPECIALS, parseNavVisibility } from "@/lib/navSpecials";
@@ -17,9 +18,11 @@ type ProductRow = {
   price: number | string; weight: string | null; pieces: string | null; badge: string | null; image_path: string | null;
   category: { slug: string } | null; subcategory: { slug: string } | null; items: PIRow[] | null;
 };
+// рядок складу сета: рол (з його грамовками) + кількість цього рола в сеті
+type SetItemRow = { set_id: string; qty: number | null; product: { items: PIRow[] | null } | { items: PIRow[] | null }[] | null };
 
-function mapProduct(p: ProductRow): Product {
-  const items = p.items ?? [];
+/** Вага + КБЖУ порції з грамовок інгредієнтів; undefined, якщо грамовок немає. */
+function portionFromItems(items: PIRow[]): Portion | undefined {
   let weight = 0, kcal = 0, protein = 0, fat = 0, carbs = 0;
   for (const it of items) {
     const g = num(it.grams);
@@ -31,9 +34,34 @@ function mapProduct(p: ProductRow): Product {
     fat += num(it.ingredient.fat) * k;
     carbs += num(it.ingredient.carbs) * k;
   }
-  const portion: Portion | undefined = weight > 0
+  return weight > 0
     ? { weight: r1(weight), kcal: Math.round(kcal), protein: r1(protein), fat: r1(fat), carbs: r1(carbs) }
     : undefined;
+}
+
+/**
+ * КБЖУ сетів: сума порцій ролів, що входять у сет (з урахуванням кількості).
+ * Рахуємо окремим запитом по set_items, а не з уже завантаженого каталогу, щоб
+ * тимчасово вимкнений (`is_available = false`) рол не занижував КБЖУ сета.
+ */
+function setPortions(rows: SetItemRow[]): Map<string, Portion> {
+  const parts = new Map<string, Portion[]>();
+  for (const row of rows) {
+    const prod = Array.isArray(row.product) ? row.product[0] : row.product;
+    const portion = portionFromItems(prod?.items ?? []);
+    if (!portion) continue;
+    const qty = Math.max(1, Number(row.qty) || 1);
+    const list = parts.get(row.set_id) ?? [];
+    for (let i = 0; i < qty; i++) list.push(portion);
+    parts.set(row.set_id, list);
+  }
+  return new Map([...parts].map(([setId, list]) => [setId, sumPortions(list)] as const));
+}
+
+function mapProduct(p: ProductRow, setPortion?: Portion): Product {
+  const items = p.items ?? [];
+  // власні грамовки товару в пріоритеті; для сета їх немає — беремо суму ролів
+  const portion: Portion | undefined = portionFromItems(items) ?? setPortion;
 
   return {
     id: p.id,
@@ -57,7 +85,7 @@ function mapProduct(p: ProductRow): Product {
 export async function fetchPublicData(): Promise<PublicData> {
   const supabase = await createClient();
 
-  const [catsRes, subsRes, prodsRes, promosRes, bannersRes, deliveryRes, reviewsRes] = await Promise.all([
+  const [catsRes, subsRes, prodsRes, setItemsRes, promosRes, bannersRes, deliveryRes, reviewsRes] = await Promise.all([
     supabase.from("categories").select("id, name, slug, sort_order, show_in_nav, is_active").order("sort_order"),
     supabase.from("subcategories").select("id, name, slug, sort_order, category:categories(slug)").eq("is_active", true).order("sort_order"),
     supabase
@@ -66,6 +94,9 @@ export async function fetchPublicData(): Promise<PublicData> {
       .is("deleted_at", null)
       .eq("is_available", true)
       .order("sort_order"),
+    supabase
+      .from("set_items")
+      .select("set_id, qty, product:products!product_id(items:product_ingredients(grams, ingredient:ingredients(name, kcal, protein, fat, carbs)))"),
     supabase.from("promos").select("id, label, title, promo_price, old_price, banner_image_path, valid_from, valid_until, product:products(id)").eq("is_active", true).order("sort_order"),
     supabase.from("banners").select("id, image_path").eq("is_active", true).order("sort_order"),
     supabase.from("settings").select("key, value").in("key", ["delivery", "nav_specials", "glossary", "contacts", "seo_block"]),
@@ -75,6 +106,7 @@ export async function fetchPublicData(): Promise<PublicData> {
   if (catsRes.error) console.error("categories fetch:", catsRes.error.message);
   if (subsRes.error) console.error("subcategories fetch:", subsRes.error.message);
   if (prodsRes.error) console.error("products fetch:", prodsRes.error.message);
+  if (setItemsRes.error) console.error("set items fetch:", setItemsRes.error.message);
   if (promosRes.error) console.error("promos fetch:", promosRes.error.message);
   if (bannersRes.error) console.error("banners fetch:", bannersRes.error.message);
   if (reviewsRes.error) console.error("reviews fetch:", reviewsRes.error.message);
@@ -108,8 +140,9 @@ export async function fetchPublicData(): Promise<PublicData> {
   // тож порядок усередині категорії зберігається з .order("sort_order").
   const catOrder = new Map(categories.map((c, i) => [c.slug, i] as const));
   const catRank = (slug: string) => catOrder.get(slug) ?? Number.MAX_SAFE_INTEGER;
+  const setPortionById = setPortions((setItemsRes.data ?? []) as unknown as SetItemRow[]);
   const catalog = ((prodsRes.data ?? []) as unknown as ProductRow[])
-    .map(mapProduct)
+    .map((p) => mapProduct(p, setPortionById.get(p.id)))
     .sort((a, b) => catRank(a.category) - catRank(b.category))
     .map((p) => {
       const pp = promoByProduct.get(p.id);

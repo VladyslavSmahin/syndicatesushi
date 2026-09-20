@@ -7,7 +7,7 @@ import OrderHandle from "@/components/admin/OrderHandle";
 import { useDragOrder } from "@/components/admin/useDragOrder";
 import CatalogDownloadModal from "@/components/admin/CatalogDownloadModal";
 import { downscaleImage } from "@/lib/clientImage";
-import { computePortion } from "@/features/nutrition";
+import { computePortion, sumPortions } from "@/features/nutrition";
 import {
   useDbProducts, useDbIngredients, useDbCategories, useDbSubcategories,
   dbCreateProduct, dbUpdateProduct, dbSetAvailable, dbSoftDelete, dbCreateIngredient, dbUploadImage, dbReorderProducts,
@@ -91,6 +91,13 @@ export default function ProductsPage() {
   // авто-вага драфта: для сета — сума ролів, для решти — сума грамовок інгредієнтів.
   // КБЖУ рахується окремо з грамів, тож ручна правка поля «Вага» його не змінює.
   const draftSetGrams = draft ? setGramsTotal(draft.setItemIds) : 0;
+  // КБЖУ сета = сума порцій ролів, що входять до нього (так само рахує сайт і PDF-каталог)
+  const draftSetPortion = draft
+    ? sumPortions(draft.setItemIds
+        .map((id) => prodById.get(id))
+        .filter((r): r is DbProduct => !!r)
+        .map((r) => computePortion(r.ingredientGrams, ingById)))
+    : null;
   const draftAutoWeight = isSetDraft ? draftSetGrams : (portion?.weight ?? 0);
   // доступні роли для складу сету (категорія «Роли», не сам редагований сет)
   const rollOptions = useMemo(
@@ -513,6 +520,11 @@ export default function ProductsPage() {
                     <div style={{ marginTop: 4, fontSize: 12, color: "var(--text-secondary)" }}>
                       Ролів у сеті: <b>{draft.setItemIds.length}</b> · сума за прайсом ролів: {setItemsTotal} грн · авто-вага: <b>{draftSetGrams} г</b>
                     </div>
+                    {draftSetPortion && draftSetPortion.weight > 0 && (
+                      <div style={{ marginTop: 4, fontSize: 12, color: "var(--text-secondary)" }}>
+                        КБЖУ сета (сума ролів): <b>{draftSetPortion.kcal} ккал</b> · Б {draftSetPortion.protein} · Ж {draftSetPortion.fat} · В {draftSetPortion.carbs}
+                      </div>
+                    )}
                   </div>
                 ) : (
                   <p className={s.hint} style={{ fontSize: 11, marginTop: 8 }}>Додайте роли зі списку (категорія «Роли»). Один рол можна додати кілька разів.</p>

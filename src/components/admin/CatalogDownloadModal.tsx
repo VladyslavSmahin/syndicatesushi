@@ -2,7 +2,7 @@
 
 import { useMemo, useState } from "react";
 import Modal from "@/components/admin/Modal";
-import { computePortion } from "@/features/nutrition";
+import { computePortion, sumPortions } from "@/features/nutrition";
 import type { DbProduct, DbCategory, DbSubcategory, DbIngredient } from "@/features/admin/db";
 import type { CatalogData, PdfCategory } from "@/features/admin/catalogPdf";
 import s from "@/components/admin/admin.module.css";
@@ -39,13 +39,11 @@ export default function CatalogDownloadModal({
   // вага + КБЖУ порції (для сета — сума ролів)
   const portionOf = (p: DbProduct) => {
     if (p.setItemIds.length) {
-      let weight = 0, kcal = 0, protein = 0, fat = 0, carbs = 0;
-      for (const id of p.setItemIds) {
-        const r = prodById.get(id); if (!r) continue;
-        const po = computePortion(r.ingredientGrams, ingById);
-        weight += po.weight; kcal += po.kcal; protein += po.protein; fat += po.fat; carbs += po.carbs;
-      }
-      return { weight: Math.round(weight * 10) / 10, kcal: Math.round(kcal), protein: Math.round(protein * 10) / 10, fat: Math.round(fat * 10) / 10, carbs: Math.round(carbs * 10) / 10 };
+      const parts = p.setItemIds
+        .map((id) => prodById.get(id))
+        .filter((r): r is DbProduct => !!r)
+        .map((r) => computePortion(r.ingredientGrams, ingById));
+      return sumPortions(parts);
     }
     return computePortion(p.ingredientGrams, ingById);
   };
