@@ -202,7 +202,9 @@ body {
   color: var(--text-secondary); cursor: pointer; transition: all 0.2s ease; white-space: nowrap;
 }
 .chip:hover { color: var(--text-primary); border-color: #3A3833; }
-.chip.active { background: var(--bg-elevated); border-color: var(--accent); color: var(--accent); }
+/* активна — заливка сріблом, як у нижній панелі категорій (однаково для всіх рядів кнопок) */
+.chip.active,
+.chip.active:hover { background: var(--accent); border-color: var(--accent); color: #0A0908; font-weight: 500; }
 
 /* квадратний варіант чипа — для навігації по підкатегоріях (ролах) */
 .chip.square { border-radius: 4px; }
