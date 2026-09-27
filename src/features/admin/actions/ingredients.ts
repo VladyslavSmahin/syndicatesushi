@@ -5,6 +5,7 @@ import { createClient } from "@/lib/supabase/server";
 import { slugify } from "@/lib/slugify";
 import { isStaff } from "@/lib/adminAuth";
 import { INGREDIENTS_TAG } from "../ingredientsShared";
+import { PUBLIC_TAG } from "@/features/publicCache";
 
 export interface ActionResult {
   error?: string;
@@ -24,6 +25,7 @@ export async function createIngredientAction(name: string, nutrition: Nutrition)
   const { error } = await supabase.from("ingredients").insert({ name: n, slug: slugify(n), ...nutrition });
   if (error) return { error: error.message.includes("duplicate") ? "Такий інгредієнт вже є" : error.message };
   revalidateTag(INGREDIENTS_TAG);
+  revalidateTag(PUBLIC_TAG); // назви/КБЖУ інгредієнтів видно на сайті
   return {};
 }
 
@@ -32,6 +34,7 @@ export async function updateIngredientAction(id: string, patch: Partial<Nutritio
   const { error } = await supabase.from("ingredients").update(patch).eq("id", id);
   if (error) return { error: error.message };
   revalidateTag(INGREDIENTS_TAG);
+  revalidateTag(PUBLIC_TAG); // назви/КБЖУ інгредієнтів видно на сайті
   return {};
 }
 
@@ -40,6 +43,7 @@ export async function deleteIngredientAction(id: string): Promise<ActionResult> 
   const { error } = await supabase.from("ingredients").delete().eq("id", id);
   if (error) return { error: error.message.includes("policy") ? "Лише адміністратор може видаляти" : error.message };
   revalidateTag(INGREDIENTS_TAG);
+  revalidateTag(PUBLIC_TAG); // назви/КБЖУ інгредієнтів видно на сайті
   return {};
 }
 

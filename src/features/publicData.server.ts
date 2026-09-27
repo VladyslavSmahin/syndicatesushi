@@ -1,5 +1,8 @@
 import "server-only";
-import { createClient } from "@/lib/supabase/server";
+import { cache } from "react";
+import { unstable_cache } from "next/cache";
+import { createPublicClient } from "@/lib/supabase/public";
+import { PUBLIC_TAG, PUBLIC_REVALIDATE } from "@/features/publicCache";
 import type { Product, Badge, Portion, Promo, Banner } from "@/lib/types";
 import { sumPortions } from "@/features/nutrition";
 import type { PublicData, PubCategory, PubSubcategory, PubReview } from "@/features/publicData";
@@ -88,8 +91,8 @@ function mapProduct(p: ProductRow, setPortion?: Portion): Product {
   };
 }
 
-export async function fetchPublicData(): Promise<PublicData> {
-  const supabase = await createClient();
+async function queryPublicData(): Promise<PublicData> {
+  const supabase = createPublicClient();
 
   const [catsRes, subsRes, prodsRes, setItemsRes, promosRes, bannersRes, deliveryRes, reviewsRes] = await Promise.all([
     supabase.from("categories").select("id, name, slug, sort_order, show_in_nav, is_active").order("sort_order"),
@@ -129,7 +132,7 @@ export async function fetchPublicData(): Promise<PublicData> {
 
   // ефективна акційна ціна на товар: активна акція в межах дат і нижча за каталожну
   const now = Date.now();
-  const promoByProduct = new Map<string, number>();
+  const promoByProduct = new Map<string, { price: number; until: string | null }>();
   for (const pr of (promosRes.data ?? []) as { promo_price: number | string; valid_from: string | null; valid_until: string | null; product: { id: string } | { id: string }[] | null }[]) {
     const prod = pr.product;
     const pid = Array.isArray(prod) ? prod[0]?.id : prod?.id;
@@ -137,7 +140,8 @@ export async function fetchPublicData(): Promise<PublicData> {
     if (pr.valid_from && new Date(pr.valid_from).getTime() > now) continue;
     if (pr.valid_until && new Date(pr.valid_until).getTime() < now) continue;
     const pp = Number(pr.promo_price);
-    if (pp > 0) promoByProduct.set(pid, Math.min(promoByProduct.get(pid) ?? Infinity, pp));
+    const prev = promoByProduct.get(pid);
+    if (pp > 0 && (!prev || pp < prev.price)) promoByProduct.set(pid, { price: pp, until: pr.valid_until });
   }
 
   // Порядок товарів: спочатку за порядком категорій (як у меню сайту), далі
@@ -155,8 +159,9 @@ export async function fetchPublicData(): Promise<PublicData> {
     .map((p) => mapProduct(p, setPortionById.get(p.id)))
     .sort((a, b) => catRank(a.category) - catRank(b.category) || photoRank(a) - photoRank(b))
     .map((p) => {
-      const pp = promoByProduct.get(p.id);
-      return pp != null && pp < p.price ? { ...p, oldPrice: p.price, price: pp } : p;
+      const pr = promoByProduct.get(p.id);
+      if (!pr || pr.price >= p.price) return p;
+      return { ...p, oldPrice: p.price, price: pr.price, ...(pr.until ? { promoUntil: pr.until } : {}) };
     });
 
   const promos: Promo[] = (promosRes.data ?? []).map((p) => {
@@ -188,16 +193,34 @@ export async function fetchPublicData(): Promise<PublicData> {
   return { catalog, categories, subcategories, promos, banners, delivery, navSpecials, glossary, contacts, seoBlock, reviews };
 }
 
+/**
+ * Публічні дані сайту з кешем Next (Data Cache) під тегом PUBLIC_TAG.
+ * Скидається revalidateTag(PUBLIC_TAG) після мутацій в адмінці; revalidate — страховка.
+ * React cache() — щоб generateMetadata і Page в одному запиті не читали двічі.
+ */
+export const fetchPublicData = cache(
+  unstable_cache(queryPublicData, ["public-data"], { tags: [PUBLIC_TAG], revalidate: PUBLIC_REVALIDATE })
+);
+
+export interface ProductSlug { slug: string; lastModified: string | null }
+
 /** Слаги доступних товарів (крім неактивних категорій) — лише для sitemap (без важкого джойну інгредієнтів). */
-export async function fetchProductSlugs(): Promise<string[]> {
-  const supabase = await createClient();
+async function queryProductSlugs(): Promise<ProductSlug[]> {
+  const supabase = createPublicClient();
+  // updated_at у products немає — для lastModified беремо created_at
   const { data, error } = await supabase
     .from("products")
-    .select("slug, category:categories(is_active)")
+    .select("slug, created_at, category:categories(is_active)")
     .is("deleted_at", null)
     .eq("is_available", true)
     .order("sort_order");
   if (error) { console.error("product slugs:", error.message); return []; }
-  type SlugRow = { slug: string; category: { is_active: boolean | null } | { is_active: boolean | null }[] | null };
-  return ((data ?? []) as unknown as SlugRow[]).filter(isPublicProduct).map((r) => r.slug).filter(Boolean);
+  type SlugRow = { slug: string; created_at: string | null; category: { is_active: boolean | null } | { is_active: boolean | null }[] | null };
+  return ((data ?? []) as unknown as SlugRow[])
+    .filter((r) => isPublicProduct(r) && Boolean(r.slug))
+    .map((r) => ({ slug: r.slug, lastModified: r.created_at }));
 }
+
+export const fetchProductSlugs = cache(
+  unstable_cache(queryProductSlugs, ["public-product-slugs"], { tags: [PUBLIC_TAG], revalidate: PUBLIC_REVALIDATE })
+);

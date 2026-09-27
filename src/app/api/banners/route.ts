@@ -1,4 +1,6 @@
 import { NextResponse } from "next/server";
+import { revalidateTag } from "next/cache";
+import { PUBLIC_TAG } from "@/features/publicCache";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { isStaff } from "@/lib/adminAuth";
 import { convertAndUpload } from "@/lib/imageUpload";
@@ -42,6 +44,7 @@ export async function POST(req: Request) {
     return NextResponse.json({ ok: false, error: "db_failed" }, { status: 500 });
   }
 
+  revalidateTag(PUBLIC_TAG); // банери — частина публічних даних
   return NextResponse.json({ ok: true, id: data.id, imagePath: up.url });
 }
 
@@ -66,6 +69,7 @@ export async function DELETE(req: Request) {
     console.error("banner delete failed:", error.message);
     return NextResponse.json({ ok: false, error: "db_failed" }, { status: 500 });
   }
+  revalidateTag(PUBLIC_TAG);
 
   if (row?.image_path) {
     const key = r2KeyFromUrl(row.image_path);

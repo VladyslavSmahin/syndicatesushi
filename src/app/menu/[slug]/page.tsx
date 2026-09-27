@@ -3,11 +3,20 @@ import { notFound } from "next/navigation";
 import ProductPage from "@/components/ProductPage";
 import { PublicDataProvider } from "@/features/publicData";
 import { fetchPublicData } from "@/features/publicData.server";
-import { SITE_URL, SITE_NAME, CITY } from "@/lib/seo";
+import { SITE_URL, SITE_NAME, CITY, OG_IMAGE } from "@/lib/seo";
 import type { Product } from "@/lib/types";
 
-// каталог і акції змінюються через адмінку — рендеримо динамічно
-export const dynamic = "force-dynamic";
+// ISR: сторінка кешується, адмінка скидає кеш через revalidateTag(PUBLIC_TAG);
+// раз на хвилину — страховий перерендер. Нові слаги рендеряться на першому запиті,
+// невідомі — 404 (notFound), тож generateStaticParams не потрібен.
+export const revalidate = 60;
+export const dynamicParams = true;
+
+// порожній список: сторінки страв не збираються під час білду, а рендеряться при першому
+// заході й далі віддаються з кешу (ISR). Без цієї функції Next рендерить їх на кожен запит.
+export async function generateStaticParams() {
+  return [];
+}
 
 type Params = { params: Promise<{ slug: string }> };
 
@@ -20,6 +29,16 @@ function describe(p: Product): string {
     : `${p.name} — замовити з доставкою в ${CITY}і. ${tail}`.trim();
 }
 
+/** Вага в грамах із рядка на кшталт «290 г», «1.2 кг», «250»; undefined — якщо не розпізнали. */
+function weightGrams(weight: string): number | undefined {
+  const m = weight.trim().match(/^(\d+(?:[.,]\d+)?)\s*(кг|kg|гр|г|g)?\.?$/i);
+  if (!m) return undefined;
+  const n = Number(m[1].replace(",", "."));
+  if (!(n > 0)) return undefined;
+  const grams = /^(кг|kg)$/i.test(m[2] ?? "") ? n * 1000 : n;
+  return Math.round(grams * 10) / 10;
+}
+
 export async function generateMetadata({ params }: Params): Promise<Metadata> {
   const { slug } = await params;
   const data = await fetchPublicData();
@@ -28,14 +47,20 @@ export async function generateMetadata({ params }: Params): Promise<Metadata> {
 
   const title = `${item.name} — замовити в ${CITY}і`;
   const description = describe(item);
-  const images = item.photo ? [{ url: item.photo, alt: `${item.name} — суші та роли, ${CITY}` }] : undefined;
+  // openGraph у дочірній сторінці повністю замінює кореневий — тож дублюємо siteName/locale/images
+  const images = item.photo
+    ? [{ url: item.photo, alt: `${item.name} — суші та роли, ${CITY}` }]
+    : [{ url: OG_IMAGE, width: 1200, height: 630, alt: `${SITE_NAME} — суші та роли, ${CITY}` }];
 
   return {
     title,
     description,
     alternates: { canonical: `/menu/${item.slug}` },
-    openGraph: { type: "article", title, description, url: `/menu/${item.slug}`, images },
-    twitter: { card: "summary_large_image", title, description, images: item.photo ? [item.photo] : undefined },
+    openGraph: {
+      type: "article", locale: "uk_UA", siteName: SITE_NAME,
+      title, description, url: `/menu/${item.slug}`, images,
+    },
+    twitter: { card: "summary_large_image", title, description, images: [item.photo ?? OG_IMAGE] },
   };
 }
 
@@ -46,6 +71,9 @@ export default async function Page({ params }: Params) {
   if (!item) notFound();
 
   const url = `${SITE_URL}/menu/${item.slug}`;
+  const grams = item.weight ? weightGrams(item.weight) : undefined;
+  // кінець акції — лише якщо на товар діє акція і дата задана (YYYY-MM-DD)
+  const priceValidUntil = item.oldPrice && item.promoUntil ? item.promoUntil.slice(0, 10) : undefined;
   const jsonLd = [
     {
       "@context": "https://schema.org",
@@ -53,13 +81,14 @@ export default async function Page({ params }: Params) {
       name: item.name,
       description: describe(item),
       ...(item.photo ? { image: item.photo } : {}),
-      ...(item.weight ? { weight: item.weight } : {}),
+      ...(grams ? { weight: { "@type": "QuantitativeValue", value: grams, unitCode: "GRM" } } : {}),
       brand: { "@type": "Brand", name: SITE_NAME },
       offers: {
         "@type": "Offer",
         url,
         price: item.price,
         priceCurrency: "UAH",
+        ...(priceValidUntil ? { priceValidUntil } : {}),
         availability: "https://schema.org/InStock",
         seller: { "@id": `${SITE_URL}/#restaurant` },
       },

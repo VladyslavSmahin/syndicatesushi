@@ -11,6 +11,7 @@ import { parseSeoBlock, type SeoBlock } from "@/lib/seoBlock";
 import { NAV_SPECIALS, parseNavVisibility } from "@/lib/navSpecials";
 import { parseGlossary, type Glossary } from "@/lib/glossary";
 import type { Badge } from "@/lib/types";
+import { revalidatePublicAction } from "./actions/public";
 
 // ---------- Типи ----------
 export interface DbIngredient {
@@ -129,6 +130,20 @@ export function useDbSubcategories() {
 }
 
 // ---------- Мутації ----------
+/**
+ * Скинути кеш публічного сайту після успішної мутації (server action → revalidateTag).
+ * Fire-and-forget: UI не чекає, помилки ігноруємо — страховкою є revalidate: 60.
+ * Серію мутацій (масова зміна цін, сортування) склеюємо в один виклик.
+ */
+let touchTimer: ReturnType<typeof setTimeout> | null = null;
+function touchPublic() {
+  if (touchTimer) clearTimeout(touchTimer);
+  touchTimer = setTimeout(() => {
+    touchTimer = null;
+    revalidatePublicAction().catch(() => {});
+  }, 300);
+}
+
 async function syncIngredients(
   supabase: ReturnType<typeof createClient>,
   productId: string,
@@ -184,40 +199,51 @@ export async function dbCreateProduct(input: ProductInput): Promise<string | und
     .insert({ ...productFields(input), slug: slugify(input.name), sort_order: 9999 })
     .select("id").single();
   if (error || !data) return error?.message ?? "Не вдалося створити товар";
-  return (await syncIngredients(supabase, data.id, input.ingredientIds, input.ingredientGrams))
+  // товар уже створено — кеш скидаємо навіть якщо склад зберігся з помилкою
+  const syncErr = (await syncIngredients(supabase, data.id, input.ingredientIds, input.ingredientGrams))
     ?? (await syncSetItems(supabase, data.id, input.setItemIds));
+  touchPublic();
+  return syncErr;
 }
 
 export async function dbUpdateProduct(id: string, input: ProductInput): Promise<string | undefined> {
   const supabase = createClient();
   const { error } = await supabase.from("products").update(productFields(input)).eq("id", id);
   if (error) return error.message;
-  return (await syncIngredients(supabase, id, input.ingredientIds, input.ingredientGrams))
+  const syncErr = (await syncIngredients(supabase, id, input.ingredientIds, input.ingredientGrams))
     ?? (await syncSetItems(supabase, id, input.setItemIds));
+  touchPublic();
+  return syncErr;
 }
 
 /** Повертає текст помилки або undefined при успіху. */
 export async function dbUpdatePrice(id: string, price: number): Promise<string | undefined> {
   const { error } = await createClient().from("products").update({ price }).eq("id", id);
+  if (!error) touchPublic();
   return error?.message;
 }
 /** Перезаписує порядок товарів: sort_order = індекс у переданому масиві id. */
 export async function dbReorderProducts(ids: string[]) {
   const supabase = createClient();
   await Promise.all(ids.map((id, i) => supabase.from("products").update({ sort_order: i }).eq("id", id)));
+  touchPublic();
 }
 
 export async function dbSetAvailable(id: string, value: boolean) {
-  await createClient().from("products").update({ is_available: value }).eq("id", id);
+  const { error } = await createClient().from("products").update({ is_available: value }).eq("id", id);
+  if (!error) touchPublic();
 }
 export async function dbSoftDelete(id: string) {
-  await createClient().from("products").update({ deleted_at: new Date().toISOString() }).eq("id", id);
+  const { error } = await createClient().from("products").update({ deleted_at: new Date().toISOString() }).eq("id", id);
+  if (!error) touchPublic();
 }
 export async function dbRestore(id: string) {
-  await createClient().from("products").update({ deleted_at: null }).eq("id", id);
+  const { error } = await createClient().from("products").update({ deleted_at: null }).eq("id", id);
+  if (!error) touchPublic();
 }
 export async function dbHardDelete(id: string) {
-  await createClient().from("products").delete().eq("id", id);
+  const { error } = await createClient().from("products").delete().eq("id", id);
+  if (!error) touchPublic();
 }
 export async function dbPurgeExpired(days = 90) {
   const cutoff = new Date(Date.now() - days * 86400000).toISOString();
@@ -235,15 +261,18 @@ export async function dbCreateIngredient(name: string, nutrition?: Nutrition): P
     .insert({ name, slug: slugify(name), ...nutrition })
     .select("id, name, slug, kcal, protein, fat, carbs").single();
   if (error || !data) { console.error("ingredient create:", error?.message); return undefined; }
+  touchPublic();
   return data as DbIngredient;
 }
 
 export async function dbUpdateIngredient(id: string, patch: Partial<{ name: string } & Nutrition>) {
-  await createClient().from("ingredients").update(patch).eq("id", id);
+  const { error } = await createClient().from("ingredients").update(patch).eq("id", id);
+  if (!error) touchPublic();
 }
 export async function dbDeleteIngredient(id: string) {
   // product_ingredients чистяться каскадом (FK on delete cascade)
-  await createClient().from("ingredients").delete().eq("id", id);
+  const { error } = await createClient().from("ingredients").delete().eq("id", id);
+  if (!error) touchPublic();
 }
 
 // ---------- Категорії CRUD ----------
@@ -252,6 +281,7 @@ export async function dbCreateCategory(input: CategoryInput): Promise<string | u
   const { error } = await createClient().from("categories").insert({
     name: input.name, slug: input.slug, sort_order: input.sortOrder, show_in_nav: input.showInNav, is_active: input.isActive,
   });
+  if (!error) touchPublic();
   return error?.message;
 }
 export async function dbUpdateCategory(id: string, patch: Partial<{ name: string; slug: string; sortOrder: number; showInNav: boolean; isActive: boolean }>) {
@@ -261,16 +291,19 @@ export async function dbUpdateCategory(id: string, patch: Partial<{ name: string
   if (patch.sortOrder !== undefined) row.sort_order = patch.sortOrder;
   if (patch.showInNav !== undefined) row.show_in_nav = patch.showInNav;
   if (patch.isActive !== undefined) row.is_active = patch.isActive;
-  await createClient().from("categories").update(row).eq("id", id);
+  const { error } = await createClient().from("categories").update(row).eq("id", id);
+  if (!error) touchPublic();
 }
 /** Перезаписує порядок категорій: sort_order = індекс у переданому масиві id. */
 export async function dbReorderCategories(ids: string[]) {
   const supabase = createClient();
   await Promise.all(ids.map((id, i) => supabase.from("categories").update({ sort_order: i }).eq("id", id)));
+  touchPublic();
 }
 
 export async function dbDeleteCategory(id: string) {
-  await createClient().from("categories").delete().eq("id", id);
+  const { error } = await createClient().from("categories").delete().eq("id", id);
+  if (!error) touchPublic();
 }
 
 // ---------- Підкатегорії CRUD ----------
@@ -278,6 +311,7 @@ export async function dbCreateSubcategory(input: { categoryId: string; name: str
   const { error } = await createClient().from("subcategories").insert({
     category_id: input.categoryId, name: input.name, slug: slugify(input.name), sort_order: input.sortOrder,
   });
+  if (!error) touchPublic();
   return error?.message;
 }
 export async function dbUpdateSubcategory(id: string, patch: Partial<{ name: string; sortOrder: number; categoryId: string }>) {
@@ -285,10 +319,12 @@ export async function dbUpdateSubcategory(id: string, patch: Partial<{ name: str
   if (patch.name !== undefined) row.name = patch.name;
   if (patch.sortOrder !== undefined) row.sort_order = patch.sortOrder;
   if (patch.categoryId !== undefined) row.category_id = patch.categoryId;
-  await createClient().from("subcategories").update(row).eq("id", id);
+  const { error } = await createClient().from("subcategories").update(row).eq("id", id);
+  if (!error) touchPublic();
 }
 export async function dbDeleteSubcategory(id: string) {
-  await createClient().from("subcategories").delete().eq("id", id);
+  const { error } = await createClient().from("subcategories").delete().eq("id", id);
+  if (!error) touchPublic();
 }
 
 // ---------- Акції ----------
@@ -339,17 +375,21 @@ function promoFields(input: PromoInput) {
 }
 export async function dbCreatePromo(input: PromoInput): Promise<string | undefined> {
   const { error } = await createClient().from("promos").insert({ ...promoFields(input), sort_order: 9999 });
+  if (!error) touchPublic();
   return error?.message;
 }
 export async function dbUpdatePromo(id: string, input: PromoInput): Promise<string | undefined> {
   const { error } = await createClient().from("promos").update(promoFields(input)).eq("id", id);
+  if (!error) touchPublic();
   return error?.message;
 }
 export async function dbSetPromoActive(id: string, value: boolean) {
-  await createClient().from("promos").update({ is_active: value }).eq("id", id);
+  const { error } = await createClient().from("promos").update({ is_active: value }).eq("id", id);
+  if (!error) touchPublic();
 }
 export async function dbDeletePromo(id: string) {
-  await createClient().from("promos").delete().eq("id", id);
+  const { error } = await createClient().from("promos").delete().eq("id", id);
+  if (!error) touchPublic();
 }
 
 // ---------- Банери (Hero-слайдер) ----------
@@ -408,13 +448,15 @@ export async function dbDeleteBanner(id: string): Promise<string | undefined> {
 }
 
 export async function dbSetBannerActive(id: string, value: boolean) {
-  await createClient().from("banners").update({ is_active: value }).eq("id", id);
+  const { error } = await createClient().from("banners").update({ is_active: value }).eq("id", id);
+  if (!error) touchPublic();
 }
 
 /** Перезаписує порядок банерів: sort_order = індекс у переданому масиві id. */
 export async function dbReorderBanners(ids: string[]) {
   const supabase = createClient();
   await Promise.all(ids.map((id, i) => supabase.from("banners").update({ sort_order: i }).eq("id", id)));
+  touchPublic();
 }
 
 // ---------- Промокоди ----------
@@ -529,10 +571,12 @@ export function useDbReviews() {
 }
 
 export async function dbSetReviewStatus(id: string, status: ReviewStatus) {
-  await createClient().from("reviews").update({ status }).eq("id", id);
+  const { error } = await createClient().from("reviews").update({ status }).eq("id", id);
+  if (!error) touchPublic();
 }
 export async function dbDeleteReview(id: string) {
-  await createClient().from("reviews").delete().eq("id", id);
+  const { error } = await createClient().from("reviews").delete().eq("id", id);
+  if (!error) touchPublic();
 }
 
 // ---------- Налаштування доставки (settings, key='delivery') ----------
@@ -553,6 +597,7 @@ export function useDbDelivery() {
 
 export async function dbSaveDelivery(settings: DeliverySettings): Promise<string | undefined> {
   const { error } = await createClient().from("settings").upsert({ key: "delivery", value: settings }, { onConflict: "key" });
+  if (!error) touchPublic();
   return error?.message;
 }
 
@@ -579,7 +624,8 @@ export function useDbNavSpecials() {
 export async function dbSetNavSpecialVisible(specials: NavSpecialItem[], id: string, visible: boolean) {
   const map: Record<string, boolean> = {};
   for (const sp of specials) map[sp.id] = sp.id === id ? visible : sp.showInNav;
-  await createClient().from("settings").upsert({ key: "nav_specials", value: map }, { onConflict: "key" });
+  const { error } = await createClient().from("settings").upsert({ key: "nav_specials", value: map }, { onConflict: "key" });
+  if (!error) touchPublic();
 }
 
 // ---------- Глосарій (settings, key='glossary') ----------
@@ -600,6 +646,7 @@ export function useDbGlossary() {
 
 export async function dbSaveGlossary(glossary: Glossary): Promise<string | undefined> {
   const { error } = await createClient().from("settings").upsert({ key: "glossary", value: glossary }, { onConflict: "key" });
+  if (!error) touchPublic();
   return error?.message;
 }
 
@@ -621,6 +668,7 @@ export function useDbContacts() {
 
 export async function dbSaveContacts(contacts: SiteContacts): Promise<string | undefined> {
   const { error } = await createClient().from("settings").upsert({ key: "contacts", value: contacts }, { onConflict: "key" });
+  if (!error) touchPublic();
   return error?.message;
 }
 
@@ -642,5 +690,6 @@ export function useDbSeoBlock() {
 
 export async function dbSaveSeoBlock(block: SeoBlock): Promise<string | undefined> {
   const { error } = await createClient().from("settings").upsert({ key: "seo_block", value: block }, { onConflict: "key" });
+  if (!error) touchPublic();
   return error?.message;
 }

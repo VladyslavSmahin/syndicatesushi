@@ -317,9 +317,13 @@ textarea.form-input { resize: vertical; min-height: 120px; font-family: var(--fo
   .hero-eyebrow { order: 1; margin-bottom: 0 !important; }
   .hero-slider { order: 2; }
   .hero-cta { order: 3; width: 100%; }
-  .hero-title, .hero-tagline, .hero-lead { display: none; }
+  .hero-tagline, .hero-lead { display: none; }
+  /* h1 не ховаємо через display:none (Google індексує мобільну версію) — лише візуально */
+  .hero-title {
+    position: absolute !important; width: 1px; height: 1px; padding: 0; margin: -1px !important;
+    overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; border: 0;
+  }
   /* «Sushi Syndicate» — в один рядок */
-  .hero-title { font-size: clamp(24px, 9vw, 40px) !important; white-space: nowrap; }
   .hero-br { display: none; }
   /* дві кнопки — в один ряд */
   .hero-cta { justify-content: center; flex-wrap: nowrap; gap: 10px; }

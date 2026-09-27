@@ -54,7 +54,18 @@ export default function MenuCard({
 
       <div style={{ paddingTop: 0, paddingBottom: 4, flex: 1, display: "flex", flexDirection: "column" }}>
         <h3 style={{ fontFamily: "var(--font-display)", fontSize: titleSize, fontWeight: 600, color: "var(--text-primary)", lineHeight: 1.15, marginTop: "var(--card-title-mt, 10px)", marginBottom: compact ? 4 : 6 }}>
-          {item.name}
+          {/* справжнє посилання на сторінку страви — щоб пошуковики бачили сторінки страв.
+              Звичайний клік відкриває модалку (спливає до картки), Ctrl/Cmd/середня кнопка — нову вкладку */}
+          <a
+            href={`/menu/${item.slug}`}
+            style={{ color: "inherit", textDecoration: "none" }}
+            onClick={(e) => {
+              if (e.metaKey || e.ctrlKey || e.shiftKey || e.button !== 0) { e.stopPropagation(); return; }
+              e.preventDefault();
+            }}
+          >
+            {item.name}
+          </a>
         </h3>
       </div>
 

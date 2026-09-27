@@ -52,7 +52,7 @@ export default function FullMenu({
   const [selectedSub, setSelectedSub] = useState<string | null>(null); // обрана підкатегорія
   const [sort, setSort] = useState<Sort>("default"); // сортування
   const pageSize = isMobile ? PAGE_MOBILE : PAGE_DESKTOP;
-  const [visibleCount, setVisibleCount] = useState(PAGE_DESKTOP);
+  const [visibleCount, setVisibleCount] = useState(PAGE_MOBILE); // mobile first — див. useIsMobile
   const [sheetOpen, setSheetOpen] = useState(false);
   const [filtersOpen, setFiltersOpen] = useState(false); // десктоп: розкриті чипи інгредієнтів
 

@@ -3,8 +3,9 @@ import StructuredData from "@/components/StructuredData";
 import { PublicDataProvider } from "@/features/publicData";
 import { fetchPublicData } from "@/features/publicData.server";
 
-// Каталог змінюється через адмінку → рендеримо динамічно (без кешу).
-export const dynamic = "force-dynamic";
+// ISR: сторінка кешується, адмінка скидає кеш через revalidateTag(PUBLIC_TAG);
+// раз на хвилину — страховий перерендер, якщо інвалідація не дійшла.
+export const revalidate = 60;
 
 export default async function Page() {
   const data = await fetchPublicData();

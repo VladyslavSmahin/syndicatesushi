@@ -29,6 +29,8 @@ export interface Product {
   price: number;
   /** звичайна ціна до акції (показуємо закресленою); відсутня — акції немає */
   oldPrice?: number;
+  /** кінець дії акції (ISO), якщо задано — для розмітки priceValidUntil */
+  promoUntil?: string;
   /** напр. "290 г" */
   weight: string;
   /** напр. "8 шт" */

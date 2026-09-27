@@ -3,6 +3,9 @@ import InfoPageShell from "@/components/InfoPageShell";
 import { fetchContacts } from "@/features/contacts.server";
 import { sitePhones } from "@/lib/contacts";
 
+// контакти кешуються під PUBLIC_TAG; ISR раз на хвилину як страховка
+export const revalidate = 60;
+
 export const metadata: Metadata = {
   title: "Політика конфіденційності",
   description: "Як Sushi Syndicate обробляє персональні дані клієнтів.",
