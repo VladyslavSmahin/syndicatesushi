@@ -2,66 +2,15 @@
 
 import { useEffect, useMemo, useRef, useState } from "react";
 import { createPortal } from "react-dom";
+import { dayOptions, timeSlots } from "@/lib/kyivTime";
 
 // Вибір дати й часу самовивозу: аркуш із «каруселями» (як нативний пікер в iOS).
-// За замовчуванням — сьогодні + «по готовності»; час обирається зі слотів у
-// межах годин роботи закладу (минулі слоти на сьогодні не показуємо).
+// За замовчуванням — найближчий робочий день + «по готовності»; час обирається зі
+// слотів у межах годин роботи закладу (минулі слоти на сьогодні не показуємо).
+// Дні й слоти рахуються за київським часом (див. @/lib/kyivTime).
 
 const ITEM_H = 40;      // висота пункту каруселі
 const VISIBLE = 5;      // скільки пунктів видно (непарне — щоб був центр)
-const DAYS_AHEAD = 7;   // на скільки днів наперед можна замовити
-const STEP_MIN = 15;    // крок часу
-const LEAD_MIN = 30;    // мінімальний запас часу на приготування
-
-const pad = (n: number) => String(n).padStart(2, "0");
-export const ymd = (d: Date) => `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
-
-/** «11:00 — 22:00» → [660, 1320] у хвилинах від опівночі. */
-function parseHours(hours: string): [number, number] {
-  const m = (hours || "").match(/(\d{1,2}):(\d{2})\D+(\d{1,2}):(\d{2})/);
-  if (!m) return [10 * 60, 22 * 60];
-  return [Number(m[1]) * 60 + Number(m[2]), Number(m[3]) * 60 + Number(m[4])];
-}
-
-export interface DayOption { value: string; label: string; }
-
-/** Найближчі дні: Сьогодні / Завтра / «нд, 31.08». */
-export function dayOptions(): DayOption[] {
-  const out: DayOption[] = [];
-  const now = new Date();
-  for (let i = 0; i < DAYS_AHEAD; i++) {
-    const d = new Date(now.getFullYear(), now.getMonth(), now.getDate() + i);
-    const label =
-      i === 0 ? "Сьогодні"
-      : i === 1 ? "Завтра"
-      : d.toLocaleDateString("uk-UA", { weekday: "short", day: "2-digit", month: "2-digit" });
-    out.push({ value: ymd(d), label });
-  }
-  return out;
-}
-
-/** Слоти часу для дня в межах годин роботи; на сьогодні — лише майбутні. */
-export function timeSlots(dateValue: string, hours: string): string[] {
-  const [open, close] = parseHours(hours);
-  const now = new Date();
-  const isToday = dateValue === ymd(now);
-  let from = open;
-  if (isToday) {
-    const earliest = now.getHours() * 60 + now.getMinutes() + LEAD_MIN;
-    from = Math.max(open, Math.ceil(earliest / STEP_MIN) * STEP_MIN);
-  }
-  const out: string[] = [];
-  for (let t = from; t <= close - STEP_MIN; t += STEP_MIN) {
-    out.push(`${pad(Math.floor(t / 60))}:${pad(t % 60)}`);
-  }
-  return out;
-}
-
-/** Підпис для кнопки в кошику: «Сьогодні о 18:30» / «Завтра, по готовності». */
-export function pickupLabel(date: string, time: string): string {
-  const day = dayOptions().find((d) => d.value === date)?.label ?? date;
-  return time ? `${day} о ${time}` : `${day}, по готовності`;
-}
 
 export default function PickupPicker({
   date, time, hours, onApply, onClose,
@@ -72,8 +21,9 @@ export default function PickupPicker({
   onApply: (date: string, time: string) => void;
   onClose: () => void;
 }) {
-  const days = useMemo(() => dayOptions(), []);
-  const [d, setD] = useState(date || days[0].value);
+  // дні без жодного слоту (сьогодні після закриття) не пропонуємо зовсім
+  const days = useMemo(() => dayOptions(hours), [hours]);
+  const [d, setD] = useState(days.some((x) => x.value === date) ? date : days[0]?.value ?? date);
   const [asap, setAsap] = useState(!time);
   const slots = useMemo(() => timeSlots(d, hours), [d, hours]);
   const [t, setT] = useState(time && slots.includes(time) ? time : slots[0] ?? "");

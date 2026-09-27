@@ -130,6 +130,11 @@ body {
 @keyframes modalSlideRight { from { opacity: 0; transform: translateX(-48px); } to { opacity: 1; transform: translateX(0); } }
 .modal-slide-left { animation: modalSlideLeft 0.28s cubic-bezier(0.4,0,0.2,1) both; }
 .modal-slide-right { animation: modalSlideRight 0.28s cubic-bezier(0.4,0,0.2,1) both; }
+/* висота картки товару: vh — фолбек для старих браузерів, dvh — видима висота (iOS 15.4+) */
+.product-modal {
+  max-height: calc(100vh - 2 * var(--modal-pad-y, 24px));
+  max-height: calc(100dvh - 2 * var(--modal-pad-y, 24px));
+}
 .modal-nav {
   position: absolute; top: 50%; transform: translateY(-50%); z-index: 1;
   width: 48px; height: 48px; background: rgba(13,11,9,0.6); border: 1px solid var(--border-light);
@@ -257,6 +262,8 @@ textarea.form-input { resize: vertical; min-height: 120px; font-family: var(--fo
     --menu-cols: repeat(3, minmax(0, 1fr));
     --review-cols: 3;
     --reviews-gap: 56px;
+    /* вузький десктоп/планшет: модалка вужча за 900px — фото і текст навпіл, щоб тексту вистачало */
+    --modal-cols: 1fr 1fr;
   }
 }
 

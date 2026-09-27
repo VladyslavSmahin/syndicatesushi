@@ -18,6 +18,11 @@ export function isScrollLocked() {
   return locks > 0;
 }
 
+/** Справжня позиція скролу: під блокуванням window.scrollY = 0, беремо збережену. */
+export function currentScrollY() {
+  return locks > 0 ? savedY : window.scrollY;
+}
+
 function lock() {
   if (locks++ > 0) return;
   savedY = window.scrollY;

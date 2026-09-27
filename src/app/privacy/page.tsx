@@ -7,6 +7,8 @@ export const metadata: Metadata = {
   title: "Політика конфіденційності",
   description: "Як Sushi Syndicate обробляє персональні дані клієнтів.",
   alternates: { canonical: "/privacy" },
+  // чернетка тексту — не індексуємо, поки власник не замінить на фінальний
+  robots: { index: false, follow: true },
 };
 
 const h2: React.CSSProperties = { fontFamily: "var(--font-display)", fontSize: 22, fontWeight: 600, margin: "30px 0 12px", color: "var(--text-primary)" };

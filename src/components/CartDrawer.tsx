@@ -3,9 +3,10 @@
 import { useEffect, useMemo, useRef, useState, type CSSProperties } from "react";
 import Link from "next/link";
 import { Icon } from "./icons";
-import { useCart } from "@/features/cart/CartContext";
+import { useCart, MAX_QTY } from "@/features/cart/CartContext";
 import { usePublicCatalog, useGloss, useContacts } from "@/features/publicData";
-import PickupPicker, { dayOptions, ymd } from "./PickupPicker";
+import PickupPicker from "./PickupPicker";
+import { dayOptions, firstPickupDay, isPickupStillValid, weekdayLabel } from "@/lib/kyivTime";
 import type { Product, CartItem } from "@/lib/types";
 import { useScrollLock } from "@/lib/scrollLock";
 
@@ -40,10 +41,43 @@ function isPhoneValid(raw: string): boolean {
   return d.length === 10 && d.startsWith("0");
 }
 
+// ліміти довжини полів — ті самі, що перевіряє /api/order
+const MAX_NAME = 100;
+const MAX_PHONE = 30;
+const MAX_ADDRESS = 300;
+const MAX_COMMENT = 1000;
+const MAX_PROMO = 50;
+
+const PICKUP_RESET_MSG = "Обраний час самовивозу вже минув — оберіть, будь ласка, новий.";
+const GENERIC_ERROR = "Не вдалося надіслати замовлення. Спробуйте ще раз або зателефонуйте нам.";
+
+/** Код помилки /api/order → зрозуміле повідомлення для клієнта. */
+function orderErrorText(code: string | undefined, status: number): string {
+  if (status === 429 || code === "rate_limited") return "Забагато спроб поспіль. Зачекайте хвилину й спробуйте ще раз.";
+  switch (code) {
+    case "missing_fields": return "Заповніть ім'я й телефон та перевірте, що в кошику є товари.";
+    case "field_too_long": return "Задовгий текст в одному з полів (ім'я, телефон, адреса чи коментар). Скоротіть, будь ласка.";
+    case "invalid_qty": return `Некоректна кількість товару: від 1 до ${MAX_QTY} шт однієї позиції.`;
+    case "too_many_items": return "Забагато різних позицій в одному замовленні. Розбийте його на кілька або зателефонуйте нам.";
+    case "item_unavailable": return "Деякі товари вже недоступні — ми прибрали їх з кошика. Перевірте замовлення й підтвердіть ще раз.";
+    case "consent_required": return "Підтвердіть згоду на обробку персональних даних.";
+    case "address_required": return "Вкажіть адресу доставки.";
+    case "pickup_date_invalid": return "Обраний день самовивозу вже недоступний — оберіть, будь ласка, інший.";
+    case "pickup_time_passed": return PICKUP_RESET_MSG;
+    case "pickup_time_invalid": return "Обраний час поза годинами роботи — оберіть, будь ласка, інший.";
+    case "save_failed": return "Не вдалося зберегти замовлення. Спробуйте ще раз або зателефонуйте нам.";
+    case "bad_json": case "bad_fields": case "bad_items": case "bad_delivery":
+      return "Не вдалося обробити замовлення. Оновіть сторінку й спробуйте ще раз.";
+    default: return GENERIC_ERROR;
+  }
+}
+
 export default function CartDrawer({ isOpen, onClose }: { isOpen: boolean; onClose: () => void }) {
-  const { items, total, changeQty, remove, clear, add } = useCart();
+  const { items, total, changeQty, remove, clear, add, syncCatalog, removeUnavailable, removedNotice, dismissRemovedNotice } = useCart();
   const catalog = usePublicCatalog();
   const contacts = useContacts();
+  // звіряємо кошик (localStorage) з актуальним каталогом: ціни, назви, зниклі товари
+  useEffect(() => { syncCatalog(catalog); }, [catalog, syncCatalog]);
   const extras = useMemo(
     () => catalog.filter((p) => p.category === EXTRAS_CATEGORY).sort((a, b) => a.price - b.price),
     [catalog]
@@ -57,10 +91,15 @@ export default function CartDrawer({ isOpen, onClose }: { isOpen: boolean; onClo
   const [phone, setPhone] = useState("");
   const [address, setAddress] = useState("");
   const [comment, setComment] = useState("");
-  // самовивіз: дата (за замовчуванням сьогодні) і час ("" = по готовності)
-  const [pickupDate, setPickupDate] = useState(() => ymd(new Date()));
+  // самовивіз: дата (за замовчуванням — найближчий день зі слотами, за київським часом)
+  // і час ("" = по готовності)
+  const [pickupDate, setPickupDate] = useState(() => firstPickupDay(contacts.hours));
   const [pickupTime, setPickupTime] = useState("");
+  const [pickupChosen, setPickupChosen] = useState(false); // клієнт сам обирав день/час у пікері
+  const [pickupMsg, setPickupMsg] = useState("");
   const [pickerOpen, setPickerOpen] = useState(false);
+  // сума з сервера після успішного замовлення (якщо відрізняється від показаної)
+  const [serverTotal, setServerTotal] = useState<number | null>(null);
   const [promo, setPromo] = useState("");
   // застосований промокод (підтверджений сервером) + повідомлення/стан перевірки
   const [promoInfo, setPromoInfo] = useState<{ code: string; discountType: "percent" | "fixed"; value: number } | null>(null);
@@ -73,9 +112,28 @@ export default function CartDrawer({ isOpen, onClose }: { isOpen: boolean; onClo
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState("");
 
+  /** Перевіряє, чи обраний день/час самовивозу ще актуальні (час іде, поки кошик відкритий
+   *  чи вкладка висить у фоні). Якщо ні — скидає на найближчий день «по готовності».
+   *  Повертає true, якщо довелося скинути. */
+  const revalidatePickup = (): boolean => {
+    if (isPickupStillValid(pickupDate, pickupTime, contacts.hours)) return false;
+    setPickupDate(firstPickupDay(contacts.hours));
+    setPickupTime("");
+    // скидання дефолтного значення — тихо; обраного клієнтом — з проханням обрати знову
+    if (pickupChosen) setPickupMsg(PICKUP_RESET_MSG);
+    setPickupChosen(false);
+    return true;
+  };
+
   useScrollLock(isOpen);
   useEffect(() => {
-    if (!isOpen) setStep("cart"); // скидаємо крок при закритті (щоб «Готово» не залипало)
+    if (!isOpen) {
+      setStep("cart"); // скидаємо крок при закритті (щоб «Готово» не залипало)
+      setServerTotal(null);
+      return;
+    }
+    revalidatePickup(); // кошик могли відкрити через години/дні після попереднього вибору
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isOpen]);
 
   if (!isOpen) return null;
@@ -142,8 +200,14 @@ export default function CartDrawer({ isOpen, onClose }: { isOpen: boolean; onClo
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!canSubmit || submitting) return;
-    setSubmitting(true);
     setError("");
+    // слот міг минути, поки клієнт заповнював форму — просимо обрати знову
+    if (delivery === "pickup" && revalidatePickup()) {
+      setPickupMsg(PICKUP_RESET_MSG);
+      setError(PICKUP_RESET_MSG);
+      return;
+    }
+    setSubmitting(true);
     try {
       const res = await fetch("/api/order", {
         method: "POST",
@@ -156,12 +220,29 @@ export default function CartDrawer({ isOpen, onClose }: { isOpen: boolean; onClo
           promo: promoInfo?.code ?? "", consent, items,
         }),
       });
-      if (!res.ok) throw new Error("request_failed");
+      const j = (await res.json().catch(() => ({}))) as { ok?: boolean; error?: string; badIds?: unknown; total?: unknown };
+      if (!res.ok || !j.ok) {
+        if (j.error === "item_unavailable" && Array.isArray(j.badIds)) {
+          removeUnavailable(j.badIds.filter((x): x is string => typeof x === "string"));
+        }
+        if (j.error === "pickup_date_invalid" || j.error === "pickup_time_passed" || j.error === "pickup_time_invalid") {
+          // сервер (київський час) не прийняв вибір — скидаємо на найближчий доступний
+          setPickupDate(firstPickupDay(contacts.hours));
+          setPickupTime("");
+          setPickupChosen(false);
+          setPickupMsg(orderErrorText(j.error, res.status));
+        }
+        setError(orderErrorText(j.error, res.status));
+        return;
+      }
+      // показуємо серверну суму, якщо вона відрізняється від тієї, що бачив клієнт
+      setServerTotal(typeof j.total === "number" && j.total !== payable ? j.total : null);
       setStep("done");
       clear();
       setPromo(""); setPromoInfo(null); setPromoMsg(null); setPromoOpen(false); setCutlery(null);
+      setPickupMsg(""); setPickupChosen(false);
     } catch {
-      setError("Не вдалося надіслати замовлення. Спробуйте ще раз або зателефонуйте нам.");
+      setError(GENERIC_ERROR);
     } finally {
       setSubmitting(false);
     }
@@ -189,10 +270,16 @@ export default function CartDrawer({ isOpen, onClose }: { isOpen: boolean; onClo
             <p style={{ fontSize: 13, color: "var(--text-primary)", lineHeight: 1.7, maxWidth: 280 }}>
               Замовлення прийнято. Найближчим часом ми зв&apos;яжемося з вами для підтвердження.
             </p>
+            {serverTotal != null && (
+              <p style={{ fontSize: 13, color: "var(--text-secondary)", lineHeight: 1.6, maxWidth: 280, marginTop: 12 }}>
+                Сума замовлення за актуальними цінами: <b style={{ color: "var(--text-primary)" }}>{serverTotal} грн</b>
+              </p>
+            )}
             <button className="btn-primary" style={{ marginTop: 28 }} onClick={onClose}>Чудово</button>
           </div>
         ) : items.length === 0 ? (
           <div style={{ flex: 1, overflowY: "auto", padding: "8px 28px", display: "flex", flexDirection: "column" }}>
+            {removedNotice && <RemovedNotice onClose={dismissRemovedNotice} />}
             <div style={{ display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", color: "var(--text-secondary)", padding: "48px 0 24px" }}>
               <div style={{ marginBottom: 16, opacity: 0.4 }}><Icon.Cart width="48" height="48" /></div>
               <p style={{ fontFamily: "var(--font-display)", fontStyle: "italic", fontSize: 18 }}>Кошик порожній</p>
@@ -203,6 +290,7 @@ export default function CartDrawer({ isOpen, onClose }: { isOpen: boolean; onClo
         ) : step === "cart" ? (
           <>
             <div style={{ flex: 1, overflowY: "auto", padding: "8px 28px" }}>
+              {removedNotice && <RemovedNotice onClose={dismissRemovedNotice} />}
               {items.map((item) => {
                 // фото беремо з каталогу за id (у кошику в localStorage його немає)
                 const photo = catalog.find((p) => p.id === item.id)?.photo;
@@ -229,9 +317,12 @@ export default function CartDrawer({ isOpen, onClose }: { isOpen: boolean; onClo
                   </div>
                   <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", paddingLeft: 60 /* під назвою, а не під мініатюрою */ }}>
                     <div style={{ display: "flex", alignItems: "center", border: "1px solid var(--border-light)" }}>
-                      <button onClick={() => changeQty(item.id, -1)} style={qtyBtn}><Icon.Minus width="12" height="12" /></button>
+                      <button onClick={() => changeQty(item.id, -1)} aria-label="Менше" style={qtyBtn}><Icon.Minus width="12" height="12" /></button>
                       <span style={{ minWidth: 32, textAlign: "center", fontSize: 13, color: "var(--text-primary)" }}>{item.qty}</span>
-                      <button onClick={() => changeQty(item.id, +1)} style={qtyBtn}><Icon.Plus width="12" height="12" /></button>
+                      <button onClick={() => changeQty(item.id, +1)} disabled={item.qty >= MAX_QTY} aria-label="Додати ще"
+                        style={{ ...qtyBtn, ...(item.qty >= MAX_QTY ? { opacity: 0.35, cursor: "not-allowed" } : null) }}>
+                        <Icon.Plus width="12" height="12" />
+                      </button>
                     </div>
                     <div style={{ fontFamily: "var(--font-display)", fontSize: 17, fontWeight: 700, color: "var(--text-primary)" }}>{item.price * item.qty} грн</div>
                   </div>
@@ -253,7 +344,7 @@ export default function CartDrawer({ isOpen, onClose }: { isOpen: boolean; onClo
             <div style={{ flex: 1, overflowY: "auto", padding: "20px 28px", display: "flex", flexDirection: "column", gap: 12 }}>
               <div style={{ display: "flex", gap: 8 }}>
                 {([["delivery", "Доставка"], ["pickup", "Самовивіз"]] as const).map(([val, label]) => (
-                  <button key={val} type="button" onClick={() => setDelivery(val)}
+                  <button key={val} type="button" onClick={() => { setDelivery(val); if (val === "pickup") revalidatePickup(); }}
                     style={{ flex: 1, padding: "12px 0", cursor: "pointer", fontFamily: "var(--font-body)", fontSize: 11, letterSpacing: 2, textTransform: "uppercase",
                       background: delivery === val ? "var(--bg-elevated)" : "transparent",
                       border: `1px solid ${delivery === val ? "var(--accent)" : "var(--border-light)"}`,
@@ -265,10 +356,10 @@ export default function CartDrawer({ isOpen, onClose }: { isOpen: boolean; onClo
 
               {/* імʼя та телефон — в один рядок, кожне поле не тягне цілу ширину */}
               <div style={{ display: "flex", gap: 8 }}>
-                <input className="form-input" placeholder="Ім'я *" value={name}
+                <input className="form-input" placeholder="Ім'я *" value={name} maxLength={MAX_NAME}
                   onChange={(e) => setName(e.target.value)} style={{ flex: 1, minWidth: 0 }} />
                 <input className="form-input" type="tel" inputMode="numeric" autoComplete="tel"
-                  placeholder="093 728 42 98" value={phone}
+                  placeholder="093 728 42 98" value={phone} maxLength={MAX_PHONE}
                   onChange={(e) => setPhone(formatPhone(e.target.value))} style={{ flex: 1, minWidth: 0 }} />
               </div>
 
@@ -276,14 +367,16 @@ export default function CartDrawer({ isOpen, onClose }: { isOpen: boolean; onClo
                 <PickupRow
                   date={pickupDate}
                   time={pickupTime}
-                  onOpen={() => setPickerOpen(true)}
+                  hours={contacts.hours}
+                  message={pickupMsg}
+                  onOpen={() => { if (!revalidatePickup()) setPickupMsg(""); setPickerOpen(true); }}
                 />
               )}
 
               {delivery === "delivery" && (
                 <div>
                   <input className="form-input" placeholder="Адреса доставки * (вулиця, будинок, квартира)"
-                    value={address} onChange={(e) => setAddress(e.target.value)} autoComplete="off" />
+                    value={address} onChange={(e) => setAddress(e.target.value)} autoComplete="off" maxLength={MAX_ADDRESS} />
                   <p style={{ fontSize: 11, color: "var(--text-secondary)", marginTop: 6, lineHeight: 1.5 }}>
                     Доставка — від 100 грн, далі залежно від відстані. Точну вартість підтвердимо при дзвінку.
                   </p>
@@ -316,6 +409,7 @@ export default function CartDrawer({ isOpen, onClose }: { isOpen: boolean; onClo
                     className="form-input"
                     placeholder="Промокод"
                     value={promo}
+                    maxLength={MAX_PROMO}
                     onChange={(e) => onPromoChange(e.target.value)}
                     onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); applyPromo(); } }}
                     style={{ paddingRight: 124, textTransform: "uppercase" }}
@@ -342,7 +436,7 @@ export default function CartDrawer({ isOpen, onClose }: { isOpen: boolean; onClo
                 </div>
                 )}
               </div>
-              <textarea className="form-input" placeholder="Коментар до замовлення" value={comment} onChange={(e) => setComment(e.target.value)} style={{ minHeight: 80 }} />
+              <textarea className="form-input" placeholder="Коментар до замовлення" value={comment} onChange={(e) => setComment(e.target.value)} maxLength={MAX_COMMENT} style={{ minHeight: 80 }} />
             </div>
 
             <div style={{ borderTop: "1px solid var(--border)", padding: "20px 28px 28px" }}>
@@ -395,7 +489,7 @@ export default function CartDrawer({ isOpen, onClose }: { isOpen: boolean; onClo
           date={pickupDate}
           time={pickupTime}
           hours={contacts.hours}
-          onApply={(d, t) => { setPickupDate(d); setPickupTime(t); setPickerOpen(false); }}
+          onApply={(d, t) => { setPickupDate(d); setPickupTime(t); setPickupChosen(true); setPickupMsg(""); setError(""); setPickerOpen(false); }}
           onClose={() => setPickerOpen(false)}
         />
       )}
@@ -461,9 +555,25 @@ function CutleryRow({ value, onChange }: { value: number; onChange: (n: number) 
   );
 }
 
+/** Повідомлення: частину товарів прибрано з кошика, бо їх більше немає в меню. */
+function RemovedNotice({ onClose }: { onClose: () => void }) {
+  return (
+    <div role="status"
+      style={{
+        display: "flex", alignItems: "flex-start", gap: 10, margin: "12px 0 4px", padding: "10px 12px",
+        border: "1px solid var(--border-light)", background: "var(--bg-elevated)",
+        fontSize: 12, lineHeight: 1.5, color: "var(--text-primary)",
+      }}>
+      <span style={{ flex: 1 }}>Деякі товари більше недоступні й прибрані з кошика.</span>
+      <button type="button" onClick={onClose} aria-label="Закрити повідомлення"
+        style={{ background: "transparent", border: "none", color: "var(--text-secondary)", cursor: "pointer", fontSize: 16, lineHeight: 1, padding: 0 }}>×</button>
+    </div>
+  );
+}
+
 /** Рядок «коли забрати»: дата + час, обидві кнопки відкривають той самий пікер. */
-function PickupRow({ date, time, onOpen }: { date: string; time: string; onOpen: () => void }) {
-  const dayLabel = dayOptions().find((d) => d.value === date)?.label ?? date;
+function PickupRow({ date, time, hours, message, onOpen }: { date: string; time: string; hours: string; message: string; onOpen: () => void }) {
+  const dayLabel = dayOptions(hours).find((d) => d.value === date)?.label ?? weekdayLabel(date);
   return (
     <div>
       <span style={{ display: "block", fontSize: 10, letterSpacing: 2, textTransform: "uppercase", color: "var(--text-secondary)", marginBottom: 8 }}>
@@ -473,6 +583,7 @@ function PickupRow({ date, time, onOpen }: { date: string; time: string; onOpen:
         <PickupButton label={dayLabel} onClick={onOpen} />
         <PickupButton label={time || "По готовності"} onClick={onOpen} accent={!!time} />
       </div>
+      {message && <p style={{ fontSize: 11, color: "#E0726A", marginTop: 6, lineHeight: 1.5 }}>{message}</p>}
     </div>
   );
 }

@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { useDbContacts, dbSaveContacts } from "@/features/admin/db";
-import { CONTACT_ENTRIES, telHref } from "@/lib/contacts";
+import { CONTACT_ENTRIES, SOCIAL_KEYS, isValidSocialUrl, telHref } from "@/lib/contacts";
 import s from "@/components/admin/admin.module.css";
 
 export default function ContactsPage() {
@@ -22,9 +22,14 @@ export default function ContactsPage() {
     return [...map.entries()];
   }, []);
 
+  // соцмережі: лише https-посилання (інше на сайті все одно відкидається)
+  const isSocial = (key: string) => (SOCIAL_KEYS as readonly string[]).includes(key);
+  const invalidSocial = SOCIAL_KEYS.filter((k) => !isValidSocialUrl(draft[k] ?? ""));
+
   const dirty = CONTACT_ENTRIES.some((e) => (draft[e.key] ?? "") !== (contacts[e.key] ?? ""));
 
   const save = async () => {
+    if (invalidSocial.length) return;
     setSaving(true);
     // порожнє поле → дефолт (для соцмереж дефолт порожній, тобто іконка ховається)
     const out: Record<string, string> = {};
@@ -76,6 +81,11 @@ export default function ContactsPage() {
                         Показувати на сайті
                       </label>
                     )}
+                    {isSocial(e.key) && !isValidSocialUrl(draft[e.key] ?? "") && (
+                      <span className={s.error} style={{ fontSize: 12, marginTop: 4 }}>
+                        Посилання має починатися з https://
+                      </span>
+                    )}
                     {e.hint && <span className={s.hint} style={{ fontSize: 11, marginTop: 4 }}>{e.hint}</span>}
                     {(e.key === "phone" || e.visibleKey) && (draft[e.key]?.trim() || "") !== "" && (
                       <span className={s.hint} style={{ fontSize: 11, marginTop: 4 }}>
@@ -89,7 +99,7 @@ export default function ContactsPage() {
           ))}
 
           <div style={{ display: "flex", gap: 10, alignItems: "center", flexWrap: "wrap" }}>
-            <button className={s.btn} onClick={save} disabled={saving || !dirty}>{saving ? "Збереження…" : "Зберегти"}</button>
+            <button className={s.btn} onClick={save} disabled={saving || !dirty || invalidSocial.length > 0}>{saving ? "Збереження…" : "Зберегти"}</button>
             <button className={`${s.btn} ${s.btnGhost}`} onClick={reset} disabled={saving}>Скинути до дефолтних</button>
             {saved && <span className={s.hint} style={{ color: "#8fc98f" }}>Збережено ✓</span>}
           </div>

@@ -18,10 +18,11 @@ import MobileCategoryBar from "./MobileCategoryBar";
 import { useCart } from "@/features/cart/CartContext";
 import { usePublicCatalog } from "@/features/publicData";
 import {
-  beginHomeRestore, scheduleEndHomeRestore, cancelEndHomeRestore, isHomeRestoring, saveHomeState, clearPendingPop, MODAL_STATE_KEY,
+  beginHomeRestore, scheduleEndHomeRestore, cancelEndHomeRestore, isHomeRestoring, saveHomeState, clearPendingPop,
+  MODAL_STATE_KEY, MODAL_LIST_KEY,
 } from "@/features/navHistory";
 import type { Product, NavCategory } from "@/lib/types";
-import { isScrollLocked } from "@/lib/scrollLock";
+import { isScrollLocked, currentScrollY } from "@/lib/scrollLock";
 
 type NavFilter = NonNullable<NavCategory["filter"]>;
 
@@ -41,13 +42,31 @@ export default function HomeClient() {
 
   // позиція скролу на момент відкриття картки: «назад» браузер відновлює по-своєму — повертаємо нашу
   const scrollAtModal = useRef(0);
+  // вже викликали history.back() для закриття — повторні виклики (Esc із автоповтором,
+  // подвійний тап) не мають зробити ще один «назад» і вивести з сайту
+  const closing = useRef(false);
 
   const byIds = (ids: string[] | undefined) =>
     (ids ?? []).map((id) => catalog.find((p) => p.id === id)).filter((p): p is Product => !!p);
 
+  // список для гортання: збережений у цьому кроці історії, інакше — категорія товару
+  const listFor = (it: Product): Product[] => {
+    const saved = byIds(window.history.state?.[MODAL_LIST_KEY]);
+    return saved.some((p) => p.id === it.id) ? saved : catalog.filter((p) => p.category === it.category);
+  };
+
+  // у history.state лишилась картка, яку не відкриваємо (F5, товар прибрали) — прибираємо ключ,
+  // інакше перше «назад» нічого видимо не зробить
+  const dropStaleModalState = () => {
+    const st = window.history.state;
+    if (!st?.[MODAL_STATE_KEY]) return;
+    const { [MODAL_STATE_KEY]: _m, [MODAL_LIST_KEY]: _l, ...rest } = st;
+    window.history.replaceState(rest, "");
+  };
+
   // відновлення: категорія → (рендер списків) → скрол → відкрита картка, якщо була
   useEffect(() => {
-    if (!restore) return;
+    if (!restore) { dropStaleModalState(); return; }
     cancelEndHomeRestore();
     if (restore.navFilter !== undefined) setNavFilter(restore.navFilter ?? null);
     let raf2 = 0;
@@ -56,7 +75,8 @@ export default function HomeClient() {
         window.scrollTo({ top: restore.scrollY ?? 0, behavior: "instant" });
         const slug = window.history.state?.[MODAL_STATE_KEY];
         const it = slug ? catalog.find((p) => p.slug === slug) : undefined;
-        if (it) { scrollAtModal.current = restore.scrollY ?? 0; setModalList(byIds(restore.modalList)); setModalItem(it); }
+        if (it) { scrollAtModal.current = restore.scrollY ?? 0; setModalList(listFor(it)); setModalItem(it); }
+        else dropStaleModalState();
         scheduleEndHomeRestore(150);
       });
     });
@@ -88,8 +108,10 @@ export default function HomeClient() {
     const onPop = () => {
       if (window.location.pathname !== "/") return;
       clearPendingPop(); // це наш popstate (модалка), а не повернення на сторінку
+      closing.current = false;
       const slug = window.history.state?.[MODAL_STATE_KEY];
       const it = slug ? catalog.find((p) => p.slug === slug) : undefined;
+      if (it) setModalList(listFor(it));
       setModalItem(it ?? null);
       if (!it) {
         const y = scrollAtModal.current;
@@ -110,11 +132,16 @@ export default function HomeClient() {
   const openProduct = (item: Product, list: Product[]) => {
     setModalList(list);
     setModalItem(item);
-    scrollAtModal.current = window.scrollY;
-    saveHomeState({ modalList: list.map((p) => p.id) });
+    closing.current = false;
+    // з пошуку відкриваємо під блокуванням скролу (scrollY = 0) — беремо справжню позицію
+    const y = currentScrollY();
+    scrollAtModal.current = y;
+    saveHomeState({ scrollY: y });
+    // список — у самому кроці історії: у кожної відкритої картки свій
+    const modalState = { [MODAL_STATE_KEY]: item.slug, [MODAL_LIST_KEY]: list.map((p) => p.id) };
     const st = window.history.state ?? {};
-    if (st[MODAL_STATE_KEY]) window.history.replaceState({ ...st, [MODAL_STATE_KEY]: item.slug }, "");
-    else window.history.pushState({ [MODAL_STATE_KEY]: item.slug }, "");
+    if (st[MODAL_STATE_KEY]) window.history.replaceState({ ...st, ...modalState }, "");
+    else window.history.pushState(modalState, "");
   };
 
   // гортання свайпом — замінюємо крок історії, щоб «назад» закривав картку одним натиском
@@ -124,8 +151,11 @@ export default function HomeClient() {
   };
 
   const closeProduct = () => {
-    if (window.history.state?.[MODAL_STATE_KEY]) window.history.back(); // popstate закриє модалку
-    else setModalItem(null);
+    if (closing.current) return;
+    if (window.history.state?.[MODAL_STATE_KEY]) {
+      closing.current = true;
+      window.history.back(); // popstate закриє модалку
+    } else setModalItem(null);
   };
 
   const scrollTo = (id: string, tries = 10): void => {

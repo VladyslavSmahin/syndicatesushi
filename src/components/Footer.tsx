@@ -1,11 +1,12 @@
 "use client";
 
+import Link from "next/link";
 import { Icon } from "./icons";
 import { TEXTS } from "@/data/site";
 import { useContacts } from "@/features/publicData";
 import { sitePhones, telHref } from "@/lib/contacts";
 
-function FooterCol({ title, items }: { title: string; items: { label: string; cb?: () => void }[] }) {
+function FooterCol({ title, items }: { title: string; items: { label: string; href: string }[] }) {
   return (
     <div>
       <h4 style={{ fontSize: 13, fontWeight: 500, letterSpacing: 3, textTransform: "uppercase", color: "var(--text-primary)", marginBottom: 22 }}>
@@ -14,21 +15,29 @@ function FooterCol({ title, items }: { title: string; items: { label: string; cb
       <ul style={{ listStyle: "none", padding: 0, margin: 0, display: "flex", flexDirection: "column", gap: 12 }}>
         {items.map((it) => (
           <li key={it.label}>
-            <a
-              href="#"
-              onClick={(e) => { e.preventDefault(); it.cb?.(); }}
+            <Link
+              href={it.href}
               style={{ fontSize: 16, fontWeight: 400, color: "var(--text-secondary)", textDecoration: "none", transition: "color 0.2s" }}
               onMouseEnter={(e) => { e.currentTarget.style.color = "var(--text-primary)"; }}
               onMouseLeave={(e) => { e.currentTarget.style.color = "var(--text-secondary)"; }}
             >
               {it.label}
-            </a>
+            </Link>
           </li>
         ))}
       </ul>
     </div>
   );
 }
+
+// «Доставка і оплата» — окремої сторінки немає, умови описані в оферті
+const INFO_LINKS = [
+  { label: "Доставка і оплата", href: "/oferta" },
+  { label: "Про нас", href: "/about" },
+  { label: "Контакти", href: "/#map" },
+  { label: "Публічна оферта", href: "/oferta" },
+  { label: "Політика конфіденційності", href: "/privacy" },
+];
 
 export default function Footer() {
   const contacts = useContacts();
@@ -45,7 +54,7 @@ export default function Footer() {
             </p>
           </div>
 
-          <FooterCol title="Інформація" items={[{ label: "Доставка і оплата" }, { label: "Про нас" }, { label: "Контакти" }]} />
+          <FooterCol title="Інформація" items={INFO_LINKS} />
 
           <div>
             <h4 style={{ fontSize: 13, fontWeight: 500, letterSpacing: 3, textTransform: "uppercase", color: "var(--text-primary)", marginBottom: 22 }}>

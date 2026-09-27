@@ -35,6 +35,15 @@ export const CONTACTS_DEFAULTS: SiteContacts = Object.fromEntries(
   CONTACT_ENTRIES.map((e) => [e.key, e.default])
 );
 
+/** Ключі соцмереж: приймаємо лише https-посилання (захист від javascript: та ін. схем). */
+export const SOCIAL_KEYS = ["instagram", "telegram", "facebook"] as const;
+
+/** Порожньо або https://… — інакше посилання соцмережі невалідне. */
+export function isValidSocialUrl(v: string): boolean {
+  const s = v.trim();
+  return s === "" || /^https:\/\/\S+$/i.test(s);
+}
+
 /** Безпечний парс jsonb: дефолти + перекриття рядками з БД (порожній рядок — валідне значення). */
 export function parseContacts(v: unknown): SiteContacts {
   const o = v && typeof v === "object" ? (v as Record<string, unknown>) : {};
@@ -43,6 +52,7 @@ export function parseContacts(v: unknown): SiteContacts {
     const raw = o[e.key];
     if (typeof raw === "string") out[e.key] = raw.trim();
   }
+  for (const k of SOCIAL_KEYS) if (!isValidSocialUrl(out[k])) out[k] = "";
   return out;
 }
 
@@ -52,7 +62,15 @@ export function sitePhones(c: SiteContacts): string[] {
   for (const e of CONTACT_ENTRIES) {
     if (e.visibleKey && c[e.key]?.trim() && c[e.visibleKey] !== "0") out.push(c[e.key].trim());
   }
-  return out.filter(Boolean);
+  // той самий номер у різному записі («068…» / «+38068…») показуємо один раз
+  const seen = new Set<string>();
+  return out.filter((ph) => {
+    if (!ph) return false;
+    const d = ph.replace(/\D/g, "").replace(/^38(?=0)/, "");
+    if (seen.has(d)) return false;
+    seen.add(d);
+    return true;
+  });
 }
 
 /** «068 823 40 12» → «tel:+380688234012» (укр. номери), інше — як є, без пробілів. */

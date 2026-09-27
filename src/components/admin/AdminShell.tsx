@@ -67,7 +67,8 @@ export default function AdminShell({ children }: { children: React.ReactNode }) 
   useEffect(() => {
     try {
       const saved = localStorage.getItem(COLLAPSED_KEY);
-      if (saved) setCollapsed(JSON.parse(saved));
+      const parsed = saved ? JSON.parse(saved) : null;
+      if (Array.isArray(parsed)) setCollapsed(parsed.filter((g) => typeof g === "string"));
     } catch { /* немає доступу до сховища — лишаємо дефолт */ }
   }, []);
 

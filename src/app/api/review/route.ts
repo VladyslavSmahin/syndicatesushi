@@ -24,8 +24,15 @@ export async function POST(req: Request) {
     return NextResponse.json({ ok: false, error: "bad_json" }, { status: 400 });
   }
 
+  if (!body || typeof body !== "object") {
+    return NextResponse.json({ ok: false, error: "bad_json" }, { status: 400 });
+  }
   const { name, contact, rating, text } = body;
-  if (!name?.trim() || !contact?.trim() || !text?.trim()) {
+  // строгі типи: не-рядок — це 400, а не падіння на .trim()
+  if (typeof name !== "string" || typeof contact !== "string" || typeof text !== "string") {
+    return NextResponse.json({ ok: false, error: "missing_fields" }, { status: 400 });
+  }
+  if (!name.trim() || !contact?.trim() || !text?.trim()) {
     return NextResponse.json({ ok: false, error: "missing_fields" }, { status: 400 });
   }
   // ліміти довжини текстових полів (анти-спам/абʼюз)
@@ -37,11 +44,13 @@ export async function POST(req: Request) {
   const ratingVal = r >= 1 && r <= 5 ? Math.floor(r) : null;
 
   // Запис у БД зі статусом pending (модерація в адмінці)
+  let saved = false;
   try {
     const { error } = await createAdminClient().from("reviews").insert({
       author_name: name.trim(), contact: contact.trim(), rating: ratingVal, text: text.trim(), status: "pending",
     });
     if (error) console.error("review insert failed:", error.message);
+    else saved = true;
   } catch (e) {
     console.error("review insert failed:", (e as Error).message);
   }
@@ -62,5 +71,9 @@ export async function POST(req: Request) {
   ].join("\n");
 
   const sent = await sendTelegramMessage(msg);
+  // відгук нікуди не дійшов (ні БД, ні Telegram) — чесна помилка, форма покаже її клієнту
+  if (!saved && !sent) {
+    return NextResponse.json({ ok: false, error: "save_failed" }, { status: 502 });
+  }
   return NextResponse.json({ ok: true, telegram: sent });
 }

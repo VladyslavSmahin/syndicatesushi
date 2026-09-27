@@ -16,7 +16,7 @@ type PIRow = { grams: number | null; ingredient: { name: string; kcal: number | 
 type ProductRow = {
   id: string; name: string; slug: string; short_desc: string | null; full_desc: string | null; composition: string | null;
   price: number | string; weight: string | null; pieces: string | null; badge: string | null; image_path: string | null;
-  category: { slug: string } | null; subcategory: { slug: string } | null; items: PIRow[] | null;
+  category: { slug: string; is_active: boolean | null } | null; subcategory: { slug: string } | null; items: PIRow[] | null;
 };
 // рядок складу сета: рол (з його грамовками) + кількість цього рола в сеті
 type SetItemRow = { set_id: string; qty: number | null; product: { items: PIRow[] | null } | { items: PIRow[] | null }[] | null };
@@ -58,6 +58,12 @@ function setPortions(rows: SetItemRow[]): Map<string, Portion> {
   return new Map([...parts].map(([setId, list]) => [setId, sumPortions(list)] as const));
 }
 
+/** Товар показуємо, лише якщо його категорія не вимкнена (без категорії — показуємо). */
+function isPublicProduct(p: { category: { is_active: boolean | null } | { is_active: boolean | null }[] | null }): boolean {
+  const cat = Array.isArray(p.category) ? p.category[0] : p.category;
+  return cat?.is_active !== false;
+}
+
 function mapProduct(p: ProductRow, setPortion?: Portion): Product {
   const items = p.items ?? [];
   // власні грамовки товару в пріоритеті; для сета їх немає — беремо суму ролів
@@ -90,7 +96,7 @@ export async function fetchPublicData(): Promise<PublicData> {
     supabase.from("subcategories").select("id, name, slug, sort_order, category:categories(slug)").eq("is_active", true).order("sort_order"),
     supabase
       .from("products")
-      .select("id, name, slug, short_desc, full_desc, composition, price, weight, pieces, badge, image_path, sort_order, category:categories(slug), subcategory:subcategories(slug), items:product_ingredients(grams, ingredient:ingredients(name, kcal, protein, fat, carbs))")
+      .select("id, name, slug, short_desc, full_desc, composition, price, weight, pieces, badge, image_path, sort_order, category:categories(slug, is_active), subcategory:subcategories(slug), items:product_ingredients(grams, ingredient:ingredients(name, kcal, protein, fat, carbs))")
       .is("deleted_at", null)
       .eq("is_available", true)
       .order("sort_order"),
@@ -143,7 +149,9 @@ export async function fetchPublicData(): Promise<PublicData> {
   const catRank = (slug: string) => catOrder.get(slug) ?? Number.MAX_SAFE_INTEGER;
   const photoRank = (p: Product) => (p.photo ? 0 : 1);
   const setPortionById = setPortions((setItemsRes.data ?? []) as unknown as SetItemRow[]);
+  // товари неактивної категорії приховані на всьому публічному сайті (каталог, хіти, пошук, /menu/[slug])
   const catalog = ((prodsRes.data ?? []) as unknown as ProductRow[])
+    .filter(isPublicProduct)
     .map((p) => mapProduct(p, setPortionById.get(p.id)))
     .sort((a, b) => catRank(a.category) - catRank(b.category) || photoRank(a) - photoRank(b))
     .map((p) => {
@@ -180,15 +188,16 @@ export async function fetchPublicData(): Promise<PublicData> {
   return { catalog, categories, subcategories, promos, banners, delivery, navSpecials, glossary, contacts, seoBlock, reviews };
 }
 
-/** Слаги доступних товарів — лише для sitemap (без важкого джойну інгредієнтів). */
+/** Слаги доступних товарів (крім неактивних категорій) — лише для sitemap (без важкого джойну інгредієнтів). */
 export async function fetchProductSlugs(): Promise<string[]> {
   const supabase = await createClient();
   const { data, error } = await supabase
     .from("products")
-    .select("slug")
+    .select("slug, category:categories(is_active)")
     .is("deleted_at", null)
     .eq("is_available", true)
     .order("sort_order");
   if (error) { console.error("product slugs:", error.message); return []; }
-  return (data ?? []).map((r) => (r as { slug: string }).slug).filter(Boolean);
+  type SlugRow = { slug: string; category: { is_active: boolean | null } | { is_active: boolean | null }[] | null };
+  return ((data ?? []) as unknown as SlugRow[]).filter(isPublicProduct).map((r) => r.slug).filter(Boolean);
 }

@@ -10,7 +10,8 @@ const INTERVAL = 3000;
 const fmtDate = (iso: string) => {
   const d = new Date(iso);
   if (Number.isNaN(d.getTime())) return "";
-  return d.toLocaleDateString("uk-UA", { day: "numeric", month: "long", year: "numeric" });
+  // фіксований часовий пояс — інакше сервер (UTC) і браузер можуть показати різний день (hydration mismatch)
+  return d.toLocaleDateString("uk-UA", { day: "numeric", month: "long", year: "numeric", timeZone: "Europe/Kyiv" });
 };
 
 function Stars({ rating }: { rating: number | null }) {
@@ -78,6 +79,11 @@ export default function ReviewsList() {
 
   const len = reviews.length;
   const canSlide = len > cols;
+
+  // слайдити вже нема чого (напр. поворот екрана → більше колонок) — повертаємо стрічку на початок
+  useEffect(() => {
+    if (!canSlide) setIndex(0);
+  }, [canSlide]);
 
   // автопрокрутка по одній картці кожні 3 с
   useEffect(() => {

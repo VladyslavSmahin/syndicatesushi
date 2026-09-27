@@ -4,6 +4,11 @@ import { useState } from "react";
 import { Icon } from "./icons";
 import { TEXTS } from "@/data/site";
 
+// ліміти довжини — ті самі, що перевіряє /api/review
+const MAX_NAME = 100;
+const MAX_CONTACT = 100;
+const MAX_TEXT = 2000;
+
 export default function ReviewForm() {
   const [name, setName] = useState("");
   const [contact, setContact] = useState("");
@@ -12,20 +17,35 @@ export default function ReviewForm() {
   const [text, setText] = useState("");
   const [sent, setSent] = useState(false);
   const [submitting, setSubmitting] = useState(false);
+  const [error, setError] = useState("");
+
+  // порожні після trim поля не вважаємо заповненими (пробіли сервер однаково відхилить)
+  const canSubmit = !!name.trim() && !!contact.trim() && !!text.trim();
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!name || !contact || !text || submitting) return;
+    if (!canSubmit || submitting) return;
     setSubmitting(true);
+    setError("");
     try {
-      // TODO (після Supabase): запис у таблицю reviews (status=pending).
-      await fetch("/api/review", {
+      const res = await fetch("/api/review", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ name, contact, rating, text }),
+        body: JSON.stringify({ name: name.trim(), contact: contact.trim(), rating, text: text.trim() }),
       });
+      if (!res.ok) {
+        const j = (await res.json().catch(() => ({}))) as { error?: string };
+        setError(
+          res.status === 429 ? "Забагато спроб поспіль. Зачекайте хвилину й спробуйте ще раз."
+          : j.error === "field_too_long" ? "Задовгий текст: імʼя та контакт — до 100 символів, відгук — до 2000."
+          : j.error === "missing_fields" ? "Заповніть імʼя, контакт і текст відгуку."
+          : "Не вдалося надіслати відгук. Спробуйте ще раз пізніше."
+        );
+        return;
+      }
     } catch {
-      /* навіть якщо не дійшло — показуємо подяку, відгук не критичний */
+      setError("Не вдалося надіслати відгук. Перевірте зʼєднання й спробуйте ще раз.");
+      return;
     } finally {
       setSubmitting(false);
     }
@@ -59,8 +79,8 @@ export default function ReviewForm() {
           ) : (
             <>
               <div style={{ display: "grid", gridTemplateColumns: "var(--form-2col)", gap: 12, marginBottom: 12 }}>
-                <input className="form-input" placeholder="Ім'я" value={name} onChange={(e) => setName(e.target.value)} />
-                <input className="form-input" placeholder="Телефон або email" value={contact} onChange={(e) => setContact(e.target.value)} />
+                <input className="form-input" placeholder="Ім'я" value={name} maxLength={MAX_NAME} onChange={(e) => setName(e.target.value)} />
+                <input className="form-input" placeholder="Телефон або email" value={contact} maxLength={MAX_CONTACT} onChange={(e) => setContact(e.target.value)} />
               </div>
 
               <div style={{ marginBottom: 12, padding: "16px 18px", background: "var(--bg-card)", border: "1px solid var(--border-light)", display: "flex", alignItems: "center", gap: 16 }}>
@@ -81,9 +101,11 @@ export default function ReviewForm() {
                 </div>
               </div>
 
-              <textarea className="form-input" placeholder="Ваш відгук..." value={text} onChange={(e) => setText(e.target.value)} style={{ marginBottom: 20 }} />
+              <textarea className="form-input" placeholder="Ваш відгук..." value={text} maxLength={MAX_TEXT} onChange={(e) => setText(e.target.value)} style={{ marginBottom: error ? 12 : 20 }} />
 
-              <button type="submit" className="btn-primary" disabled={!name || !contact || !text || submitting}>
+              {error && <p role="alert" style={{ fontSize: 12, color: "#E0726A", marginBottom: 16, lineHeight: 1.5 }}>{error}</p>}
+
+              <button type="submit" className="btn-primary" disabled={!canSubmit || submitting}>
                 {submitting ? "Надсилаємо…" : "Надіслати"}
               </button>
             </>

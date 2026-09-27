@@ -8,9 +8,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
 
   return [
     { url: `${SITE_URL}/`, lastModified: now, changeFrequency: "daily", priority: 1 },
-    { url: `${SITE_URL}/about`, lastModified: now, changeFrequency: "monthly", priority: 0.6 },
-    { url: `${SITE_URL}/oferta`, lastModified: now, changeFrequency: "yearly", priority: 0.3 },
-    { url: `${SITE_URL}/privacy`, lastModified: now, changeFrequency: "yearly", priority: 0.3 },
+    // /about, /oferta, /privacy поки чернетки (noindex) — повернути сюди, коли тексти будуть фінальні
     // сторінки страв — по них і приходять запити на кшталт «філадельфія тульчин»
     ...slugs.map((slug) => ({
       url: `${SITE_URL}/menu/${slug}`,

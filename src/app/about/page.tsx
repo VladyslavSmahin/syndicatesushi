@@ -5,6 +5,8 @@ export const metadata: Metadata = {
   title: "Про нас",
   description: "Про Sushi Syndicate — суші-бар у Тульчині: свіжа риба, приготування після замовлення, доставка та самовивіз.",
   alternates: { canonical: "/about" },
+  // чернетка тексту — не індексуємо, поки власник не замінить на фінальний
+  robots: { index: false, follow: true },
 };
 
 const p: React.CSSProperties = { margin: "0 0 16px" };

@@ -3,6 +3,7 @@
 import { revalidateTag } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
 import { slugify } from "@/lib/slugify";
+import { isStaff } from "@/lib/adminAuth";
 import { INGREDIENTS_TAG } from "../ingredientsShared";
 
 export interface ActionResult {
@@ -44,5 +45,6 @@ export async function deleteIngredientAction(id: string): Promise<ActionResult> 
 
 /** Кнопка «Оновити весь список» — примусово скидає кеш. */
 export async function refreshIngredientsAction(): Promise<void> {
+  if (!(await isStaff())) return;
   revalidateTag(INGREDIENTS_TAG);
 }

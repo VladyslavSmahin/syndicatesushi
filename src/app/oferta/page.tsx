@@ -7,6 +7,8 @@ export const metadata: Metadata = {
   title: "Публічна оферта",
   description: "Умови замовлення та доставки суші Sushi Syndicate у Тульчині.",
   alternates: { canonical: "/oferta" },
+  // чернетка тексту — не індексуємо, поки власник не замінить на фінальний
+  robots: { index: false, follow: true },
 };
 
 const h2: React.CSSProperties = { fontFamily: "var(--font-display)", fontSize: 22, fontWeight: 600, margin: "30px 0 12px", color: "var(--text-primary)" };

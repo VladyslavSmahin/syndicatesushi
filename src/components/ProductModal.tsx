@@ -32,6 +32,13 @@ export default function ProductModal({
   // Закриття вниз — лише коли вміст прокручено до верху, вгору — коли долистали до кінця.
   const touch = useRef<{ x: number; y: number; t: number; axis: "x" | "y" | "scroll" | null; atTop: boolean; atBottom: boolean } | null>(null);
   const cardRef = useRef<HTMLDivElement>(null);
+  // картку вже закриваємо (анімація свайпу / додали в кошик) — повторні дії ігноруємо
+  const closed = useRef(false);
+  const close = () => {
+    if (closed.current) return;
+    closed.current = true;
+    onClose();
+  };
   const backdropRef = useRef<HTMLDivElement>(null);
 
   const idx = item ? list.findIndex((p) => p.id === item.id) : -1;
@@ -48,6 +55,8 @@ export default function ProductModal({
 
   // скидаємо анімацію, коли модалку закрили
   useEffect(() => { if (!item) setDir(null); }, [item]);
+  // новий товар (гортання / повторне відкриття) — знову можна закривати
+  useEffect(() => { closed.current = false; }, [item?.id]);
 
   const setDrag = (dy: number, animate: boolean) => {
     const card = cardRef.current, bd = backdropRef.current;
@@ -103,6 +112,7 @@ export default function ProductModal({
       const fast = dist > 40 && dist / Math.max(1, Date.now() - st.t) > 0.6;
       if (dist > CLOSE_DRAG || fast) {
         setDrag(Math.sign(dy) * window.innerHeight, true);
+        closed.current = true; // поки їде анімація, тап по фону не має закрити вдруге
         setTimeout(onClose, 200);
       } else {
         setDrag(0, true);
@@ -118,7 +128,7 @@ export default function ProductModal({
   useEffect(() => {
     if (!item) return;
     const handler = (e: KeyboardEvent) => {
-      if (e.key === "Escape") onClose();
+      if (e.key === "Escape") close();
       else if (e.key === "ArrowRight") go(nextItem, "left");
       else if (e.key === "ArrowLeft") go(prevItem, "right");
     };
@@ -132,7 +142,7 @@ export default function ProductModal({
   return (
     <div
       ref={backdropRef}
-      onClick={onClose}
+      onClick={close}
       className="fade-in"
       style={{
         position: "fixed", inset: 0, background: "rgba(0,0,0,0.85)", backdropFilter: "blur(6px)",
@@ -158,17 +168,15 @@ export default function ProductModal({
         onClick={(e) => e.stopPropagation()}
         onTouchStart={onTouchStart}
         onTouchEnd={onTouchEnd}
-        className={dir === "left" ? "modal-slide-left" : dir === "right" ? "modal-slide-right" : "modal-pop"}
+        className={`product-modal ${dir === "left" ? "modal-slide-left" : dir === "right" ? "modal-slide-right" : "modal-pop"}`}
         style={{
           background: "var(--bg-card)", border: "1px solid var(--border-light)",
           width: "var(--modal-w, 900px)", maxWidth: "100%", overflow: "auto", overscrollBehavior: "contain",
-          // dvh — видима висота (на iOS vh = екран без панелей браузера, картка впиралась у краї)
-          maxHeight: "calc(100dvh - 2 * var(--modal-pad-y, 24px))",
           display: "grid", gridTemplateColumns: "var(--modal-cols)", position: "relative",
         }}
       >
         <button
-          onClick={onClose}
+          onClick={close}
           aria-label="Закрити"
           style={{
             position: "absolute", top: 16, right: 16, width: 36, height: 36, background: "rgba(13,11,9,0.6)",
@@ -227,7 +235,7 @@ export default function ProductModal({
           )}
 
           <div style={{ marginTop: "auto", paddingTop: 18, borderTop: "1px solid var(--border)" }}>
-            <button className="btn-primary" style={{ width: "100%" }} onClick={() => { onAdd(item); onClose(); }}>
+            <button className="btn-primary" style={{ width: "100%" }} onClick={() => { if (closed.current) return; onAdd(item); close(); }}>
               Додати в кошик
             </button>
             <Link

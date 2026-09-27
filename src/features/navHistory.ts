@@ -26,10 +26,13 @@ export type HomeSnapshot = {
 };
 
 const KEY = "home-state";
-const IN_APP_KEY = "in-app-nav";
 
 /** Ключ у history.state, під яким лежить slug відкритої модалки товару. */
 export const MODAL_STATE_KEY = "ssModal";
+/** Ключ у history.state: id товарів списку, з якого відкрили модалку (свій у кожного кроку історії). */
+export const MODAL_LIST_KEY = "ssList";
+/** Ключ у history.state: цей крок історії відкрито переходом усередині сайту. */
+const IN_APP_STATE_KEY = "ssInApp";
 
 export function saveHomeState(patch: HomeSnapshot) {
   try {
@@ -52,14 +55,28 @@ function readHomeState(): HomeSnapshot | null {
 // шлях, на який привів останній popstate (null — останній перехід був звичайним)
 let pendingPopPath: string | null = null;
 
+// останній перехід був кнопкою «назад/вперед» (читає й скидає NavTracker)
+let lastNavWasPop = false;
+export function consumePopNavigation(): boolean {
+  const v = lastNavWasPop;
+  lastNavWasPop = false;
+  return v;
+}
+
+// шлях, з яким завантажився документ: back_forward-відновлення — лише якщо це була головна
+let initialPath: string | null = null;
+let homeMountedInDoc = false;
+
 if (typeof window !== "undefined") {
+  initialPath = window.location.pathname;
   // слухач реєструється раніше за будь-яку сторінку (модуль імпортує NavTracker у layout)
-  window.addEventListener("popstate", () => { pendingPopPath = window.location.pathname; });
+  window.addEventListener("popstate", () => { pendingPopPath = window.location.pathname; lastNavWasPop = true; });
 }
 
 /** Скидає ознаку popstate — викликають сторінки, що обробили його самі (напр. закриття модалки). */
 export function clearPendingPop() {
   pendingPopPath = null;
+  lastNavWasPop = false; // шлях не змінився — NavTracker цей popstate не побачить
 }
 
 // відновлювати стан — один раз на монтування головної
@@ -76,15 +93,18 @@ export function beginHomeRestore(): HomeSnapshot | null {
   const byPop = pendingPopPath === window.location.pathname;
   pendingPopPath = null;
   let byReload = false;
+  // back_forward стосується всього документа: рахуємо лише перше монтування головної,
+  // і лише якщо документ завантажено саме на головній (а не на /menu/x → клік по лого)
+  const firstHomeMount = !homeMountedInDoc && initialPath === window.location.pathname;
+  homeMountedInDoc = true;
   try {
     const nav = performance.getEntriesByType("navigation")[0] as PerformanceNavigationTiming | undefined;
-    // back_forward-завантаження сторінки — відновлюємо лише один раз на це завантаження
-    const onceKey = `home-restored-${Math.round(performance.timeOrigin)}`;
-    byReload = nav?.type === "back_forward" && !sessionStorage.getItem(onceKey);
-    if (byReload) sessionStorage.setItem(onceKey, "1");
+    byReload = firstHomeMount && nav?.type === "back_forward";
   } catch { /* ignore */ }
   if (!byPop && !byReload) {
+    // звичайний захід на головну — старий знімок більше не актуальний
     restoreSnapshot = null;
+    try { sessionStorage.removeItem(KEY); } catch { /* ignore */ }
     return null;
   }
   restoreSnapshot = readHomeState();
@@ -118,14 +138,13 @@ export function cancelEndHomeRestore() {
 
 // ---- чи є куди повертатися в межах сайту ----
 
+/** Позначає ПОТОЧНИЙ крок історії як відкритий зсередини сайту (прапорець живе в history.state). */
 export function markInAppNavigation() {
-  try { sessionStorage.setItem(IN_APP_KEY, "1"); } catch { /* ignore */ }
+  const st = window.history.state ?? {};
+  if (!st[IN_APP_STATE_KEY]) window.history.replaceState({ ...st, [IN_APP_STATE_KEY]: true }, "");
 }
 
+/** Чи є попередній крок у межах сайту (інакше «назад» вивів би на Google/інший сайт). */
 export function hasInAppHistory(): boolean {
-  try {
-    return sessionStorage.getItem(IN_APP_KEY) === "1" && window.history.length > 1;
-  } catch {
-    return false;
-  }
+  return window.history.state?.[IN_APP_STATE_KEY] === true;
 }

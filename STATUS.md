@@ -103,6 +103,16 @@
 21. ✅ **[2026-09-27] Админка: кошик → иконка в топбаре**, группы меню сворачиваются (Маркетинг/Замовлення/Система свёрнуты по умолчанию, выбор пользователя — в localStorage).
 22. ✅ **[2026-09-27] Блокировка скролла под модалками** — общий `useScrollLock` (`src/lib/scrollLock.ts`, счётчик + position:fixed для iOS): карточка, корзина, фильтр, мобильное меню, поиск.
 
+## 🔍 Обзор сайта и фиксы (2026-09-27)
+- ✅ Навигация/модалка: двойной history.back, «назад» по шагу истории (ssInApp в history.state), восстановление только при возврате, список для свайпа — в history.state (ssList), высота модалки с фолбеком vh.
+- ✅ Корзина ↔ каталог (цены, удалённые товары), понятные ошибки заказа/отзыва, лимиты полей, qty ≤ 100.
+- ✅ Самовывоз по Europe/Kyiv (`src/lib/kyivTime.ts`), проверка даты/времени на сервере.
+- ✅ Неактивные категории скрыты везде (каталог, поиск, /menu/[slug], sitemap, заказ).
+- ✅ Security в коде: open redirect в auth callback, auth в server actions, соцссылки только https://, Telegram ≤ 4096.
+- ✅ Футер со ссылками; /about, /oferta, /privacy — noindex и вне sitemap до финальных текстов.
+- 🗄️ Миграция `20260927180000_staff_sync_review_contacts_promo_usage.sql`: синхронизация allowed_staff → profiles, contact отзывов не публичный (RPC `staff_review_contacts`), счётчик промокодов.
+- ⏭️ Потом: производительность (кэш каталога, ресайз фото), SEO (ссылки на блюда, h1, разметка), доступность. Отложено: настройки Email-провайдера Supabase (signup/confirm).
+
 ## 🔑 Переменные окружения
 Локально (`.env.local`, gitignored): `TELEGRAM_BOT_TOKEN`, `TELEGRAM_CHAT_ID`, `NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_ANON_KEY`, `SUPABASE_SERVICE_ROLE_KEY`, `SUPABASE_DB_PASSWORD`, `SUPABASE_DB_URL_SP` (session pooler), `R2_ACCOUNT_ID`, `R2_ACCESS_KEY_ID`, `R2_SECRET_ACCESS_KEY`, `R2_BUCKET`, `R2_PUBLIC_URL` (Cloudflare R2 для фото/баннеров).
 В Vercel (Production) обязательны: `NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_ANON_KEY`, `SUPABASE_SERVICE_ROLE_KEY` (заказы/отзывы), `TELEGRAM_*`, **`R2_*` (5 шт — иначе загрузка/показ фото и баннеров не работают)**.

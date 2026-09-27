@@ -505,13 +505,21 @@ export function useDbReviews() {
   const [loading, setLoading] = useState(true);
   const refetch = useCallback(async () => {
     setLoading(true);
-    const { data, error } = await supabase
-      .from("reviews")
-      .select("id, author_name, contact, rating, text, status, created_at")
-      .order("created_at", { ascending: false });
+    // контакт автора — не публічна колонка: читаємо окремо функцією, доступною лише staff
+    const [{ data, error }, contactsRes] = await Promise.all([
+      supabase
+        .from("reviews")
+        .select("id, author_name, rating, text, status, created_at")
+        .order("created_at", { ascending: false }),
+      supabase.rpc("staff_review_contacts"),
+    ]);
+    if (contactsRes.error) console.error("review contacts:", contactsRes.error.message);
+    const contacts = new Map<string, string>(
+      ((contactsRes.data ?? []) as { id: string; contact: string }[]).map((c) => [c.id, c.contact]),
+    );
     if (error) console.error("reviews:", error.message);
     else setReviews((data ?? []).map((r) => ({
-      id: r.id, authorName: r.author_name, contact: r.contact, rating: r.rating, text: r.text,
+      id: r.id, authorName: r.author_name, contact: contacts.get(r.id) ?? "", rating: r.rating, text: r.text,
       status: r.status as ReviewStatus, createdAt: r.created_at,
     })));
     setLoading(false);
