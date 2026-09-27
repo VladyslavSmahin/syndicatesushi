@@ -117,7 +117,7 @@ export default function SearchBox({ onOpen }: { onOpen: (item: Product, list: Pr
                       onMouseEnter={() => setActive(i)}
                       onClick={() => pick(p)}
                     >
-                      <span className="search-thumb">
+                      <span className="mini-thumb">
                         {p.photo && (
                           // eslint-disable-next-line @next/next/no-img-element
                           <img src={p.photo} alt="" loading="lazy" />

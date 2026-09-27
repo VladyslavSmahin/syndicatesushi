@@ -203,10 +203,19 @@ export default function CartDrawer({ isOpen, onClose }: { isOpen: boolean; onClo
         ) : step === "cart" ? (
           <>
             <div style={{ flex: 1, overflowY: "auto", padding: "8px 28px" }}>
-              {items.map((item) => (
+              {items.map((item) => {
+                // фото беремо з каталогу за id (у кошику в localStorage його немає)
+                const photo = catalog.find((p) => p.id === item.id)?.photo;
+                return (
                 <div key={item.id} style={{ padding: "18px 0", borderBottom: "1px solid var(--border)" }}>
-                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 10 }}>
-                    <div style={{ flex: 1, paddingRight: 16 }}>
+                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 12, marginBottom: 10 }}>
+                    <span className="mini-thumb">
+                      {photo && (
+                        // eslint-disable-next-line @next/next/no-img-element
+                        <img src={photo} alt="" loading="lazy" />
+                      )}
+                    </span>
+                    <div style={{ flex: 1, minWidth: 0, paddingRight: 4 }}>
                       <div style={{ fontFamily: "var(--font-display)", fontSize: 17, fontWeight: 600, color: "var(--text-primary)", lineHeight: 1.2 }}>{item.name}</div>
                       <div style={{ fontSize: 10, color: "var(--text-secondary)", marginTop: 6, letterSpacing: 1 }}>
                         {item.oldPrice && <span style={{ textDecoration: "line-through", marginRight: 5 }}>{item.oldPrice}</span>}
@@ -218,7 +227,7 @@ export default function CartDrawer({ isOpen, onClose }: { isOpen: boolean; onClo
                       <Icon.Trash width="16" height="16" />
                     </button>
                   </div>
-                  <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+                  <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", paddingLeft: 60 /* під назвою, а не під мініатюрою */ }}>
                     <div style={{ display: "flex", alignItems: "center", border: "1px solid var(--border-light)" }}>
                       <button onClick={() => changeQty(item.id, -1)} style={qtyBtn}><Icon.Minus width="12" height="12" /></button>
                       <span style={{ minWidth: 32, textAlign: "center", fontSize: 13, color: "var(--text-primary)" }}>{item.qty}</span>
@@ -227,7 +236,8 @@ export default function CartDrawer({ isOpen, onClose }: { isOpen: boolean; onClo
                     <div style={{ fontFamily: "var(--font-display)", fontSize: 17, fontWeight: 700, color: "var(--text-primary)" }}>{item.price * item.qty} грн</div>
                   </div>
                 </div>
-              ))}
+                );
+              })}
               <ExtrasBlock extras={extras} items={items} add={add} />
             </div>
             <div style={{ borderTop: "1px solid var(--border)", padding: "22px 28px 28px" }}>
