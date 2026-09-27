@@ -2,10 +2,12 @@
 
 import { useEffect, useState } from "react";
 import { Icon } from "./icons";
+import SearchBox from "./SearchBox";
 import { ASSET_ICONS } from "@/data/site";
 import { useCart } from "@/features/cart/CartContext";
 import { usePublicCategories, usePublicNavSpecials, useContacts } from "@/features/publicData";
-import type { NavCategory } from "@/lib/types";
+import type { NavCategory, Product } from "@/lib/types";
+import { sitePhones, telHref } from "@/lib/contacts";
 
 function BrandMark() {
   return (
@@ -33,8 +35,11 @@ export default function Header({
   onNavClick,
   menuOpen,
   onMenuToggle,
+  onProductOpen,
 }: {
   onCartOpen: () => void;
+  /** відкрити товар (з пошуку) у модалці; list — усі збіги для свайпу */
+  onProductOpen: (item: Product, list: Product[]) => void;
   onNavClick: (cat: NavCategory) => void;
   menuOpen: boolean;
   onMenuToggle: () => void;
@@ -88,17 +93,21 @@ export default function Header({
         </nav>
 
         {/* Right */}
-        <div style={{ display: "flex", alignItems: "center", gap: 16, justifyContent: "flex-end" }}>
+        <div style={{ display: "flex", alignItems: "center", gap: "var(--header-gap, 16px)", justifyContent: "flex-end" }}>
           <div className="desktop-only" style={{ textAlign: "right" }}>
-            <div style={{ display: "flex", alignItems: "center", gap: 8, justifyContent: "flex-end", whiteSpace: "nowrap" }}>
-              <Icon.Phone width="13" height="13" style={{ color: "var(--accent)" }} />
-              <span style={{ fontSize: 13, fontWeight: 400, color: "var(--text-primary)", letterSpacing: 0.5 }}>{contacts.phone}</span>
-            </div>
+            {sitePhones(contacts).map((ph, i) => (
+              <a key={ph} href={telHref(ph)} style={{ display: "flex", alignItems: "center", gap: 8, justifyContent: "flex-end", whiteSpace: "nowrap", textDecoration: "none", marginTop: i ? 2 : 0 }}>
+                <Icon.Phone width="13" height="13" style={{ color: "var(--accent)", visibility: i ? "hidden" : "visible" }} />
+                <span style={{ fontSize: 13, fontWeight: 400, color: "var(--text-primary)", letterSpacing: 0.5 }}>{ph}</span>
+              </a>
+            ))}
             <div style={{ display: "flex", alignItems: "center", gap: 8, justifyContent: "flex-end", marginTop: 4, whiteSpace: "nowrap" }}>
               <Icon.Clock width="11" height="11" style={{ color: "var(--text-secondary)" }} />
               <span style={{ fontSize: 11, fontWeight: 400, color: "var(--text-secondary)", letterSpacing: 1 }}>{contacts.hours}</span>
             </div>
           </div>
+
+          <SearchBox onOpen={onProductOpen} />
 
           <button
             onClick={onCartOpen}

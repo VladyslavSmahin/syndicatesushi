@@ -26,7 +26,7 @@
   --hero-h1: 96px;
   --hero-h: 520px;
   --h2-size: 56px;
-  --menu-cols: repeat(4, 1fr);
+  --menu-cols: repeat(4, minmax(0, 1fr));
   --review-cols: 4;         /* скільки відгуків видно в слайдері */
   --card-ar: 1 / 1;         /* пропорції фото в картці товару (квадрат) */
   --card-title-mt: 10px;    /* верхній відступ назви (десктоп) */
@@ -42,6 +42,7 @@
   --footer-gap: 60px;
   --modal-cols: 450px 1fr;
   --modal-w: 900px;         /* ширина модалки товару */
+  --modal-pad-x: 88px;      /* боковий відступ модалки — місце під стрілки гортання */
   --header-h: 96px;
   --py: 60px;           /* вертикальні відступи секцій */
   --hero-pt: 150px;     /* верхній відступ hero (під фіксованою шапкою) */
@@ -55,7 +56,13 @@
 }
 
 *, *::before, *::after { box-sizing: border-box; }
-html { scroll-behavior: smooth; }
+html {
+  scroll-behavior: smooth;
+  /* iOS ігнорує overflow-x у body: без цього будь-який виліт за край після
+     повороту екрана лишає сторінку «віддаленою». clip не створює скрол-контейнер */
+  overflow-x: clip;
+  -webkit-text-size-adjust: 100%;
+}
 body {
   margin: 0; padding: 0;
   background: var(--bg-primary);
@@ -118,12 +125,60 @@ body {
 .fade-in { animation: fadeIn 0.25s ease both; }
 @keyframes modalPop { from { opacity: 0; transform: scale(0.96) translateY(8px); } to { opacity: 1; transform: scale(1) translateY(0); } }
 .modal-pop { animation: modalPop 0.3s cubic-bezier(0.4,0,0.2,1) both; }
+/* перегортання товарів у модалці: новий в'їжджає з боку свайпу */
+@keyframes modalSlideLeft { from { opacity: 0; transform: translateX(48px); } to { opacity: 1; transform: translateX(0); } }
+@keyframes modalSlideRight { from { opacity: 0; transform: translateX(-48px); } to { opacity: 1; transform: translateX(0); } }
+.modal-slide-left { animation: modalSlideLeft 0.28s cubic-bezier(0.4,0,0.2,1) both; }
+.modal-slide-right { animation: modalSlideRight 0.28s cubic-bezier(0.4,0,0.2,1) both; }
+.modal-nav {
+  position: absolute; top: 50%; transform: translateY(-50%); z-index: 1;
+  width: 48px; height: 48px; background: rgba(13,11,9,0.6); border: 1px solid var(--border-light);
+  color: var(--text-primary); cursor: pointer; align-items: center; justify-content: center;
+  transition: border-color 0.2s, color 0.2s;
+}
+.modal-nav.desktop-only { display: flex; }
+.modal-nav:hover { border-color: var(--accent); color: var(--accent); }
 
 /* вертикальний слайд зверху вниз (hero-промо-слайдер) */
 @keyframes heroDrop { from { transform: translateY(-100%); } to { transform: translateY(0); } }
 
 .menu-card { transition: transform 0.3s ease, border-color 0.3s ease; }
 .menu-card:hover { transform: translateY(-4px); border-color: var(--border-light); }
+
+/* квадратна іконка-кнопка в шапці (пошук) — як кошик/бургер */
+.header-icon-btn {
+  width: 44px; height: 44px; flex-shrink: 0; display: flex; align-items: center; justify-content: center;
+  border: 1px solid var(--border-light); color: var(--text-primary); cursor: pointer; transition: background 0.2s;
+}
+/* пошук: панель під фіксованою шапкою + випадайка збігів */
+.search-panel {
+  position: absolute; top: 100%; left: 0; right: 0;
+  background: rgba(13,11,9,0.98); border-bottom: 1px solid var(--border);
+  padding: 12px var(--page-pad) 16px;
+}
+.search-inner { max-width: 640px; margin: 0 auto; }
+.search-panel input[type="search"]::-webkit-search-cancel-button { display: none; }
+.search-results {
+  margin-top: 8px; background: var(--bg-card); border: 1px solid var(--border-light);
+  max-height: min(60vh, 520px); overflow-y: auto; overscroll-behavior: contain;
+}
+.search-row {
+  display: flex; align-items: center; gap: 12px; width: 100%; padding: 8px 12px;
+  background: transparent; border: none; border-bottom: 1px solid var(--border);
+  cursor: pointer; font-family: var(--font-body); color: inherit;
+}
+.search-row:last-child { border-bottom: none; }
+.search-row.active { background: var(--bg-elevated); }
+.search-thumb { width: 48px; height: 48px; flex-shrink: 0; background: var(--bg-dark); overflow: hidden; }
+.search-thumb img { width: 100%; height: 100%; object-fit: cover; display: block; }
+
+/* кнопка «назад» у шапці внутрішніх сторінок */
+.back-btn {
+  width: 36px; height: 36px; flex-shrink: 0; display: flex; align-items: center; justify-content: center;
+  background: transparent; border: 1px solid var(--border-light); color: var(--text-secondary);
+  cursor: pointer; transition: color 0.2s, border-color 0.2s;
+}
+.back-btn:hover { color: var(--text-primary); border-color: var(--accent); }
 
 .nav-link {
   padding: 8px 12px;
@@ -198,7 +253,7 @@ textarea.form-input { resize: vertical; min-height: 120px; font-family: var(--fo
   :root {
     --hero-h1: 72px;
     --h2-size: 46px;
-    --menu-cols: repeat(3, 1fr);
+    --menu-cols: repeat(3, minmax(0, 1fr));
     --review-cols: 3;
     --reviews-gap: 56px;
   }
@@ -211,7 +266,7 @@ textarea.form-input { resize: vertical; min-height: 120px; font-family: var(--fo
     --hero-h1: 60px;
     --hero-h: 320px;
     --h2-size: 40px;
-    --menu-cols: repeat(2, 1fr);
+    --menu-cols: repeat(2, minmax(0, 1fr));
     --review-cols: 2;
     --card-ar: 1 / 1;        /* квадратне фото і на мобілці/планшеті */
     --card-title-mt: 5px;    /* менший відступ назви на мобілці/планшеті */
@@ -219,6 +274,7 @@ textarea.form-input { resize: vertical; min-height: 120px; font-family: var(--fo
        обмеженої ширини. Фото — майже квадрат (висота ≈ ширині картки), але з
        стелею у частку екрана, щоб назва, ціна й кнопка лишались видимими. */
     --modal-w: 440px;
+    --modal-pad-x: 24px;     /* на мобільному стрілок немає — гортаємо свайпом */
     --modal-photo-ar: auto;
     --modal-photo-fixed-h: min(92vw, 440px, 48vh);
     --modal-photo-h: 180px;  /* мін. висота фото в модалці на мобілці */
@@ -268,12 +324,13 @@ textarea.form-input { resize: vertical; min-height: 120px; font-family: var(--fo
     --page-pad: 16px;
     --hero-h1: 48px;
     --h2-size: 32px;
-    --menu-cols: repeat(2, 1fr);   /* 2 картки в ряд на телефоні */
+    --menu-cols: repeat(2, minmax(0, 1fr));   /* 2 картки в ряд на телефоні */
     --review-cols: 1;              /* один відгук на екран — для читабельності */
     --footer-cols: 1fr;
     --py: 28px;
     --hero-pt: 104px;
     --head-mb: 12px;
+    --header-gap: 8px;   /* пошук + кошик + бургер поруч */
   }
   /* ховаємо декоративне hero-фото на маленьких екранах */
   .hero-photo { display: none !important; }

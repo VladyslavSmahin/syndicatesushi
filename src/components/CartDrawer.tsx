@@ -7,6 +7,7 @@ import { useCart } from "@/features/cart/CartContext";
 import { usePublicCatalog, useGloss, useContacts } from "@/features/publicData";
 import PickupPicker, { dayOptions, ymd } from "./PickupPicker";
 import type { Product, CartItem } from "@/lib/types";
+import { useScrollLock } from "@/lib/scrollLock";
 
 const EXTRAS_CATEGORY = "додатково";
 // категорії, для яких потрібні набори приборів (палички, серветки)
@@ -72,10 +73,9 @@ export default function CartDrawer({ isOpen, onClose }: { isOpen: boolean; onClo
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState("");
 
+  useScrollLock(isOpen);
   useEffect(() => {
-    document.body.style.overflow = isOpen ? "hidden" : "";
     if (!isOpen) setStep("cart"); // скидаємо крок при закритті (щоб «Готово» не залипало)
-    return () => { document.body.style.overflow = ""; };
   }, [isOpen]);
 
   if (!isOpen) return null;

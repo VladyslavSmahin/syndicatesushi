@@ -1,4 +1,5 @@
 import Link from "next/link";
+import BackButton from "./BackButton";
 import { ASSET_ICONS } from "@/data/site";
 
 /** Простий каркас для інфо-сторінок (оферта, про нас тощо) у стилі сайту. */
@@ -13,14 +14,14 @@ export default function InfoPageShell({ title, children }: { title: string; chil
         }}
       >
         <div style={{ maxWidth: 860, width: "100%", margin: "0 auto", padding: "0 var(--page-pad)", display: "flex", alignItems: "center", justifyContent: "space-between", gap: 16 }}>
+          <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+          <BackButton />
           <Link href="/" style={{ display: "flex", alignItems: "center", gap: 10, textDecoration: "none" }}>
             {/* eslint-disable-next-line @next/next/no-img-element */}
             <img src={ASSET_ICONS.logo} alt="Sushi Syndicate" style={{ height: 40 }} />
             <span style={{ fontFamily: "var(--font-display)", fontWeight: 700, letterSpacing: 4, color: "var(--text-primary)" }}>SUSHI</span>
           </Link>
-          <Link href="/" style={{ fontSize: 12, letterSpacing: 2, textTransform: "uppercase", color: "var(--text-secondary)", textDecoration: "none" }}>
-            ← На головну
-          </Link>
+          </div>
         </div>
       </header>
 

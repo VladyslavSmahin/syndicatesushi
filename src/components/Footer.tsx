@@ -3,6 +3,7 @@
 import { Icon } from "./icons";
 import { TEXTS } from "@/data/site";
 import { useContacts } from "@/features/publicData";
+import { sitePhones, telHref } from "@/lib/contacts";
 
 function FooterCol({ title, items }: { title: string; items: { label: string; cb?: () => void }[] }) {
   return (
@@ -50,7 +51,11 @@ export default function Footer() {
             <h4 style={{ fontSize: 13, fontWeight: 500, letterSpacing: 3, textTransform: "uppercase", color: "var(--text-primary)", marginBottom: 22 }}>
               Контакти
             </h4>
-            <div style={{ fontSize: 17, fontWeight: 400, color: "var(--text-primary)", marginBottom: 10 }}>{contacts.phone}</div>
+            <div style={{ display: "flex", flexDirection: "column", gap: 4, marginBottom: 10 }}>
+              {sitePhones(contacts).map((ph) => (
+                <a key={ph} href={telHref(ph)} style={{ fontSize: 17, fontWeight: 400, color: "var(--text-primary)", textDecoration: "none" }}>{ph}</a>
+              ))}
+            </div>
             <div style={{ fontSize: 15, fontWeight: 400, color: "var(--text-secondary)", lineHeight: 1.7, marginBottom: 20 }}>
               {contacts.address}<br />{contacts.hours}
             </div>

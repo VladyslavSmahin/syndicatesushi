@@ -1,12 +1,12 @@
 "use client";
 
-import { useEffect } from "react";
 import Link from "next/link";
 import { Icon } from "./icons";
 import { ASSET_ICONS } from "@/data/site";
 import { useContacts } from "@/features/publicData";
-import { telHref } from "@/lib/contacts";
+import { telHref, sitePhones } from "@/lib/contacts";
 import type { NavCategory } from "@/lib/types";
+import { useScrollLock } from "@/lib/scrollLock";
 
 export default function MobileMenu({
   open,
@@ -18,10 +18,7 @@ export default function MobileMenu({
   onNavClick: (cat: NavCategory) => void;
 }) {
   const contacts = useContacts();
-  useEffect(() => {
-    document.body.style.overflow = open ? "hidden" : "";
-    return () => { document.body.style.overflow = ""; };
-  }, [open]);
+  useScrollLock(open);
 
   if (!open) return null;
 
@@ -108,10 +105,12 @@ export default function MobileMenu({
           ))}
 
           <div style={{ marginTop: 26, display: "flex", flexDirection: "column", gap: 14 }}>
-            <a href={telHref(contacts.phone)} style={{ display: "flex", alignItems: "center", gap: 10, textDecoration: "none", color: "var(--text-primary)" }}>
-              <Icon.Phone width="16" height="16" style={{ color: "var(--accent)" }} />
-              <span style={{ fontSize: 15 }}>{contacts.phone}</span>
-            </a>
+            {sitePhones(contacts).map((ph) => (
+              <a key={ph} href={telHref(ph)} style={{ display: "flex", alignItems: "center", gap: 10, textDecoration: "none", color: "var(--text-primary)" }}>
+                <Icon.Phone width="16" height="16" style={{ color: "var(--accent)" }} />
+                <span style={{ fontSize: 15 }}>{ph}</span>
+              </a>
+            ))}
             <div style={{ display: "flex", alignItems: "center", gap: 10, color: "var(--text-secondary)" }}>
               <Icon.Clock width="14" height="14" style={{ color: "var(--text-secondary)" }} />
               <span style={{ fontSize: 13 }}>Щодня {contacts.hours}</span>

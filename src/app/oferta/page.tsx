@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import InfoPageShell from "@/components/InfoPageShell";
 import { fetchContacts } from "@/features/contacts.server";
+import { sitePhones } from "@/lib/contacts";
 
 export const metadata: Metadata = {
   title: "Публічна оферта",
@@ -37,7 +38,7 @@ export default async function OfertaPage() {
 
       <h2 style={h2}>3. Оформлення замовлення</h2>
       <ul>
-        <li style={li}>Замовлення оформлюється через кошик на Сайті або за телефоном {CONTACTS.phone}.</li>
+        <li style={li}>Замовлення оформлюється через кошик на Сайті або за телефоном {sitePhones(CONTACTS).join(", ")}.</li>
         <li style={li}>Покупець відповідає за достовірність наданих контактних даних і адреси доставки.</li>
         <li style={li}>Підтвердженням замовлення є дзвінок або повідомлення менеджера.</li>
       </ul>
@@ -82,7 +83,7 @@ export default async function OfertaPage() {
         [ФОП / ТОВ «Назва»]<br />
         [ЄДРПОУ / ІПН]<br />
         Адреса: {CONTACTS.address}<br />
-        Телефон: {CONTACTS.phone}<br />
+        Телефон: {sitePhones(CONTACTS).join(", ")}<br />
         Графік: {CONTACTS.hours}
       </p>
     </InfoPageShell>

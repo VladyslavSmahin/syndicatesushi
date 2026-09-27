@@ -28,7 +28,10 @@ export default function ContactsPage() {
     setSaving(true);
     // порожнє поле → дефолт (для соцмереж дефолт порожній, тобто іконка ховається)
     const out: Record<string, string> = {};
-    for (const e of CONTACT_ENTRIES) out[e.key] = (draft[e.key]?.trim() || e.default);
+    for (const e of CONTACT_ENTRIES) {
+      // додаткові телефони: порожнє поле = номера немає (дефолт у них теж порожній)
+      out[e.key] = (draft[e.key]?.trim() || e.default);
+    }
     const err = await dbSaveContacts(out);
     setSaving(false);
     if (err) { alert("Помилка збереження: " + err); return; }
@@ -54,7 +57,7 @@ export default function ContactsPage() {
             <div key={group} className={s.card}>
               <div className={s.cardHead}><div className={s.cardTitle}>{group}</div></div>
               <div style={{ padding: 22, display: "flex", flexDirection: "column", gap: 16 }}>
-                {entries.map((e) => (
+                {entries.filter((e) => !e.flag).map((e) => (
                   <div key={e.key} className={s.field}>
                     <span className={s.fieldLabel}>{e.label}</span>
                     <input
@@ -63,10 +66,20 @@ export default function ContactsPage() {
                       value={draft[e.key] ?? ""}
                       onChange={(ev) => setDraft((d) => ({ ...d, [e.key]: ev.target.value }))}
                     />
+                    {e.visibleKey && (
+                      <label style={{ display: "flex", alignItems: "center", gap: 8, marginTop: 8, fontSize: 13, cursor: "pointer", opacity: draft[e.key]?.trim() ? 1 : 0.5 }}>
+                        <input
+                          type="checkbox"
+                          checked={draft[e.visibleKey] !== "0"}
+                          onChange={(ev) => setDraft((d) => ({ ...d, [e.visibleKey!]: ev.target.checked ? "1" : "0" }))}
+                        />
+                        Показувати на сайті
+                      </label>
+                    )}
                     {e.hint && <span className={s.hint} style={{ fontSize: 11, marginTop: 4 }}>{e.hint}</span>}
-                    {e.key === "phone" && (draft.phone?.trim() || "") !== "" && (
+                    {(e.key === "phone" || e.visibleKey) && (draft[e.key]?.trim() || "") !== "" && (
                       <span className={s.hint} style={{ fontSize: 11, marginTop: 4 }}>
-                        Посилання для дзвінка: {telHref(draft.phone)}
+                        Посилання для дзвінка: {telHref(draft[e.key])}
                       </span>
                     )}
                   </div>

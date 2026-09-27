@@ -31,7 +31,7 @@ export default function MenuCard({
       style={{
         background: "var(--bg-card)",
         border: "1px solid var(--border)",
-        cursor: "pointer", display: "flex", flexDirection: "column", padding: pad,
+        cursor: "pointer", display: "flex", flexDirection: "column", padding: pad, minWidth: 0,
       }}
     >
       <div style={{ position: "relative", background: "var(--bg-dark)", aspectRatio: "var(--card-ar, 1 / 1)" }}>

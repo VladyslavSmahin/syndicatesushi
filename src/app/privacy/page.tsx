@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import InfoPageShell from "@/components/InfoPageShell";
 import { fetchContacts } from "@/features/contacts.server";
+import { sitePhones } from "@/lib/contacts";
 
 export const metadata: Metadata = {
   title: "Політика конфіденційності",
@@ -80,7 +81,7 @@ export default async function PrivacyPage() {
         [ФОП / ТОВ «Назва»]<br />
         [ЄДРПОУ / ІПН]<br />
         Адреса: {CONTACTS.address}<br />
-        Телефон: {CONTACTS.phone}<br />
+        Телефон: {sitePhones(CONTACTS).join(", ")}<br />
         Графік: {CONTACTS.hours}
       </p>
     </InfoPageShell>

@@ -8,6 +8,13 @@ import { useAdminAuth } from "@/features/admin/AdminAuthContext";
 import { refreshAdminAction } from "@/features/admin/actions/common";
 import s from "./admin.module.css";
 
+// Кошик (видалені товари) — не пункт меню, а іконка в топбарі: заходять рідко
+const TRASH = { href: "/admin/deleted", label: "Кошик" };
+
+// групи, згорнуті за замовчуванням (стан користувача пам'ятаємо в localStorage)
+const COLLAPSED_DEFAULT = ["Маркетинг", "Замовлення", "Система"];
+const COLLAPSED_KEY = "admin-nav-collapsed";
+
 const NAV: { group: string; items: { href: string; label: string }[] }[] = [
   {
     group: "Каталог",
@@ -16,7 +23,6 @@ const NAV: { group: string; items: { href: string; label: string }[] }[] = [
       { href: "/admin/categories", label: "Категорії" },
       { href: "/admin/subcategories", label: "Підкатегорії" },
       { href: "/admin/products", label: "Товари" },
-      { href: "/admin/deleted", label: "Кошик" },
       { href: "/admin/ingredients", label: "Інгредієнти" },
       { href: "/admin/price-history", label: "Історія цін" },
     ],
@@ -56,6 +62,21 @@ export default function AdminShell({ children }: { children: React.ReactNode }) 
   // куди йде перехід — для миттєвого візуального відгуку (спінер + підсвітка),
   // щоб не складалося враження зависання й не тиснули кілька разів
   const [pendingHref, setPendingHref] = useState<string | null>(null);
+  const [collapsed, setCollapsed] = useState<string[]>(COLLAPSED_DEFAULT);
+
+  useEffect(() => {
+    try {
+      const saved = localStorage.getItem(COLLAPSED_KEY);
+      if (saved) setCollapsed(JSON.parse(saved));
+    } catch { /* немає доступу до сховища — лишаємо дефолт */ }
+  }, []);
+
+  const toggleGroup = (group: string) =>
+    setCollapsed((prev) => {
+      const next = prev.includes(group) ? prev.filter((g) => g !== group) : [...prev, group];
+      try { localStorage.setItem(COLLAPSED_KEY, JSON.stringify(next)); } catch { /* ignore */ }
+      return next;
+    });
 
   const isLogin = pathname === "/admin/login";
 
@@ -96,7 +117,7 @@ export default function AdminShell({ children }: { children: React.ReactNode }) 
   if (!user) return null;
 
   const title =
-    NAV.flatMap((g) => g.items).find((i) => i.href === pathname)?.label ?? "Адмінка";
+    [...NAV.flatMap((g) => g.items), TRASH].find((i) => i.href === pathname)?.label ?? "Адмінка";
 
   return (
     <div className={s.shell}>
@@ -111,10 +132,26 @@ export default function AdminShell({ children }: { children: React.ReactNode }) 
           </div>
         </Link>
 
-        {NAV.map((g) => (
+        {NAV.map((g) => {
+          // група з поточною сторінкою завжди розгорнута
+          const hasActive = g.items.some((it) => it.href === pathname);
+          const open = hasActive || !collapsed.includes(g.group);
+          return (
           <div key={g.group}>
-            <div className={s.navGroupLabel}>{g.group}</div>
-            {g.items.map((it) => {
+            <button
+              type="button"
+              className={`${s.navGroupLabel} ${s.navGroupToggle}`}
+              onClick={() => toggleGroup(g.group)}
+              aria-expanded={open}
+              disabled={hasActive}
+            >
+              {g.group}
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"
+                style={{ transform: open ? "rotate(180deg)" : "none", transition: "transform 0.2s" }}>
+                <path d="M6 9l6 6 6-6" />
+              </svg>
+            </button>
+            {open && g.items.map((it) => {
               const active = pathname === it.href;
               const pending = pendingHref === it.href;
               return (
@@ -131,7 +168,8 @@ export default function AdminShell({ children }: { children: React.ReactNode }) 
               );
             })}
           </div>
-        ))}
+          );
+        })}
 
         <div style={{ marginTop: "auto", paddingTop: 16 }}>
           <Link href="/" className={s.navItem}>← На сайт</Link>
@@ -152,6 +190,17 @@ export default function AdminShell({ children }: { children: React.ReactNode }) 
 
           <div className={s.userBox}>
             <RefreshButton action={refreshAdminAction} />
+            <Link
+              href={TRASH.href}
+              title="Кошик (видалені товари)"
+              aria-label="Кошик"
+              className={`${s.btn} ${s.btnGhost} ${s.btnSmall}`}
+              style={{ display: "inline-flex", alignItems: "center", ...(pathname === TRASH.href ? { color: "var(--accent)", borderColor: "var(--accent)" } : {}) }}
+            >
+              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M3 6h18" /><path d="M8 6V4h8v2" /><path d="M19 6l-1 14H6L5 6" /><path d="M10 11v6M14 11v6" />
+              </svg>
+            </Link>
             <div className={s.avatar} title={`${user.name} · ${user.role}`}>{user.name.charAt(0).toUpperCase()}</div>
           </div>
         </div>

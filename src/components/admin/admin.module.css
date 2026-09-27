@@ -48,6 +48,13 @@
   padding: 16px 10px 8px;
 }
 
+.navGroupToggle {
+  display: flex; align-items: center; justify-content: space-between; width: 100%;
+  background: transparent; border: none; cursor: pointer; font-family: inherit; text-align: left;
+}
+.navGroupToggle:hover:not(:disabled) { color: var(--text-secondary); }
+.navGroupToggle:disabled { cursor: default; }
+
 .navItem {
   display: flex;
   align-items: center;

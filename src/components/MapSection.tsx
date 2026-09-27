@@ -2,7 +2,7 @@
 
 import { Icon } from "./icons";
 import { useContacts } from "@/features/publicData";
-import { telHref } from "@/lib/contacts";
+import { telHref, sitePhones } from "@/lib/contacts";
 
 
 function ContactRow({
@@ -13,7 +13,7 @@ function ContactRow({
 }: {
   icon: React.ReactNode;
   label: string;
-  value: string;
+  value: React.ReactNode;
   link?: string;
 }) {
   const inner = (
@@ -52,7 +52,20 @@ export default function MapSection() {
           <div style={{ background: "var(--bg-card)", padding: "48px 40px", display: "flex", flexDirection: "column", justifyContent: "space-between", gap: 24 }}>
             <ContactRow icon={<Icon.Pin width="20" height="20" />} label="Адреса" value={contacts.address} />
             <ContactRow icon={<Icon.Clock width="20" height="20" />} label="Час роботи" value={`Щодня з ${contacts.hours}`} />
-            <ContactRow icon={<Icon.Phone width="20" height="20" />} label="Телефон" value={contacts.phone} link={telHref(contacts.phone)} />
+            {(() => {
+              const phones = sitePhones(contacts);
+              return phones.length === 1 ? (
+                <ContactRow icon={<Icon.Phone width="20" height="20" />} label="Телефон" value={phones[0]} link={telHref(phones[0])} />
+              ) : (
+                <ContactRow
+                  icon={<Icon.Phone width="20" height="20" />}
+                  label="Телефони"
+                  value={phones.map((ph) => (
+                    <a key={ph} href={telHref(ph)} style={{ display: "block", color: "inherit", textDecoration: "none" }}>{ph}</a>
+                  ))}
+                />
+              );
+            })()}
           </div>
         </div>
       </div>

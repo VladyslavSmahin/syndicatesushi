@@ -4,6 +4,8 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import MenuCard from "./MenuCard";
 import { usePublicCatalog, usePublicCategories, usePublicSubcategories, useGloss } from "@/features/publicData";
 import { useIsMobile } from "@/features/useIsMobile";
+import { useScrollLock } from "@/lib/scrollLock";
+import { peekHomeRestore, isHomeRestoring, saveHomeState } from "@/features/navHistory";
 import type { Product, NavCategory } from "@/lib/types";
 
 type NavFilter = NonNullable<NavCategory["filter"]>;
@@ -26,7 +28,8 @@ export default function FullMenu({
   setNavFilter,
 }: {
   onAdd: (item: Product) => void;
-  onCardClick: (item: Product) => void;
+  /** list — поточний відфільтрований список (для свайпу між товарами в модалці) */
+  onCardClick: (item: Product, list: Product[]) => void;
   navFilter: NavFilter | null;
   setNavFilter: (f: NavFilter | null) => void;
 }) {
@@ -53,16 +56,26 @@ export default function FullMenu({
   const [sheetOpen, setSheetOpen] = useState(false);
   const [filtersOpen, setFiltersOpen] = useState(false); // десктоп: розкриті чипи інгредієнтів
 
-  // при зміні категорії скидаємо інгредієнт-фільтр і підкатегорію
-  useEffect(() => { setSelected([]); setSelectedSub(null); }, [navFilter]);
+  // повернулися «назад» — відновлюємо фільтри, сортування і к-сть підвантажених товарів
+  useEffect(() => {
+    const snap = peekHomeRestore();
+    if (!snap) return;
+    if (snap.selected) setSelected(snap.selected);
+    if (snap.selectedSub !== undefined) setSelectedSub(snap.selectedSub);
+    if (snap.sort) setSort(snap.sort as Sort);
+    if (snap.visibleCount) setVisibleCount(snap.visibleCount);
+  }, []);
+
+  // при зміні категорії скидаємо інгредієнт-фільтр і підкатегорію (не під час відновлення)
+  useEffect(() => { if (isHomeRestoring()) return; setSelected([]); setSelectedSub(null); }, [navFilter]);
 
   // мобільна панель фільтрів: блокуємо скрол сторінки під нею + закриття по Esc
+  useScrollLock(sheetOpen);
   useEffect(() => {
     if (!sheetOpen) return;
-    document.body.style.overflow = "hidden";
     const onKey = (e: KeyboardEvent) => { if (e.key === "Escape") setSheetOpen(false); };
     document.addEventListener("keydown", onKey);
-    return () => { document.body.style.overflow = ""; document.removeEventListener("keydown", onKey); };
+    return () => document.removeEventListener("keydown", onKey);
   }, [sheetOpen]);
 
   const toggle = (ing: string) =>
@@ -93,7 +106,11 @@ export default function FullMenu({
     return list;
   }, [catalog, selected, selectedSub, navFilter, sort]);
 
-  useEffect(() => { setVisibleCount(pageSize); }, [selected, selectedSub, navFilter, pageSize]);
+  useEffect(() => { if (!isHomeRestoring()) setVisibleCount(pageSize); }, [selected, selectedSub, navFilter, pageSize]);
+
+  useEffect(() => {
+    if (!isHomeRestoring()) saveHomeState({ selected, selectedSub, sort, visibleCount });
+  }, [selected, selectedSub, sort, visibleCount]);
 
   const shown = items.slice(0, visibleCount);
   const hasMore = visibleCount < items.length;
@@ -216,7 +233,7 @@ export default function FullMenu({
           <>
             <div style={{ display: "grid", gridTemplateColumns: "var(--menu-cols)", gap: 20 }}>
               {shown.map((item) => (
-                <MenuCard key={item.id} item={item} onAdd={onAdd} onClick={() => onCardClick(item)} />
+                <MenuCard key={item.id} item={item} onAdd={onAdd} onClick={() => onCardClick(item, items)} />
               ))}
             </div>
 

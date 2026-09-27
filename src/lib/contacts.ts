@@ -8,10 +8,18 @@ export interface ContactEntry {
   group: string;      // секція в адмінці
   hint?: string;
   placeholder?: string;
+  /** ключ прапорця «показувати на сайті» ("1"/"0") для необов'язкових телефонів */
+  visibleKey?: string;
+  /** службовий прапорець — окремим полем в адмінці не показується */
+  flag?: boolean;
 }
 
 export const CONTACT_ENTRIES: ContactEntry[] = [
-  { key: "phone", label: "Телефон", default: "068 823 40 12", group: "Основне", hint: "Показується в шапці, футері, на карті та в офертах" },
+  { key: "phone", label: "Основний телефон", default: "068 823 40 12", group: "Телефони", hint: "Показується завжди: шапка, футер, мобільне меню, блок з картою, оферта" },
+  { key: "phone2", label: "Телефон 2", default: "", group: "Телефони", placeholder: "Необов'язково", visibleKey: "phone2Visible" },
+  { key: "phone2Visible", label: "", default: "1", group: "Телефони", flag: true },
+  { key: "phone3", label: "Телефон 3", default: "", group: "Телефони", placeholder: "Необов'язково", visibleKey: "phone3Visible" },
+  { key: "phone3Visible", label: "", default: "1", group: "Телефони", flag: true },
   { key: "hours", label: "Години роботи", default: "11:00 — 22:00", group: "Основне" },
   { key: "address", label: "Адреса", default: "вул. Незалежності, 7, м. Тульчин", group: "Основне" },
   { key: "addressShort", label: "Короткий підпис у Hero", default: "Тульчин · Доставка та самовивіз", group: "Основне", hint: "Рядок над великим заголовком на головній" },
@@ -36,6 +44,15 @@ export function parseContacts(v: unknown): SiteContacts {
     if (typeof raw === "string") out[e.key] = raw.trim();
   }
   return out;
+}
+
+/** Телефони, які показуємо на сайті: основний + додаткові, якщо заповнені й не приховані. */
+export function sitePhones(c: SiteContacts): string[] {
+  const out = [c.phone];
+  for (const e of CONTACT_ENTRIES) {
+    if (e.visibleKey && c[e.key]?.trim() && c[e.visibleKey] !== "0") out.push(c[e.key].trim());
+  }
+  return out.filter(Boolean);
 }
 
 /** «068 823 40 12» → «tel:+380688234012» (укр. номери), інше — як є, без пробілів. */
