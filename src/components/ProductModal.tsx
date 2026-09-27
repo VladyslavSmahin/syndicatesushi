@@ -28,8 +28,9 @@ export default function ProductModal({
   // напрямок останнього перегортання — для анімації в'їзду нового товару
   const [dir, setDir] = useState<"left" | "right" | null>(null);
   // axis — напрямок жесту, визначаємо за першим помітним рухом:
-  // x — гортання, down — тягнемо картку вниз (закриття), scroll — звичайний скрол вмісту
-  const touch = useRef<{ x: number; y: number; t: number; axis: "x" | "down" | "scroll" | null; atTop: boolean } | null>(null);
+  // x — гортання, y — тягнемо картку вгору/вниз (закриття), scroll — звичайний скрол вмісту.
+  // Закриття вниз — лише коли вміст прокручено до верху, вгору — коли долистали до кінця.
+  const touch = useRef<{ x: number; y: number; t: number; axis: "x" | "y" | "scroll" | null; atTop: boolean; atBottom: boolean } | null>(null);
   const cardRef = useRef<HTMLDivElement>(null);
   const backdropRef = useRef<HTMLDivElement>(null);
 
@@ -54,15 +55,20 @@ export default function ProductModal({
     // анімація появи (fill: both) перебиває inline transform — вимикаємо її на час жесту
     if (card) { card.style.animation = "none"; card.style.transition = tr; card.style.transform = dy ? `translateY(${dy}px)` : ""; }
     // фон світлішає, поки тягнемо (opacity не годиться — картка всередині фону)
-    if (bd) { bd.style.transition = tr; bd.style.backgroundColor = dy ? `rgba(0,0,0,${Math.max(0.25, 0.85 * (1 - dy / 500))})` : ""; }
+    if (bd) { bd.style.transition = tr; bd.style.backgroundColor = dy ? `rgba(0,0,0,${Math.max(0.25, 0.85 * (1 - Math.abs(dy) / 500))})` : ""; }
   };
 
   const onTouchStart = (e: React.TouchEvent) => {
     const t = e.touches[0];
-    touch.current = { x: t.clientX, y: t.clientY, t: Date.now(), axis: null, atTop: (cardRef.current?.scrollTop ?? 0) <= 0 };
+    const c = cardRef.current;
+    touch.current = {
+      x: t.clientX, y: t.clientY, t: Date.now(), axis: null,
+      atTop: (c?.scrollTop ?? 0) <= 0,
+      atBottom: c ? c.scrollTop + c.clientHeight >= c.scrollHeight - 1 : true,
+    };
   };
 
-  // touchmove — нативний non-passive слухач: у режимі «тягнемо вниз» гасимо скрол/резинку вмісту
+  // touchmove — нативний non-passive слухач: у режимі «тягнемо картку» гасимо скрол/резинку вмісту
   useEffect(() => {
     const card = cardRef.current;
     if (!card) return;
@@ -72,11 +78,13 @@ export default function ProductModal({
       const t = e.touches[0];
       const dx = t.clientX - st.x, dy = t.clientY - st.y;
       if (!st.axis && (Math.abs(dx) > 8 || Math.abs(dy) > 8)) {
-        st.axis = st.atTop && dy > 0 && dy > Math.abs(dx) ? "down" : Math.abs(dx) > Math.abs(dy) ? "x" : "scroll";
+        const vertical = Math.abs(dy) > Math.abs(dx);
+        st.axis = vertical && ((dy > 0 && st.atTop) || (dy < 0 && st.atBottom)) ? "y"
+          : vertical ? "scroll" : "x";
       }
-      if (st.axis === "down") {
+      if (st.axis === "y") {
         e.preventDefault();
-        setDrag(Math.max(0, dy), false);
+        setDrag(dy, false);
       }
     };
     card.addEventListener("touchmove", onMove, { passive: false });
@@ -89,11 +97,12 @@ export default function ProductModal({
     if (!st) return;
     const t = e.changedTouches[0];
     const dx = t.clientX - st.x, dy = t.clientY - st.y;
-    if (st.axis === "down") {
-      // закриваємо, якщо протягнули достатньо або різко змахнули
-      const fast = dy > 40 && dy / Math.max(1, Date.now() - st.t) > 0.6;
-      if (dy > CLOSE_DRAG || fast) {
-        setDrag(window.innerHeight, true);
+    if (st.axis === "y") {
+      // закриваємо, якщо протягнули достатньо або різко змахнули (в будь-який бік)
+      const dist = Math.abs(dy);
+      const fast = dist > 40 && dist / Math.max(1, Date.now() - st.t) > 0.6;
+      if (dist > CLOSE_DRAG || fast) {
+        setDrag(Math.sign(dy) * window.innerHeight, true);
         setTimeout(onClose, 200);
       } else {
         setDrag(0, true);
@@ -127,7 +136,7 @@ export default function ProductModal({
       className="fade-in"
       style={{
         position: "fixed", inset: 0, background: "rgba(0,0,0,0.85)", backdropFilter: "blur(6px)",
-        zIndex: 1000, display: "flex", alignItems: "center", justifyContent: "center", padding: "24px var(--modal-pad-x, 88px)",
+        zIndex: 1000, display: "flex", alignItems: "center", justifyContent: "center", padding: "var(--modal-pad-y, 24px) var(--modal-pad-x, 88px)",
       }}
     >
       {/* стрілки по боках — для десктопа (на мобільному гортаємо свайпом) */}
@@ -152,7 +161,9 @@ export default function ProductModal({
         className={dir === "left" ? "modal-slide-left" : dir === "right" ? "modal-slide-right" : "modal-pop"}
         style={{
           background: "var(--bg-card)", border: "1px solid var(--border-light)",
-          width: "var(--modal-w, 900px)", maxWidth: "100%", maxHeight: "90vh", overflow: "auto",
+          width: "var(--modal-w, 900px)", maxWidth: "100%", overflow: "auto", overscrollBehavior: "contain",
+          // dvh — видима висота (на iOS vh = екран без панелей браузера, картка впиралась у краї)
+          maxHeight: "calc(100dvh - 2 * var(--modal-pad-y, 24px))",
           display: "grid", gridTemplateColumns: "var(--modal-cols)", position: "relative",
         }}
       >

@@ -276,7 +276,8 @@ textarea.form-input { resize: vertical; min-height: 120px; font-family: var(--fo
     --modal-w: 440px;
     --modal-pad-x: 24px;     /* на мобільному стрілок немає — гортаємо свайпом */
     --modal-photo-ar: auto;
-    --modal-photo-fixed-h: min(92vw, 440px, 48vh);
+    --modal-photo-fixed-h: min(92vw, 440px, 42dvh);
+    --modal-pad-y: 40px;     /* відступ картки від верху/низу екрана */
     --modal-photo-h: 180px;  /* мін. висота фото в модалці на мобілці */
     --modal-body-pt: 10px;   /* майже без відступу над назвою */
     --promo-cols: 1fr;
