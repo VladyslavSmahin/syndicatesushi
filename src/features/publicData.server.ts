@@ -134,16 +134,18 @@ export async function fetchPublicData(): Promise<PublicData> {
     if (pp > 0) promoByProduct.set(pid, Math.min(promoByProduct.get(pid) ?? Infinity, pp));
   }
 
-  // Порядок товарів: спочатку за порядком категорій (як у меню сайту), потім за
-  // sort_order товару всередині категорії. Інакше в «Повному меню» товари з
-  // «Додатково» (васабі, імбир) могли опинятись першими. Сортування стабільне,
-  // тож порядок усередині категорії зберігається з .order("sort_order").
+  // Порядок товарів: спочатку за порядком категорій (як у меню сайту), далі
+  // товари з фото перед товарами без фото, потім за sort_order товару всередині
+  // категорії. Інакше в «Повному меню» товари з «Додатково» (васабі, імбир)
+  // могли опинятись першими. Сортування стабільне, тож порядок усередині групи
+  // зберігається з .order("sort_order").
   const catOrder = new Map(categories.map((c, i) => [c.slug, i] as const));
   const catRank = (slug: string) => catOrder.get(slug) ?? Number.MAX_SAFE_INTEGER;
+  const photoRank = (p: Product) => (p.photo ? 0 : 1);
   const setPortionById = setPortions((setItemsRes.data ?? []) as unknown as SetItemRow[]);
   const catalog = ((prodsRes.data ?? []) as unknown as ProductRow[])
     .map((p) => mapProduct(p, setPortionById.get(p.id)))
-    .sort((a, b) => catRank(a.category) - catRank(b.category))
+    .sort((a, b) => catRank(a.category) - catRank(b.category) || photoRank(a) - photoRank(b))
     .map((p) => {
       const pp = promoByProduct.get(p.id);
       return pp != null && pp < p.price ? { ...p, oldPrice: p.price, price: pp } : p;
