@@ -32,11 +32,10 @@ export default function MobileCategoryBar({
 
   return (
     <div
+      className="silver-strip"
       style={{
         position: "fixed", left: 10, right: 10, bottom: 10, zIndex: 90,
-        background: "rgba(20,17,14,0.92)", backdropFilter: "blur(14px)",
-        border: "1px solid var(--border-light)", borderRadius: 14,
-        boxShadow: "0 8px 30px rgba(0,0,0,0.5)",
+        backdropFilter: "blur(14px)", borderRadius: 14,
       }}
     >
       <div

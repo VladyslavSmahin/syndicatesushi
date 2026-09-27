@@ -212,6 +212,16 @@ body {
 .no-spin::-webkit-inner-spin-button { -webkit-appearance: none; margin: 0; }
 .no-spin { -moz-appearance: textfield; appearance: textfield; }
 
+/* срібна підкладка під горизонтальні ряди кнопок (нижня панель категорій, підкатегорії на мобільному) —
+   щоб «бігучі» меню візуально виділялись на темному фоні */
+.silver-strip {
+  background:
+    linear-gradient(135deg, rgba(214,212,222,0.26) 0%, rgba(160,158,168,0.12) 45%, rgba(214,212,222,0.22) 100%),
+    rgba(20,17,14,0.92);
+  border: 1px solid rgba(192,190,200,0.38);
+  box-shadow: inset 0 1px 0 rgba(255,255,255,0.10), 0 8px 30px rgba(0,0,0,0.5);
+}
+
 /* ряд підкатегорій: переноситься на десктопі, горизонтальний скрол на мобільному */
 .subcat-row {
   display: flex; flex-wrap: wrap; gap: 10px;
@@ -219,7 +229,12 @@ body {
 @media (max-width: 768px) {
   .subcat-row {
     flex-wrap: nowrap; overflow-x: auto; -webkit-overflow-scrolling: touch;
-    padding-bottom: 4px; scrollbar-width: none;
+    scrollbar-width: none;
+    /* срібна підкладка, як у нижньої панелі */
+    padding: 8px; border-radius: 12px;
+    background: linear-gradient(135deg, rgba(214,212,222,0.22) 0%, rgba(160,158,168,0.10) 45%, rgba(214,212,222,0.18) 100%);
+    border: 1px solid rgba(192,190,200,0.34);
+    box-shadow: inset 0 1px 0 rgba(255,255,255,0.08);
   }
   .subcat-row::-webkit-scrollbar { display: none; }
   .subcat-row > .chip { flex: 0 0 auto; }
