@@ -9,6 +9,7 @@ import PickupPicker from "./PickupPicker";
 import { dayOptions, firstPickupDay, isPickupStillValid, weekdayLabel } from "@/lib/kyivTime";
 import type { Product, CartItem } from "@/lib/types";
 import { useScrollLock } from "@/lib/scrollLock";
+import ThumbImg from "./ThumbImg";
 
 const EXTRAS_CATEGORY = "додатково";
 // категорії, для яких потрібні набори приборів (палички, серветки)
@@ -300,7 +301,7 @@ export default function CartDrawer({ isOpen, onClose }: { isOpen: boolean; onClo
                     <span className="mini-thumb">
                       {photo && (
                         // eslint-disable-next-line @next/next/no-img-element
-                        <img src={photo} alt="" loading="lazy" />
+                        <ThumbImg src={photo} alt="" loading="lazy" />
                       )}
                     </span>
                     <div style={{ flex: 1, minWidth: 0, paddingRight: 4 }}>

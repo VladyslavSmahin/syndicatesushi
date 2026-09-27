@@ -5,6 +5,7 @@ import { Icon } from "./icons";
 import { usePublicCatalog } from "@/features/publicData";
 import type { Product } from "@/lib/types";
 import { useScrollLock } from "@/lib/scrollLock";
+import ThumbImg from "./ThumbImg";
 
 const MAX_RESULTS = 8;
 
@@ -120,7 +121,7 @@ export default function SearchBox({ onOpen }: { onOpen: (item: Product, list: Pr
                       <span className="mini-thumb">
                         {p.photo && (
                           // eslint-disable-next-line @next/next/no-img-element
-                          <img src={p.photo} alt="" loading="lazy" />
+                          <ThumbImg src={p.photo} alt="" loading="lazy" />
                         )}
                       </span>
                       <span style={{ flex: 1, minWidth: 0, textAlign: "left" }}>

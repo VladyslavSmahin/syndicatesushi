@@ -143,7 +143,7 @@ export default function ProductPage({ item }: { item: Product }) {
                   style={{ textDecoration: "none", color: "inherit", background: "var(--bg-card)", border: "1px solid var(--border)", padding: 14, display: "block" }}
                 >
                   <div style={{ position: "relative", aspectRatio: "1 / 1", background: "var(--bg-dark)" }}>
-                    <PhotoSlot h="100%" photo={p.photo} alt={`${p.name} — суші та роли, Тульчин`} />
+                    <PhotoSlot h="100%" photo={p.photo} alt={`${p.name} — суші та роли, Тульчин`} thumb />
                   </div>
                   <div style={{ fontFamily: "var(--font-display)", fontSize: 17, fontWeight: 600, marginTop: 10, lineHeight: 1.2 }}>{p.name}</div>
                   <div style={{ fontSize: 15, marginTop: 6 }}>

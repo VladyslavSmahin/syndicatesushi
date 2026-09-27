@@ -114,7 +114,7 @@
 - ✅ Кэш публичных данных: `unstable_cache` с тегом `public-data` + ISR 60 с; админка сбрасывает кэш после каждой мутации (`touchPublic` → `revalidatePublicAction`), кнопка «Оновити» тоже. Заказ считает цены из БД напрямую.
 - ✅ Mobile first: `useIsMobile` по умолчанию true (первый кадр — мобильная вёрстка).
 - ✅ SEO: названия карточек — ссылки на /menu/slug; h1 на мобильном визуально скрыт, но в разметке; JSON-LD вес/фото/priceValidUntil; OG на странице блюда; sitemap lastModified = created_at.
-- ⏭️ Ресайз фото (копия ~480px для карточек, фото сейчас в среднем 124 КБ) — ждёт решения. Отказались: подписи полей/Esc/звёзды/клавиатура (доступность). Отложено: настройки Email-провайдера Supabase (signup/confirm).
+- ✅ Мініатюри фото: при завантаженні товару в R2 кладеться ще `<uuid>_480.webp`; картки/пошук/кошик/«схожі» показують її (`ThumbImg`, фолбек на оригінал). Для старих фото — `node scripts/make_thumbs.mjs --apply` (пише лише в R2). Отказались: подписи полей/Esc/звёзды/клавиатура (доступность). Отложено: настройки Email-провайдера Supabase (signup/confirm).
 
 ## 🔑 Переменные окружения
 Локально (`.env.local`, gitignored): `TELEGRAM_BOT_TOKEN`, `TELEGRAM_CHAT_ID`, `NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_ANON_KEY`, `SUPABASE_SERVICE_ROLE_KEY`, `SUPABASE_DB_PASSWORD`, `SUPABASE_DB_URL_SP` (session pooler), `R2_ACCOUNT_ID`, `R2_ACCESS_KEY_ID`, `R2_SECRET_ACCESS_KEY`, `R2_BUCKET`, `R2_PUBLIC_URL` (Cloudflare R2 для фото/баннеров).

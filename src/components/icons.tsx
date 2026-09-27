@@ -1,5 +1,6 @@
 import type { SVGProps } from "react";
 import { ASSET_ICONS } from "@/data/site";
+import ThumbImg from "./ThumbImg";
 
 type P = SVGProps<SVGSVGElement>;
 
@@ -84,6 +85,7 @@ export function PhotoSlot({
   photo,
   alt = "",
   eager = false,
+  thumb = false,
 }: {
   h?: number | string;
   photo?: string | null;
@@ -91,6 +93,8 @@ export function PhotoSlot({
   alt?: string;
   /** true для фото «над згином» (модалка) — без ліниві́ї загрузки */
   eager?: boolean;
+  /** показувати зменшену копію (картки) — з переходом на оригінал, якщо копії немає */
+  thumb?: boolean;
 }) {
   return (
     <div
@@ -104,14 +108,24 @@ export function PhotoSlot({
     >
       {photo && (
         // фото — саме <img>, а не background: інакше в нього немає alt і його не бачить пошук
-        // eslint-disable-next-line @next/next/no-img-element
-        <img
-          src={photo}
-          alt={alt}
-          loading={eager ? "eager" : "lazy"}
-          decoding="async"
-          style={{ position: "absolute", inset: 0, width: "100%", height: "100%", objectFit: "cover", display: "block" }}
-        />
+        thumb ? (
+          <ThumbImg
+            src={photo}
+            alt={alt}
+            loading={eager ? "eager" : "lazy"}
+            decoding="async"
+            style={{ position: "absolute", inset: 0, width: "100%", height: "100%", objectFit: "cover", display: "block" }}
+          />
+        ) : (
+          // eslint-disable-next-line @next/next/no-img-element
+          <img
+            src={photo}
+            alt={alt}
+            loading={eager ? "eager" : "lazy"}
+            decoding="async"
+            style={{ position: "absolute", inset: 0, width: "100%", height: "100%", objectFit: "cover", display: "block" }}
+          />
+        )
       )}
       {!photo && <PhotoPending />}
     </div>

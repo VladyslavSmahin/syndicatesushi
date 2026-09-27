@@ -35,7 +35,7 @@ export default function MenuCard({
       }}
     >
       <div style={{ position: "relative", background: "var(--bg-dark)", aspectRatio: "var(--card-ar, 1 / 1)" }}>
-        <PhotoSlot h="100%" photo={item.photo} alt={`${item.name} — суші та роли, Тульчин`} />
+        <PhotoSlot h="100%" photo={item.photo} alt={`${item.name} — суші та роли, Тульчин`} thumb />
         {item.badge && (
           <div
             style={{
