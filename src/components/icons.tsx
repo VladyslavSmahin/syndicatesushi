@@ -111,6 +111,8 @@ export function PhotoSlot({
         thumb ? (
           <ThumbImg
             src={photo}
+            // фактична ширина фото в картці: 2 колонки на телефоні, 3 на планшеті, 4 (≈300px) на десктопі
+            sizes="(max-width: 860px) calc(50vw - 50px), (max-width: 1100px) calc(33vw - 70px), 300px"
             alt={alt}
             loading={eager ? "eager" : "lazy"}
             decoding="async"
