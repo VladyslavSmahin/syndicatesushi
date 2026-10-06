@@ -26,7 +26,8 @@ export default function AdminSearch({ placeholder = "Пошук…" }: { placeho
       if (value.trim()) next.set("q", value.trim()); else next.delete("q");
       next.delete("page");
       const qs = next.toString();
-      router.push(qs ? `${pathname}?${qs}` : pathname);
+      // replace + scroll:false — без стрибка сторінки вгору й без запису кожного запиту в історію
+      router.replace(qs ? `${pathname}?${qs}` : pathname, { scroll: false });
     }, 350);
     return () => clearTimeout(t);
   // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -38,7 +39,8 @@ export default function AdminSearch({ placeholder = "Пошук…" }: { placeho
       placeholder={placeholder}
       value={value}
       onChange={(e) => setValue(e.target.value)}
-      style={{ maxWidth: 280 }}
+      // 16px — інакше iOS Safari зумить сторінку при фокусі (на мобільному .input = 14px)
+      style={{ maxWidth: 280, fontSize: 16 }}
     />
   );
 }

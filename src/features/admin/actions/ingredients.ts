@@ -29,10 +29,18 @@ export async function createIngredientAction(name: string, nutrition: Nutrition)
   return {};
 }
 
-export async function updateIngredientAction(id: string, patch: Partial<Nutrition>): Promise<ActionResult> {
+export async function updateIngredientAction(
+  id: string,
+  patch: Partial<Nutrition> & { name?: string }
+): Promise<ActionResult> {
+  if (patch.name !== undefined) {
+    patch = { ...patch, name: patch.name.trim() };
+    if (!patch.name) return { error: "Вкажіть назву" };
+  }
   const supabase = await createClient();
+  // slug не чіпаємо при перейменуванні — як і в підкатегорій
   const { error } = await supabase.from("ingredients").update(patch).eq("id", id);
-  if (error) return { error: error.message };
+  if (error) return { error: error.message.includes("duplicate") ? "Такий інгредієнт вже є" : error.message };
   revalidateTag(INGREDIENTS_TAG);
   revalidateTag(PUBLIC_TAG); // назви/КБЖУ інгредієнтів видно на сайті
   return {};

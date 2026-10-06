@@ -105,6 +105,7 @@
   backdrop-filter: blur(10px);
 }
 .topTitle { font-family: var(--font-display); font-size: 25px; font-weight: 700; color: var(--text-primary); }
+.topLeft { display: flex; align-items: center; gap: 12px; min-width: 0; }
 
 .userBox { display: flex; align-items: center; gap: 14px; }
 .roleSwitch {
@@ -274,6 +275,16 @@
   .hint { font-size: 13px; }
   .content { padding: 14px; }
   .cardBody { padding: 14px; }
+
+  /* верхня панель: заголовок в один рядок, «Оновити» — лише іконка, усе вміщається в 360–390px */
+  .topbar { padding: 10px 14px; gap: 10px; }
+  .topLeft { gap: 10px; flex: 1 1 auto; }
+  .topTitle { font-size: 19px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; min-width: 0; }
+  .menuBtn { width: 36px; height: 36px; flex-shrink: 0; }
+  .userBox { gap: 8px; flex-shrink: 0; }
+  .userBox .btn { padding: 9px 10px; }
+  .refreshLabel { display: none; }
+  .avatar { width: 30px; height: 30px; font-size: 14px; }
 }
 
 /* На вузьких екранах таблиці — картками (без горизонтального скролу) */

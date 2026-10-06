@@ -8,12 +8,16 @@ import {
 import type { AdminIngredient } from "@/features/admin/ingredientsShared";
 import { useAdminAuth } from "@/features/admin/AdminAuthContext";
 import AdminSearch from "./AdminSearch";
+import Modal from "./Modal";
 import Pagination from "./Pagination";
 import s from "./admin.module.css";
 
 type NutField = "kcal" | "protein" | "fat" | "carbs";
 const NUT_LABEL: Record<NutField, string> = { kcal: "Ккал", protein: "Білки", fat: "Жири", carbs: "Вугл." };
 const num = (v: string): number | null => (v.trim() === "" ? null : Number(v));
+const str = (v: number | null) => (v != null ? String(v) : "");
+
+interface EditDraft { id: string; name: string; kcal: string; protein: string; fat: string; carbs: string; }
 
 export default function IngredientsClient({
   rows, total, page, pageCount,
@@ -25,6 +29,24 @@ export default function IngredientsClient({
 
   const [draft, setDraft] = useState({ name: "", kcal: "", protein: "", fat: "", carbs: "" });
   const [error, setError] = useState("");
+  const [edit, setEdit] = useState<EditDraft | null>(null);
+  const [editError, setEditError] = useState("");
+
+  const openEdit = (ing: AdminIngredient) => {
+    setEdit({ id: ing.id, name: ing.name, kcal: str(ing.kcal), protein: str(ing.protein), fat: str(ing.fat), carbs: str(ing.carbs) });
+    setEditError("");
+  };
+  const saveEdit = () => {
+    if (!edit || !edit.name.trim()) return;
+    start(async () => {
+      const res = await updateIngredientAction(edit.id, {
+        name: edit.name, kcal: num(edit.kcal), protein: num(edit.protein), fat: num(edit.fat), carbs: num(edit.carbs),
+      });
+      if (res.error) { setEditError(res.error); return; }
+      setEdit(null);
+      router.refresh();
+    });
+  };
 
   const add = (e: React.FormEvent) => {
     e.preventDefault();
@@ -76,7 +98,9 @@ export default function IngredientsClient({
         </div>
       </form>
 
-      <div className={s.card}>
+      {/* minHeight: коли пошук нічого не знаходить, сторінка не «схлопується» —
+          інакше браузер підрізає скрол і екран стрибає (особливо на телефоні з клавіатурою) */}
+      <div className={s.card} style={{ minHeight: "100vh" }}>
         <div className={s.cardHead} style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12, flexWrap: "wrap" }}>
           <div className={s.cardTitle}>Інгредієнти</div>
           <AdminSearch placeholder="Пошук за назвою…" />
@@ -99,9 +123,10 @@ export default function IngredientsClient({
                   ))}
                   <td>
                     <div className={s.rowActions}>
-                      {isAdmin ? (
+                      <button className={`${s.btn} ${s.btnGhost} ${s.btnSmall}`} onClick={() => openEdit(ing)} disabled={pending}>Редагувати</button>
+                      {isAdmin && (
                         <button className={`${s.btn} ${s.btnDanger} ${s.btnSmall}`} onClick={() => remove(ing.id)} disabled={pending}>Видалити</button>
-                      ) : <span className={s.hint} style={{ fontSize: 11 }}>—</span>}
+                      )}
                     </div>
                   </td>
                 </tr>
@@ -113,6 +138,34 @@ export default function IngredientsClient({
           <Pagination page={page} pageCount={pageCount} total={total} />
         </div>
       </div>
+
+      {edit && (
+        <Modal
+          title="Редагувати інгредієнт"
+          onClose={() => setEdit(null)}
+          footer={<>
+            <button className={`${s.btn} ${s.btnGhost}`} onClick={() => setEdit(null)}>Скасувати</button>
+            <button className={s.btn} onClick={saveEdit} disabled={!edit.name.trim() || pending}>Зберегти</button>
+          </>}
+        >
+          <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
+            <div className={s.field}><span className={s.fieldLabel}>Назва</span>
+              <input className={s.input} value={edit.name}
+                onChange={(e) => { setEdit({ ...edit, name: e.target.value }); setEditError(""); }} /></div>
+            <div className={s.formRow}>
+              {(["kcal", "protein", "fat", "carbs"] as NutField[]).map((f) => (
+                <div key={f} className={s.field} style={{ flex: "1 1 64px", minWidth: 60 }}>
+                  <span className={s.fieldLabel}>{NUT_LABEL[f]}</span>
+                  <input className={`${s.input} no-spin`} type="number" step="0.1" min="0" placeholder="—" value={edit[f]}
+                    onChange={(e) => setEdit({ ...edit, [f]: e.target.value })} />
+                </div>
+              ))}
+            </div>
+            {editError && <p className={s.error}>{editError}</p>}
+            <p className={s.hint} style={{ fontSize: 11 }}>КБЖУ — на 100 г.</p>
+          </div>
+        </Modal>
+      )}
     </div>
   );
 }

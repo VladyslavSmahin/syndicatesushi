@@ -63,6 +63,7 @@ export default function ProductsPage() {
   const [catFilter, setCatFilter] = useState<string>("all"); // id категорії | "all" | "__none__"
   const [subFilter, setSubFilter] = useState<string>("all"); // id підкатегорії | "all" | "__none__"
   const [query, setQuery] = useState("");
+  const [badgeFilter, setBadgeFilter] = useState<string>("all"); // "all" | "__any__" | "__none__" | Badge
   const pickCat = (id: string) => { setCatFilter(id); setSubFilter("all"); };
 
   const active = useMemo(() => products.filter((p) => !p.deletedAt), [products]);
@@ -128,6 +129,9 @@ export default function ProductsPage() {
       if (subFilter === "__none__") list = list.filter((p) => !p.subcategoryId);
       else if (subFilter !== "all") list = list.filter((p) => p.subcategoryId === subFilter);
     }
+    if (badgeFilter === "__any__") list = list.filter((p) => !!p.badge);
+    else if (badgeFilter === "__none__") list = list.filter((p) => !p.badge);
+    else if (badgeFilter !== "all") list = list.filter((p) => p.badge === badgeFilter);
     const q = query.trim().toLowerCase();
     if (q) {
       list = list.filter((p) =>
@@ -138,7 +142,7 @@ export default function ProductsPage() {
       );
     }
     return list;
-  }, [active, catFilter, subFilter, query, prodById, ingredients]);
+  }, [active, catFilter, subFilter, query, prodById, ingredients, badgeFilter]);
   const groups = useMemo(() => {
     const gs = categories
       .map((c) => ({ id: c.id, name: c.name, items: filtered.filter((p) => p.categoryId === c.id) }))
@@ -330,6 +334,18 @@ export default function ProductsPage() {
                 <button type="button" onClick={() => setQuery("")} aria-label="Очистити"
                   style={{ position: "absolute", right: 8, top: "50%", transform: "translateY(-50%)", background: "transparent", border: "none", color: "var(--text-secondary)", cursor: "pointer", fontSize: 16, lineHeight: 1 }}>×</button>
               )}
+            </div>
+            <div style={{ flex: "0 1 170px", minWidth: 140 }}>
+              <AdminSelect
+                value={badgeFilter}
+                onChange={setBadgeFilter}
+                options={[
+                  { value: "all", label: "Усі бейджі" },
+                  { value: "__any__", label: `З бейджем (${active.filter((p) => p.badge).length})` },
+                  ...BADGES.filter(Boolean).map((b) => ({ value: b, label: `${b} (${active.filter((p) => p.badge === b).length})` })),
+                  { value: "__none__", label: `Без бейджа (${active.filter((p) => !p.badge).length})` },
+                ]}
+              />
             </div>
             <button className={`${s.btn} ${s.btnSmall}`} onClick={openNew} disabled={!categories.length}>+ Товар</button>
           </div>

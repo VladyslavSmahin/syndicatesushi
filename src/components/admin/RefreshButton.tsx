@@ -17,12 +17,13 @@ export default function RefreshButton({ action }: { action: () => Promise<void> 
 
   return (
     <button className={`${s.btn} ${s.btnGhost} ${s.btnSmall}`} onClick={onClick} disabled={pending}
+      title="Оновити" aria-label="Оновити"
       style={{ display: "inline-flex", alignItems: "center", gap: 6 }}>
       <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"
         style={pending ? { animation: "spin 0.7s linear infinite" } : undefined}>
         <path d="M21 12a9 9 0 1 1-2.64-6.36" /><path d="M21 3v6h-6" />
       </svg>
-      {pending ? "Оновлення…" : "Оновити"}
+      <span className={s.refreshLabel}>{pending ? "Оновлення…" : "Оновити"}</span>
     </button>
   );
 }

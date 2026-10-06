@@ -182,7 +182,7 @@ export default function AdminShell({ children }: { children: React.ReactNode }) 
 
       <div className={s.main}>
         <div className={s.topbar}>
-          <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+          <div className={s.topLeft}>
             <button className={s.menuBtn} aria-label="Меню" onClick={() => setNavOpen(true)}>
               <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"><path d="M4 7h16M4 12h16M4 17h16" /></svg>
             </button>
