@@ -10,6 +10,7 @@ import { DEFAULT_DELIVERY, type DeliverySettings } from "@/lib/delivery";
 import { GLOSSARY_DEFAULTS, type Glossary } from "@/lib/glossary";
 import { CONTACTS_DEFAULTS, type SiteContacts } from "@/lib/contacts";
 import { DEFAULT_SEO_BLOCK, type SeoBlock } from "@/lib/seoBlock";
+import { DEFAULT_HERO_BG, type HeroBg } from "@/lib/heroBg";
 
 export interface PubCategory {
   id: string;
@@ -47,10 +48,11 @@ export interface PublicData {
   glossary: Glossary;
   contacts: SiteContacts;
   seoBlock: SeoBlock;
+  heroBg: HeroBg;
   reviews: PubReview[];
 }
 
-const Ctx = createContext<PublicData>({ catalog: [], categories: [], subcategories: [], promos: [], banners: [], delivery: DEFAULT_DELIVERY, navSpecials: [], glossary: GLOSSARY_DEFAULTS, contacts: CONTACTS_DEFAULTS, seoBlock: DEFAULT_SEO_BLOCK, reviews: [] });
+const Ctx = createContext<PublicData>({ catalog: [], categories: [], subcategories: [], promos: [], banners: [], delivery: DEFAULT_DELIVERY, navSpecials: [], glossary: GLOSSARY_DEFAULTS, contacts: CONTACTS_DEFAULTS, seoBlock: DEFAULT_SEO_BLOCK, heroBg: DEFAULT_HERO_BG, reviews: [] });
 
 export function PublicDataProvider({ value, children }: { value: PublicData; children: React.ReactNode }) {
   return <Ctx.Provider value={value}>{children}</Ctx.Provider>;
@@ -101,6 +103,11 @@ export function useGloss(key: string): string {
 /** SEO-блок унизу головної — редагується в адмінці. */
 export function useSeoBlock(): SeoBlock {
   return useContext(Ctx).seoBlock;
+}
+
+/** Фонові фото головного екрана — редагуються в адмінці. */
+export function useHeroBg(): HeroBg {
+  return useContext(Ctx).heroBg;
 }
 
 /** Контакти закладу (телефон, адреса, соцмережі) — редагуються в адмінці. */

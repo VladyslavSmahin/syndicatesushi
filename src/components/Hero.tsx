@@ -2,7 +2,8 @@
 
 import HeroPromoSlider from "./HeroPromoSlider";
 import { TEXTS } from "@/data/site";
-import { useContacts } from "@/features/publicData";
+import { useContacts, useHeroBg } from "@/features/publicData";
+import HeroBgLayer from "./HeroBgLayer";
 
 export default function Hero({
   onCtaOrder,
@@ -12,6 +13,8 @@ export default function Hero({
   onCtaMenu: () => void;
 }) {
   const contacts = useContacts();
+  const heroBg = useHeroBg();
+  const photos = heroBg.photos.filter((p) => p.active);
   return (
     <section
       id="hero"
@@ -22,13 +25,15 @@ export default function Hero({
         overflow: "hidden",
       }}
     >
-      <div
+      {/* фонові фото з адмінки (якщо є) — поверх базового градієнта; без фото все як було */}
+      <HeroBgLayer photos={photos} intervalMin={heroBg.intervalMin} />
+      {!photos.length && <div
         style={{
           position: "absolute", top: "-20%", right: "-10%", width: "70%", height: "120%",
           background: "radial-gradient(ellipse at top right, rgba(180,120,70,0.45) 0%, rgba(120,70,40,0.18) 30%, transparent 60%)",
           pointerEvents: "none",
         }}
-      />
+      />}
       <div
         style={{
           position: "absolute", inset: 0,

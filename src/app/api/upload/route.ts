@@ -25,7 +25,10 @@ export async function POST(req: Request) {
     return NextResponse.json({ ok: false, error: "no_file" }, { status: 400 });
   }
 
-  const r = await convertAndUpload(file, folder, folder === "products" ? 1280 : 1600);
+  // hero — фон на весь екран: більший розмір (2560 по довгій стороні), якість 80 — оптимум вага/чіткість
+  const r = folder === "hero"
+    ? await convertAndUpload(file, folder, 2560, 80)
+    : await convertAndUpload(file, folder, folder === "products" ? 1280 : 1600);
   if ("error" in r) {
     return NextResponse.json({ ok: false, error: r.error }, { status: r.status });
   }

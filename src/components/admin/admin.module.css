@@ -355,3 +355,18 @@
   background: var(--bg-elevated);
 }
 .sortRowOver { border-color: var(--accent); }
+
+/* ===== Повзунки (фон головної) ===== */
+.range { width: 100%; accent-color: var(--accent); height: 28px; cursor: pointer; }
+.sliderRow { display: grid; grid-template-columns: 110px 1fr 46px; align-items: center; gap: 10px; }
+.sliderLabel { font-size: 12px; letter-spacing: 1px; text-transform: uppercase; color: var(--text-secondary); }
+.sliderVal { font-size: 13px; color: var(--text-primary); text-align: right; font-variant-numeric: tabular-nums; }
+.heroPreviews { display: grid; grid-template-columns: 1fr 72px; gap: 10px; align-items: start; }
+.heroGrid { display: grid; grid-template-columns: repeat(auto-fill, minmax(380px, 1fr)); gap: 14px; }
+.heroBlock { border: 1px solid var(--border); border-radius: 8px; padding: 12px; display: flex; flex-direction: column; gap: 10px; min-width: 0; background: rgba(255,255,255,0.015); }
+@media (max-width: 600px) {
+  .sliderRow { grid-template-columns: 92px 1fr 40px; gap: 8px; }
+  .sliderLabel { font-size: 10px; }
+  .heroPreviews { grid-template-columns: 1fr 64px; gap: 8px; }
+  .heroGrid { grid-template-columns: 1fr; }
+}

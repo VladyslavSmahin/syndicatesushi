@@ -32,6 +32,7 @@ const NAV: { group: string; items: { href: string; label: string }[] }[] = [
     items: [
       { href: "/admin/promos", label: "Акції" },
       { href: "/admin/promo-codes", label: "Промокоди" },
+      { href: "/admin/hero-bg", label: "Фон головної" },
     ],
   },
   {

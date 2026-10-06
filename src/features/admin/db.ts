@@ -8,6 +8,7 @@ import { createClient } from "@/lib/supabase/client";
 import { parseDeliverySettings, DEFAULT_DELIVERY, type DeliverySettings } from "@/lib/delivery";
 import { parseContacts, type SiteContacts } from "@/lib/contacts";
 import { parseSeoBlock, type SeoBlock } from "@/lib/seoBlock";
+import { parseHeroBg, DEFAULT_HERO_BG, type HeroBg } from "@/lib/heroBg";
 import { NAV_SPECIALS, parseNavVisibility } from "@/lib/navSpecials";
 import { parseGlossary, type Glossary } from "@/lib/glossary";
 import type { Badge } from "@/lib/types";
@@ -577,6 +578,34 @@ export async function dbSetReviewStatus(id: string, status: ReviewStatus) {
 export async function dbDeleteReview(id: string) {
   const { error } = await createClient().from("reviews").delete().eq("id", id);
   if (!error) touchPublic();
+}
+
+// ---------- Фон головного екрана (settings, key='hero_bg') ----------
+export function useDbHeroBg() {
+  const supabase = useMemo(() => createClient(), []);
+  const [heroBg, setHeroBg] = useState<HeroBg>(DEFAULT_HERO_BG);
+  const [loading, setLoading] = useState(true);
+  const refetch = useCallback(async () => {
+    setLoading(true);
+    const { data, error } = await supabase.from("settings").select("value").eq("key", "hero_bg").maybeSingle();
+    if (error) console.error("hero_bg settings:", error.message);
+    else setHeroBg(parseHeroBg(data?.value));
+    setLoading(false);
+  }, [supabase]);
+  useEffect(() => { refetch(); }, [refetch]);
+  return { heroBg, loading, refetch };
+}
+
+export async function dbSaveHeroBg(value: HeroBg): Promise<string | undefined> {
+  const { error } = await createClient().from("settings").upsert({ key: "hero_bg", value }, { onConflict: "key" });
+  if (!error) touchPublic();
+  return error?.message;
+}
+
+/** Прибирає файл фонового фото з R2 (best-effort: помилка не блокує видалення з налаштувань). */
+export async function dbDeleteHeroPhotoFile(url: string): Promise<void> {
+  await fetch("/api/hero-bg", { method: "DELETE", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ url }) })
+    .catch(() => {});
 }
 
 // ---------- Налаштування доставки (settings, key='delivery') ----------
