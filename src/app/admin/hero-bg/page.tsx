@@ -126,7 +126,7 @@ export default function HeroBgPage() {
       <div className={s.card} style={{ borderColor: "rgba(201,168,76,0.45)" }}>
         <div className={s.cardBody} style={{ fontSize: 14, lineHeight: 1.6, color: "var(--text-primary)" }}>
           <b>Якість фото — важливо.</b> Фото тягнеться на весь екран, тож:
-          <ul style={{ margin: "8px 0 0 18px", color: "var(--text-secondary)" }}>
+          <ul style={{ margin: "6px 0 0", paddingLeft: 18, color: "var(--text-secondary)" }}>
             <li>знімайте <b>горизонтально</b>, основною камерою (1×), без цифрового зуму;</li>
             <li>при денному світлі або яскравому освітленні, без спалаху;</li>
             <li>протріть камеру й тримайте телефон нерухомо — змазане фото не врятує жодне налаштування;</li>
@@ -200,12 +200,18 @@ export default function HeroBgPage() {
               <div style={{ display: "flex", gap: 8, flexWrap: "wrap", alignItems: "center" }}>
                 <label style={{ display: "flex", alignItems: "center", gap: 8, fontSize: 14, cursor: "pointer", marginRight: "auto" }}>
                   <input type="checkbox" checked={p.active} onChange={(e) => setPhoto(i, { active: e.target.checked })} />
-                  Показувати на сайті
+                  На сайті
                 </label>
                 <button className={`${s.btn} ${s.btnGhost} ${s.btnSmall}`} onClick={() => move(i, -1)} disabled={i === 0} aria-label="Раніше в черзі">◀</button>
                 <button className={`${s.btn} ${s.btnGhost} ${s.btnSmall}`} onClick={() => move(i, 1)} disabled={i === draft.photos.length - 1} aria-label="Пізніше в черзі">▶</button>
-                <button className={`${s.btn} ${s.btnGhost} ${s.btnSmall}`} onClick={() => setPhoto(i, { ...HERO_PHOTO_DEFAULTS, active: p.active })}>Скинути</button>
-                <button className={`${s.btn} ${s.btnDanger} ${s.btnSmall}`} onClick={() => remove(i)}>Видалити</button>
+                <button className={`${s.btn} ${s.btnGhost} ${s.btnSmall}`} onClick={() => setPhoto(i, { ...HERO_PHOTO_DEFAULTS, active: p.active })}
+                  title="Скинути налаштування" aria-label="Скинути налаштування">↺</button>
+                <button className={`${s.btn} ${s.btnDanger} ${s.btnSmall}`} onClick={() => remove(i)}
+                  title="Видалити фото" aria-label="Видалити фото" style={{ display: "inline-flex", alignItems: "center" }}>
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+                    <path d="M3 6h18" /><path d="M8 6V4h8v2" /><path d="M19 6l-1 14H6L5 6" /><path d="M10 11v6M14 11v6" />
+                  </svg>
+                </button>
               </div>
             </div>
           ))}

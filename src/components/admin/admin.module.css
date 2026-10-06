@@ -368,5 +368,8 @@
   .sliderRow { grid-template-columns: 92px 1fr 40px; gap: 8px; }
   .sliderLabel { font-size: 10px; }
   .heroPreviews { grid-template-columns: 1fr 64px; gap: 8px; }
-  .heroGrid { grid-template-columns: 1fr; }
+  .heroGrid { grid-template-columns: 1fr; gap: 10px; }
+  .heroBlock { padding: 10px; gap: 6px; }
+  .heroBlock .range { height: 24px; }
+  .heroBlock .btn { padding: 8px 10px; font-size: 11px; letter-spacing: 1px; }
 }
