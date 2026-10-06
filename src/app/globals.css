@@ -35,8 +35,6 @@
   --modal-photo-fixed-h: auto; /* фікс. висота фото (вмикається в одноколонковій розкладці) */
   --modal-body-pt: 22px;    /* верхній відступ контенту модалки */
   --promo-cols: repeat(3, 1fr);
-  --reviews-cols: 1fr 1.2fr;
-  --reviews-gap: 100px;
   --map-cols: 1.6fr 1fr;
   --footer-cols: 1.6fr 1fr 1.2fr;
   --footer-gap: 60px;
@@ -278,7 +276,6 @@ textarea.form-input { resize: vertical; min-height: 120px; font-family: var(--fo
     --h2-size: 46px;
     --menu-cols: repeat(3, minmax(0, 1fr));
     --review-cols: 3;
-    --reviews-gap: 56px;
     /* вузький десктоп/планшет: модалка вужча за 900px — фото і текст навпіл, щоб тексту вистачало */
     --modal-cols: 1fr 1fr;
   }
@@ -306,7 +303,6 @@ textarea.form-input { resize: vertical; min-height: 120px; font-family: var(--fo
     --modal-photo-h: 180px;  /* мін. висота фото в модалці на мобілці */
     --modal-body-pt: 10px;   /* майже без відступу над назвою */
     --promo-cols: 1fr;
-    --reviews-cols: 1fr;
     --map-cols: 1fr;
     --footer-cols: 1fr 1fr;
     --footer-gap: 40px;
@@ -315,6 +311,7 @@ textarea.form-input { resize: vertical; min-height: 120px; font-family: var(--fo
     --py: 36px;
     --hero-pt: 120px;
     --form-2col: 1fr;
+    --review-modal-pad: 20px; /* внутрішній відступ модалки відгуку */
     --head-mb: 16px;
     --fab-left: 14px;
     --fab-right: 14px;

@@ -3,6 +3,7 @@
 import { useEffect, useRef, useState } from "react";
 import { Icon } from "./icons";
 import { usePublicReviews, type PubReview } from "@/features/publicData";
+import ReviewFormModal from "./ReviewForm";
 
 const GAP = 20;
 const INTERVAL = 3000;
@@ -60,6 +61,7 @@ export default function ReviewsList() {
   const [animate, setAnimate] = useState(true);
   const [paused, setPaused] = useState(false);
   const [cols, setCols] = useState(4);
+  const [formOpen, setFormOpen] = useState(false);
   const [stepPx, setStepPx] = useState(0);
 
   // зчитуємо к-сть видимих карток (--review-cols) і крок зсуву (ширина картки + gap)
@@ -75,7 +77,7 @@ export default function ReviewsList() {
     read();
     window.addEventListener("resize", read);
     return () => window.removeEventListener("resize", read);
-  }, []);
+  }, [reviews.length]); // перший відгук міг зʼявитися вже після монтування (5★ → одразу на сайт)
 
   const len = reviews.length;
   const canSlide = len > cols;
@@ -102,16 +104,30 @@ export default function ReviewsList() {
     }
   };
 
-  if (!len) return null;
-
   // дублюємо стрічку для безшовного циклу (лише якщо реально слайдимо)
   const slides = canSlide ? [...reviews, ...reviews.slice(0, cols)] : reviews;
 
   return (
-    <section style={{ padding: "0 var(--page-pad) var(--py)" }}>
+    <section id="reviews" style={{ padding: "var(--py) var(--page-pad)", borderTop: "1px solid var(--border)" }}>
+      <div style={{ maxWidth: 1440, margin: "0 auto var(--head-mb, 28px)", display: "flex", alignItems: "flex-end", justifyContent: "space-between", gap: 16, flexWrap: "wrap" }}>
+        <div>
+          <div className="eyebrow" style={{ marginBottom: 12 }}>Ваша думка важлива</div>
+          <h2 style={{ fontFamily: "var(--font-display)", fontSize: "var(--h2-size)", fontWeight: 700, lineHeight: 1, color: "var(--text-primary)" }}>
+            Відгуки гостей
+          </h2>
+        </div>
+        <button type="button" className="btn-secondary" onClick={() => setFormOpen(true)}>Залишити відгук</button>
+      </div>
+
+      {!len && (
+        <p style={{ maxWidth: 1440, margin: "0 auto", fontSize: 14, fontWeight: 300, color: "var(--text-secondary)", lineHeight: 1.7 }}>
+          Поки що відгуків немає — поділіться враженнями першим.
+        </p>
+      )}
+
       <div
         ref={viewportRef}
-        style={{ maxWidth: 1440, margin: "0 auto", overflow: "hidden" }}
+        style={{ maxWidth: 1440, margin: "0 auto", overflow: "hidden", display: len ? undefined : "none" }}
         onMouseEnter={() => setPaused(true)}
         onMouseLeave={() => setPaused(false)}
       >
@@ -129,6 +145,8 @@ export default function ReviewsList() {
           ))}
         </div>
       </div>
+
+      <ReviewFormModal open={formOpen} onClose={() => setFormOpen(false)} />
     </section>
   );
 }

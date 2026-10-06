@@ -1,4 +1,6 @@
 import { NextResponse } from "next/server";
+import { revalidateTag } from "next/cache";
+import { PUBLIC_TAG } from "@/features/publicCache";
 import { sendTelegramMessage, esc } from "@/lib/telegram";
 import { SITE_URL } from "@/lib/seo";
 import { createAdminClient } from "@/lib/supabase/admin";
@@ -43,14 +45,19 @@ export async function POST(req: Request) {
   const r = Number(rating);
   const ratingVal = r >= 1 && r <= 5 ? Math.floor(r) : null;
 
-  // Запис у БД зі статусом pending (модерація в адмінці)
+  // 5 зірок — одразу на сайт (approved); решта — pending, модерація в адмінці
+  const autoApproved = ratingVal === 5;
   let saved = false;
   try {
     const { error } = await createAdminClient().from("reviews").insert({
-      author_name: name.trim(), contact: contact.trim(), rating: ratingVal, text: text.trim(), status: "pending",
+      author_name: name.trim(), contact: contact.trim(), rating: ratingVal, text: text.trim(),
+      status: autoApproved ? "approved" : "pending",
     });
     if (error) console.error("review insert failed:", error.message);
-    else saved = true;
+    else {
+      saved = true;
+      if (autoApproved) revalidateTag(PUBLIC_TAG); // щоб відгук одразу зʼявився в блоці на сайті
+    }
   } catch (e) {
     console.error("review insert failed:", (e as Error).message);
   }
@@ -66,8 +73,10 @@ export async function POST(req: Request) {
     "",
     esc(text),
     "",
-    // відгук лежить у статусі «на модерації» — посилання веде одразу туди, де його схвалюють
-    `👉 <a href="${SITE_URL}/admin/reviews">Модерація відгуків</a>`,
+    // 5★ уже на сайті (можна прибрати в адмінці); решта чекає схвалення
+    saved && autoApproved
+      ? `✅ Опубліковано на сайті автоматично (5★). <a href="${SITE_URL}/admin/reviews">Керувати відгуками</a>`
+      : `👉 <a href="${SITE_URL}/admin/reviews">Модерація відгуків</a>`,
   ].join("\n");
 
   const sent = await sendTelegramMessage(msg);
@@ -75,5 +84,5 @@ export async function POST(req: Request) {
   if (!saved && !sent) {
     return NextResponse.json({ ok: false, error: "save_failed" }, { status: 502 });
   }
-  return NextResponse.json({ ok: true, telegram: sent });
+  return NextResponse.json({ ok: true, telegram: sent, published: saved && autoApproved });
 }

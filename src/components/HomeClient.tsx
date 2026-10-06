@@ -5,7 +5,6 @@ import Header from "./Header";
 import Hero from "./Hero";
 import Hits from "./Hits";
 import FullMenu from "./FullMenu";
-import ReviewForm from "./ReviewForm";
 import ReviewsList from "./ReviewsList";
 import MapSection from "./MapSection";
 import AboutSection from "./AboutSection";
@@ -200,7 +199,6 @@ export default function HomeClient() {
         navFilter={navFilter}
         setNavFilter={setNavFilter}
       />
-      <ReviewForm />
       <ReviewsList />
       <MapSection />
       <AboutSection />
