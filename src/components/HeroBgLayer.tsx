@@ -46,7 +46,8 @@ export default function HeroBgLayer({ photos, intervalMin = 5 }: { photos: HeroP
   const shown = [prev, cur].filter((i, k, a) => i >= 0 && i < n && a.indexOf(i) === k);
 
   return (
-    <div aria-hidden style={{ position: "absolute", inset: 0, overflow: "hidden", pointerEvents: "none" }}>
+    // zIndex: 0 — власний контекст накладання: z-index шарів усередині не піднімає фон над вмістом hero
+    <div aria-hidden style={{ position: "absolute", inset: 0, zIndex: 0, overflow: "hidden", pointerEvents: "none" }}>
       {shown.map((i) => {
         const p = photos[i];
         return (
