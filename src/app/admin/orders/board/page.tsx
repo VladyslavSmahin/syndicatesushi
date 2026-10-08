@@ -1,7 +1,6 @@
 "use client";
 
 import { useEffect, useMemo, useRef, useState, type CSSProperties } from "react";
-import Link from "next/link";
 import { useDbOrders, dbSetOrderStatus, orderScheduleLabel, type DbOrder, type OrderStatus } from "@/features/admin/db";
 import s from "@/components/admin/admin.module.css";
 
@@ -69,7 +68,6 @@ export default function OrdersBoardPage() {
           <input type="date" className={s.input} value={dateFilter} onChange={(e) => setDateFilter(e.target.value)}
             style={{ width: "auto", padding: "7px 10px", fontSize: 12 }} title="Фільтр за датою замовлення" />
           {dateFilter && <button className={`${s.btn} ${s.btnGhost} ${s.btnSmall}`} onClick={() => setDateFilter("")}>Всі дати</button>}
-          <Link href="/admin/orders" className={`${s.btn} ${s.btnGhost} ${s.btnSmall}`}>Список</Link>
         </div>
       </div>
 
