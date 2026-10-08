@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { Icon } from "./icons";
 import SearchBox from "./SearchBox";
 import BrandMark from "./BrandMark";
+import AdminLink from "./AdminLink";
 import { ASSET_ICONS } from "@/data/site";
 import { useCart } from "@/features/cart/CartContext";
 import { usePublicCategories, usePublicNavSpecials, useContacts } from "@/features/publicData";
@@ -94,7 +95,8 @@ export default function Header({
 
           <SearchBox onOpen={onProductOpen} />
 
-          {/* кабінет клієнта — на мобільному він у бургер-меню (у шапці мало місця) */}
+          {/* «Адмінка» (лише співробітникам) і кабінет — на мобільному вони в бургер-меню (у шапці мало місця) */}
+          <AdminLink className="desktop-only" />
           <button
             type="button"
             onClick={onAccountClick}

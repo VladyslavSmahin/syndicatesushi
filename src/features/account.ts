@@ -17,8 +17,6 @@ export interface CustomerProfile {
   phoneVerifiedAt: string | null;
   /** пошту підтверджено (Google — одразу, email+пароль — після листа) */
   emailConfirmed: boolean;
-  /** роль співробітника (admin/editor) — для кнопки «Адмінка»; null — звичайний клієнт */
-  staffRole: "admin" | "editor" | null;
 }
 
 export type AccountOrderStatus = "new" | "confirmed" | "done" | "canceled";
@@ -91,10 +89,7 @@ async function loadProfile(): Promise<CustomerProfile | null> {
     .eq("id", session.user.id)
     .maybeSingle();
   if (!data) return null;
-  // профіль співробітника є лише для email із білого списку (RLS: кожен бачить свій рядок)
-  const { data: staff } = await supabase.from("profiles").select("role").eq("id", session.user.id).maybeSingle();
-  const staffRole = staff?.role === "admin" || staff?.role === "editor" ? staff.role : null;
-  return { id: data.id, email: data.email ?? session.user.email ?? "", name: data.name, phone: data.phone, phoneNorm: data.phone_norm, phoneVerifiedAt: data.phone_verified_at, emailConfirmed: !!session.user.email_confirmed_at, staffRole };
+  return { id: data.id, email: data.email ?? session.user.email ?? "", name: data.name, phone: data.phone, phoneNorm: data.phone_norm, phoneVerifiedAt: data.phone_verified_at, emailConfirmed: !!session.user.email_confirmed_at };
 }
 
 /** Профіль поточного клієнта або null (не залогінений / не вдалося завантажити). */
@@ -184,4 +179,24 @@ export function useIsSignedIn(): boolean | undefined {
     return () => sub.subscription.unsubscribe();
   }, []);
   return signedIn;
+}
+
+/** Роль співробітника поточного користувача (admin/editor) — для кнопки «Адмінка»; null — не співробітник.
+ *  Рядок у profiles є лише для email із білого списку (RLS: кожен бачить свій). */
+export function useStaffRole(): "admin" | "editor" | null {
+  const [role, setRole] = useState<"admin" | "editor" | null>(null);
+  useEffect(() => {
+    const supabase = createClient();
+    let active = true;
+    const check = async () => {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session?.user) { if (active) setRole(null); return; }
+      const { data } = await supabase.from("profiles").select("role").eq("id", session.user.id).maybeSingle();
+      if (active) setRole(data?.role === "admin" || data?.role === "editor" ? data.role : null);
+    };
+    check();
+    const { data: sub } = supabase.auth.onAuthStateChange((e) => { if (e === "SIGNED_IN" || e === "SIGNED_OUT") check(); });
+    return () => { active = false; sub.subscription.unsubscribe(); };
+  }, []);
+  return role;
 }

@@ -1,5 +1,6 @@
 import BackButton from "./BackButton";
 import BrandMark from "./BrandMark";
+import AdminLink from "./AdminLink";
 
 /** Простий каркас для інфо-сторінок (оферта, про нас тощо) у стилі сайту. */
 export default function InfoPageShell({ title, children }: { title: string; children: React.ReactNode }) {
@@ -17,6 +18,7 @@ export default function InfoPageShell({ title, children }: { title: string; chil
           <BackButton />
           <BrandMark href="/" />
           </div>
+          <AdminLink />
         </div>
       </header>
 

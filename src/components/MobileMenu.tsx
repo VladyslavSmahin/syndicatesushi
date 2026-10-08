@@ -7,6 +7,7 @@ import { useContacts } from "@/features/publicData";
 import { telHref, sitePhones } from "@/lib/contacts";
 import type { NavCategory } from "@/lib/types";
 import { useScrollLock } from "@/lib/scrollLock";
+import { useStaffRole } from "@/features/account";
 
 export default function MobileMenu({
   open,
@@ -21,6 +22,7 @@ export default function MobileMenu({
   onNavClick: (cat: NavCategory) => void;
 }) {
   const contacts = useContacts();
+  const staffRole = useStaffRole(); // «Адмінка» — лише співробітникам
   useScrollLock(open);
 
   if (!open) return null;
@@ -101,6 +103,18 @@ export default function MobileMenu({
             Особистий кабінет
             <Icon.User width="18" height="18" style={{ color: "var(--text-secondary)" }} />
           </button>
+
+          {staffRole && (
+            <a href="/admin" onClick={onClose}
+              style={{
+                display: "flex", alignItems: "center", justifyContent: "space-between",
+                padding: "16px 4px", borderBottom: "1px solid var(--border)", textDecoration: "none",
+                fontFamily: "var(--font-display)", fontSize: 22, fontWeight: 600, color: "var(--accent)",
+              }}>
+              Адмінка
+              <Icon.Arrow width="18" height="18" />
+            </a>
+          )}
 
           {[
             { href: "/oferta", label: "Публічна оферта" },

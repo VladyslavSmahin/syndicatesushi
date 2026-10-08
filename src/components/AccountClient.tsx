@@ -1,18 +1,11 @@
 "use client";
 
 import { useEffect, useState, type CSSProperties } from "react";
-import { useAccount, signOutCustomer, updatePassword, type AccountOrder, type AccountOrderStatus } from "@/features/account";
+import { useAccount, signOutCustomer, updatePassword, type AccountOrder } from "@/features/account";
 import { MIN_PASSWORD } from "./AuthForm";
 import { useRouter } from "next/navigation";
 import { formatPhone, isPhoneValid } from "@/lib/phone";
 import { kyivNow, addDays } from "@/lib/kyivTime";
-
-const STATUS: Record<AccountOrderStatus, { label: string; color: string }> = {
-  new: { label: "Нове", color: "#E0A24A" },
-  confirmed: { label: "Підтверджено", color: "#4A9DE0" },
-  done: { label: "Виконано", color: "#5BB85B" },
-  canceled: { label: "Скасовано", color: "#8A8A8A" },
-};
 
 const card: CSSProperties = {
   border: "1px solid var(--border-light)", background: "var(--bg-card)", borderRadius: 10, padding: "clamp(14px, 4vw, 20px)",
@@ -69,11 +62,6 @@ export default function AccountClient() {
     <div style={{ display: "flex", flexDirection: "column", gap: 20 }}>
       {params.confirmed && (
         <p style={{ margin: 0, fontSize: 14, color: "#5BB85B" }}>✓ Пошту підтверджено — реєстрацію завершено.</p>
-      )}
-      {profile.staffRole && (
-        <a href="/admin" className="btn-primary" style={{ alignSelf: "flex-start", textDecoration: "none" }}>
-          Адмінка
-        </a>
       )}
       <div role="tablist" className="acc-tabs">
         {([["profile", "Профіль"], ["orders", `Замовлення${orders.length ? ` · ${orders.length}` : ""}`]] as const).map(([t, l]) => (
@@ -194,17 +182,17 @@ function Stat({ label: l, value }: { label: string; value: string }) {
   );
 }
 
-/** Рядок історії: дата, статус, сума й короткий склад; по кліку — повний склад і деталі. */
+/** Рядок історії: дата, сума й короткий склад; по кліку — повний склад і деталі.
+ *  Статус замовлення клієнту поки не показуємо (рішення власника, 2026-10-08). */
 function OrderRow({ order: o, first }: { order: AccountOrder; first: boolean }) {
   const [open, setOpen] = useState(false);
-  const st = STATUS[o.status] ?? STATUS.new;
   const when = scheduleLabel(o);
   const date = new Date(o.createdAt).toLocaleDateString("uk-UA", { timeZone: "Europe/Kyiv", day: "2-digit", month: "2-digit", year: "2-digit" });
   const qty = o.items.reduce((n, it) => n + it.quantity, 0);
   const summary = o.items.slice(0, 2).map((it) => it.name).join(", ") + (o.items.length > 2 ? ` +${o.items.length - 2}` : "");
 
   return (
-    <div style={{ borderTop: first ? "none" : "1px solid var(--border)", opacity: o.status === "canceled" ? 0.55 : 1 }}>
+    <div style={{ borderTop: first ? "none" : "1px solid var(--border)" }}>
       <button type="button" onClick={() => setOpen((v) => !v)} aria-expanded={open}
         style={{
           width: "100%", display: "grid", gridTemplateColumns: "1fr auto", gap: "4px 12px", alignItems: "center",
@@ -213,8 +201,6 @@ function OrderRow({ order: o, first }: { order: AccountOrder; first: boolean }) 
         }}>
         <span style={{ display: "flex", alignItems: "center", gap: 8, fontSize: 14, minWidth: 0 }}>
           <span style={{ fontWeight: 600 }}>{date}</span>
-          <span aria-hidden style={{ width: 7, height: 7, borderRadius: "50%", background: st.color, flexShrink: 0 }} />
-          <span style={{ fontSize: 12, color: st.color }}>{st.label}</span>
         </span>
         <span style={{ fontSize: 15, fontWeight: 700, whiteSpace: "nowrap" }}>{o.total} грн</span>
         <span style={{ fontSize: 12, color: "var(--text-secondary)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", minWidth: 0 }}>
