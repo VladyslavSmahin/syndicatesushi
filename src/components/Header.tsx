@@ -55,6 +55,7 @@ export default function Header({
       }}
     >
       <div
+        className="hdr-row"
         style={{
           maxWidth: 1440, margin: "0 auto", padding: "0 var(--page-pad)", height: "var(--header-h)",
           display: "flex", alignItems: "center", justifyContent: "space-between", gap: 16,
@@ -97,6 +98,7 @@ export default function Header({
             onClick={onAccountClick}
             aria-label="Особистий кабінет"
             title={signedIn ? "Особистий кабінет" : "Увійти / зареєструватися"}
+            className="hdr-btn"
             style={{
               display: "flex", width: 44, height: 44, border: `1px solid ${signedIn ? "var(--accent)" : "var(--border-light)"}`,
               background: "transparent", color: signedIn ? "var(--accent)" : "var(--text-primary)", cursor: "pointer",
@@ -109,6 +111,7 @@ export default function Header({
           <button
             onClick={onCartOpen}
             aria-label="Кошик"
+            className="hdr-btn"
             style={{
               position: "relative", width: 44, height: 44, border: "1px solid var(--border-light)", background: "transparent",
               cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", transition: "all 0.2s", flexShrink: 0,
@@ -131,7 +134,7 @@ export default function Header({
 
           {/* Burger (mobile only) — лише перемикає меню (рендериться на рівні сторінки) */}
           <button
-            className="burger"
+            className="burger hdr-btn"
             onClick={onMenuToggle}
             aria-label="Меню"
             aria-expanded={menuOpen}
