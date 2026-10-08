@@ -198,7 +198,6 @@
 .field { display: flex; flex-direction: column; gap: 6px; min-width: 0; }
 .fieldLabel { font-size: 12px; letter-spacing: 2px; text-transform: uppercase; color: var(--text-secondary); }
 
-.statGrid { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 16px; }
 /* плитки статистики (mobile-first): телефон — дрібні плитки по ~3 в ряд,
    ширше — більші, а на десктопі всі в один ряд */
 .statGridCompact { display: grid; grid-template-columns: repeat(auto-fill, minmax(96px, 1fr)); gap: 6px; }
@@ -221,6 +220,10 @@
 .presetRow::-webkit-scrollbar { display: none; }
 .presetRow > * { flex: 0 0 auto; }
 @media (min-width: 700px) { .presetRow { flex-wrap: wrap; overflow: visible; gap: 8px; } }
+/* чипи в слайдері на телефоні — дрібніші */
+@media (max-width: 699px) {
+  .presetRow :global(.chip) { padding: 7px 12px; font-size: 10px; letter-spacing: 1px; white-space: nowrap; }
+}
 .stat { padding: 22px; }
 .statNum { font-family: var(--font-display); font-size: 41px; font-weight: 700; color: var(--text-primary); line-height: 1; }
 .statLabel { font-size: 13px; letter-spacing: 2px; text-transform: uppercase; color: var(--text-secondary); margin-top: 10px; }
@@ -293,6 +296,8 @@
   .topbar { gap: 8px; }
   .topLeft { gap: 8px; flex: 1 1 auto; min-width: 0; }
   .adminTag { display: none; }
+  /* у шапці адмінки на телефоні — лише логотип (текст «SUSHI SYNDICATE» не вміщається поруч із кнопками) */
+  .topbar :global(.brand-text) { display: none !important; }
   .pageTitle { padding: 12px 14px 0; font-size: 19px; }
   .menuBtn { width: 36px; height: 36px; flex-shrink: 0; }
   .userBox { gap: 8px; flex-shrink: 0; }
@@ -307,25 +312,32 @@
   .table { display: block; }
   .table thead { display: none; }
   .table tbody { display: block; }
-  .table tr { display: block; padding: 14px 16px; border-bottom: 1px solid var(--border); }
+  /* компактний рядок: назва — першим рядком, далі в один рядок «мітка значення» і дрібні кнопки праворуч */
+  .table tr {
+    display: flex; flex-wrap: wrap; align-items: center; gap: 6px 14px;
+    padding: 9px 12px; border-bottom: 1px solid var(--border);
+  }
   .table tr:last-child { border-bottom: none; }
   .table td {
-    display: flex; align-items: center; justify-content: space-between; gap: 14px;
-    padding: 5px 0; border: none; text-align: right;
+    display: inline-flex; align-items: center; gap: 6px;
+    padding: 0; border: none; text-align: left; font-size: 14px;
   }
-  .table td::before {
-    content: attr(data-label); flex-shrink: 0; text-align: left;
-    font-size: 11px; letter-spacing: 1px; text-transform: uppercase; color: var(--text-tertiary);
+  .table td[data-label]::before {
+    content: attr(data-label); flex-shrink: 0;
+    font-size: 9px; letter-spacing: 1px; text-transform: uppercase; color: var(--text-tertiary);
   }
-  /* перша клітинка (назва) — окремим заголовком картки */
-  .table td:first-child { display: block; text-align: left; padding-bottom: 10px; }
+  .table td:first-child { flex: 1 1 100%; display: flex; justify-content: space-between; gap: 10px; }
   .table td:first-child::before { display: none; }
-  .rowActions { justify-content: flex-start; flex-wrap: wrap; }
+  /* клітинка з кнопками — у кінець рядка */
+  .table td:has(.rowActions) { margin-left: auto; }
+  .rowActions { justify-content: flex-end; flex-wrap: wrap; gap: 6px; }
+  .table .rowActions .btn { padding: 6px 10px; font-size: 10px; letter-spacing: 1px; }
+  .table .pill { padding: 1px 7px; font-size: 10px; }
   /* бейдж+ціна у верхньому рядку; окремі колонки Ціна/Бейдж ховаємо */
   .cardMeta { display: inline-flex; align-items: center; gap: 8px; flex-shrink: 0; font-size: 14px; color: var(--text-primary); }
   .table td.colHideMobile { display: none; }
   /* склад — на всю ширину картки, без лейбла */
-  .table td.composCell { display: block; text-align: left; font-size: 12px; max-width: none; padding: 4px 0 8px; line-height: 1.5; }
+  .table td.composCell { display: block; flex: 1 1 100%; text-align: left; font-size: 12px; max-width: none; padding: 4px 0 8px; line-height: 1.5; }
   .table td.composCell::before { display: none; }
 
   /* інгредієнти: 4 показники КБЖУ — в один рядок, лейбли зверху, компактно */

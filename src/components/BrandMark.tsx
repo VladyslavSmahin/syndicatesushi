@@ -12,7 +12,7 @@ export default function BrandMark({ href = "/", onClick, title }: { href?: strin
         alt="Sushi Syndicate"
         style={{ height: "var(--logo-h)", width: "auto", display: "block", filter: "drop-shadow(0 2px 8px rgba(0,0,0,0.4))" }}
       />
-      <span style={{ lineHeight: 0.95, display: "block" }}>
+      <span className="brand-text" style={{ lineHeight: 0.95, display: "block" }}>
         <span style={{ display: "block", fontFamily: "var(--font-display)", fontSize: 18, fontWeight: 700, letterSpacing: 5, color: "var(--text-primary)" }}>SUSHI</span>
         <span style={{ display: "block", fontFamily: "var(--font-display)", fontSize: 10, fontWeight: 400, letterSpacing: 4, color: "var(--text-secondary)", marginTop: 3 }}>SYNDICATE</span>
       </span>

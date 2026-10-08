@@ -36,9 +36,9 @@ export default function DashboardPage() {
   ];
 
   return (
-    <div style={{ display: "flex", flexDirection: "column", gap: 24 }}>
+    <div style={{ display: "flex", flexDirection: "column", gap: "clamp(12px, 3vw, 24px)" }}>
       <div>
-        <h2 style={{ fontFamily: "var(--font-display)", fontSize: 26, fontWeight: 700, color: "var(--text-primary)" }}>
+        <h2 style={{ fontFamily: "var(--font-display)", fontSize: "clamp(19px, 5vw, 26px)", fontWeight: 700, color: "var(--text-primary)" }}>
           Вітаємо, {user?.name}!
         </h2>
         <p className={s.hint} style={{ marginTop: 6 }}>
@@ -49,7 +49,7 @@ export default function DashboardPage() {
         </p>
       </div>
 
-      <div className={s.statGrid}>
+      <div className={s.statGridCompact}>
         {stats.map((st) => (
           <Link key={st.label} href={st.href} className={s.card} style={{ textDecoration: "none" }}>
             <div className={s.stat}>

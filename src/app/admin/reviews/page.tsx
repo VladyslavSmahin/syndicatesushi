@@ -33,7 +33,7 @@ export default function ReviewsPage() {
         Нових на модерації: <b>{pendingCount}</b>.
       </p>
 
-      <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+      <div className={s.presetRow}>
         {FILTERS.map((f) => (
           <button key={f.value} onClick={() => setFilter(f.value)} className={`chip square ${filter === f.value ? "active" : ""}`}>{f.label}</button>
         ))}

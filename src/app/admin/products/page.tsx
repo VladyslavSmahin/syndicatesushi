@@ -281,8 +281,8 @@ export default function ProductsPage() {
 
       <BulkPriceTool products={active} ingredients={ingredients} categories={categories} subcategories={subcategories} onApplied={refetch} />
 
-      {/* фільтр за категорією */}
-      <div style={{ display: "flex", gap: 8, flexWrap: "wrap", alignItems: "center" }}>
+      {/* фільтр за категорією — на телефоні слайдер в один рядок */}
+      <div className={s.presetRow}>
         <button className={`chip square ${catFilter === "all" ? "active" : ""}`} onClick={() => pickCat("all")}>
           Усі ({active.length})
         </button>
