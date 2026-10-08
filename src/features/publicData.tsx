@@ -4,6 +4,7 @@
 // на сервері (RSC) і передані сюди як value. Хуки повторюють сигнатури колишніх
 // localStorage-сторів, щоб публічні компоненти змінювались мінімально.
 
+import { DEFAULT_TIKTOK, type TikTokBlock } from "@/lib/tiktok";
 import { createContext, useContext } from "react";
 import type { Product, Promo, Banner, NavCategory } from "@/lib/types";
 import { DEFAULT_DELIVERY, type DeliverySettings } from "@/lib/delivery";
@@ -49,10 +50,11 @@ export interface PublicData {
   contacts: SiteContacts;
   seoBlock: SeoBlock;
   heroBg: HeroBg;
+  tiktok: TikTokBlock;
   reviews: PubReview[];
 }
 
-const Ctx = createContext<PublicData>({ catalog: [], categories: [], subcategories: [], promos: [], banners: [], delivery: DEFAULT_DELIVERY, navSpecials: [], glossary: GLOSSARY_DEFAULTS, contacts: CONTACTS_DEFAULTS, seoBlock: DEFAULT_SEO_BLOCK, heroBg: DEFAULT_HERO_BG, reviews: [] });
+const Ctx = createContext<PublicData>({ catalog: [], categories: [], subcategories: [], promos: [], banners: [], delivery: DEFAULT_DELIVERY, navSpecials: [], glossary: GLOSSARY_DEFAULTS, contacts: CONTACTS_DEFAULTS, seoBlock: DEFAULT_SEO_BLOCK, heroBg: DEFAULT_HERO_BG, tiktok: DEFAULT_TIKTOK, reviews: [] });
 
 export function PublicDataProvider({ value, children }: { value: PublicData; children: React.ReactNode }) {
   return <Ctx.Provider value={value}>{children}</Ctx.Provider>;
@@ -111,6 +113,10 @@ export function useHeroBg(): HeroBg {
 }
 
 /** Контакти закладу (телефон, адреса, соцмережі) — редагуються в адмінці. */
+export function useTikTok(): TikTokBlock {
+  return useContext(Ctx).tiktok;
+}
+
 export function useContacts(): SiteContacts {
   return useContext(Ctx).contacts;
 }

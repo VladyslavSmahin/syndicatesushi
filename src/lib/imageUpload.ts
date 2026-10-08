@@ -101,3 +101,29 @@ export async function uploadAvatar(file: File, customerId: string): Promise<Uplo
     return { error: "upload_failed", status: 502 };
   }
 }
+
+/** Обкладинка TikTok-ролика: з URL (oEmbed) → 540×960 WebP у R2 tiktok/<id>.webp (перезапис, якщо додали вдруге). */
+export async function uploadTikTokThumb(sourceUrl: string, videoId: string): Promise<UploadResult> {
+  if (!r2Configured()) return { error: "r2_not_configured", status: 503 };
+  let webp: Buffer;
+  try {
+    const res = await fetch(sourceUrl, { headers: { "User-Agent": BROWSER_UA } });
+    if (!res.ok) return { error: "thumb_fetch_failed", status: 502 };
+    const buf = Buffer.from(await res.arrayBuffer());
+    if (buf.length > MAX_BYTES) return { error: "too_large", status: 413 };
+    const sharp = (await import("sharp")).default;
+    webp = await sharp(buf).resize({ width: 540, height: 960, fit: "cover" }).webp({ quality: 78 }).toBuffer();
+  } catch (e) {
+    console.error("tiktok thumb failed:", (e as Error).message);
+    return { error: "image_processing_failed", status: 500 };
+  }
+  try {
+    return { url: await r2Put(`tiktok/${videoId}.webp`, webp, "image/webp") };
+  } catch (e) {
+    console.error("r2 put failed:", (e as Error).message);
+    return { error: "upload_failed", status: 502 };
+  }
+}
+
+/** TikTok без «браузерного» User-Agent відповідає «overload-protect» замість даних. */
+export const BROWSER_UA = "Mozilla/5.0 (Macintosh; Intel Mac OS X 14_0) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/130 Safari/537.36";

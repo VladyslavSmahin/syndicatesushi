@@ -3,6 +3,7 @@
 // Доступ до каталогу в Supabase для адмінки: хуки читання (з refetch) + мутації.
 // Заміна localStorage-сторів. RLS: читання публічне, запис — staff, видалення — admin.
 
+import { DEFAULT_TIKTOK, parseTikTok, type TikTokBlock, type TikTokVideo } from "@/lib/tiktok";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { createClient } from "@/lib/supabase/client";
 import { parseDeliverySettings, DEFAULT_DELIVERY, type DeliverySettings } from "@/lib/delivery";
@@ -750,6 +751,47 @@ export async function dbSaveHeroBg(value: HeroBg): Promise<string | undefined> {
 export async function dbDeleteHeroPhotoFile(url: string): Promise<void> {
   await fetch("/api/hero-bg", { method: "DELETE", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ url }) })
     .catch(() => {});
+}
+
+// ---------- Блок «Ми в TikTok» (settings, key='tiktok') ----------
+export function useDbTikTok() {
+  const supabase = useMemo(() => createClient(), []);
+  const [block, setBlock] = useState<TikTokBlock>(DEFAULT_TIKTOK);
+  const [loading, setLoading] = useState(true);
+  const refetch = useCallback(async () => {
+    setLoading(true);
+    const { data, error } = await supabase.from("settings").select("value").eq("key", "tiktok").maybeSingle();
+    if (error) console.error("tiktok settings:", error.message);
+    else {
+      // в адмінці показуємо «як збережено» (enabled — як вирішив співробітник, навіть без роликів)
+      const parsed = parseTikTok(data?.value);
+      const rawEnabled = (data?.value as { enabled?: unknown } | null)?.enabled;
+      const rawProfile = (data?.value as { profileUrl?: unknown } | null)?.profileUrl;
+      setBlock({ ...parsed, enabled: rawEnabled !== false, profileUrl: parsed.profileUrl || (typeof rawProfile === "string" ? rawProfile : "") });
+    }
+    setLoading(false);
+  }, [supabase]);
+  useEffect(() => { refetch(); }, [refetch]);
+  return { block, loading, refetch };
+}
+
+export async function dbSaveTikTok(value: TikTokBlock): Promise<string | undefined> {
+  const { error } = await createClient().from("settings").upsert({ key: "tiktok", value }, { onConflict: "key" });
+  if (!error) touchPublic();
+  return error?.message;
+}
+
+/** Підтягнути останні ролики акаунта зараз (режим «auto»). */
+export async function dbSyncTikTok(): Promise<{ ok: boolean; error?: string; count?: number; added?: number }> {
+  const res = await fetch("/api/tiktok/sync", { method: "POST" });
+  return res.json().catch(() => ({ ok: false, error: `HTTP ${res.status}` }));
+}
+
+/** Сервер розбирає посилання, бере підпис/обкладинку з TikTok і копіює обкладинку в R2. */
+export async function dbFetchTikTokVideo(url: string): Promise<{ video?: TikTokVideo; error?: string }> {
+  const res = await fetch("/api/tiktok", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ url }) });
+  const j = await res.json().catch(() => ({}));
+  return res.ok && j.video ? { video: j.video } : { error: j.error || `HTTP ${res.status}` };
 }
 
 // ---------- Картинка превʼю посилання (settings, key='og_image') ----------

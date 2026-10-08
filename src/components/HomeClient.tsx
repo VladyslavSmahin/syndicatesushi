@@ -14,6 +14,7 @@ import Footer from "./Footer";
 import CartDrawer from "./CartDrawer";
 import ProductModal from "./ProductModal";
 import MobileMenu from "./MobileMenu";
+import TikTokSection from "./TikTokSection";
 import AuthModal from "./AuthModal";
 import { useIsSignedIn, fetchCustomerProfile } from "@/features/account";
 import type { AuthErrorCode } from "./AuthForm";
@@ -229,6 +230,7 @@ export default function HomeClient() {
         setNavFilter={setNavFilter}
       />
       <ReviewsList />
+      <TikTokSection />
       <MapSection />
       <AboutSection />
       <SeoTextBlock />

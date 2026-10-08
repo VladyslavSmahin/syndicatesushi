@@ -12,6 +12,7 @@ import { parseGlossary } from "@/lib/glossary";
 import { parseContacts } from "@/lib/contacts";
 import { parseSeoBlock } from "@/lib/seoBlock";
 import { parseHeroBg } from "@/lib/heroBg";
+import { parseTikTok } from "@/lib/tiktok";
 
 const num = (v: unknown) => (v == null ? 0 : Number(v));
 const r1 = (n: number) => Math.round(n * 10) / 10;
@@ -109,7 +110,7 @@ async function queryPublicData(): Promise<PublicData> {
       .select("set_id, qty, product:products!product_id(items:product_ingredients(grams, ingredient:ingredients(name, kcal, protein, fat, carbs)))"),
     supabase.from("promos").select("id, label, title, promo_price, old_price, banner_image_path, valid_from, valid_until, product:products(id)").eq("is_active", true).order("sort_order"),
     supabase.from("banners").select("id, image_path").eq("is_active", true).order("sort_order"),
-    supabase.from("settings").select("key, value").in("key", ["delivery", "nav_specials", "glossary", "contacts", "seo_block", "hero_bg"]),
+    supabase.from("settings").select("key, value").in("key", ["delivery", "nav_specials", "glossary", "contacts", "seo_block", "hero_bg", "tiktok"]),
     supabase.from("reviews").select("id, author_name, rating, text, created_at").eq("status", "approved").order("created_at", { ascending: false }).limit(24),
   ]);
 
@@ -184,6 +185,7 @@ async function queryPublicData(): Promise<PublicData> {
   const contacts = parseContacts(settingsRows.find((r) => r.key === "contacts")?.value);
   const seoBlock = parseSeoBlock(settingsRows.find((r) => r.key === "seo_block")?.value);
   const heroBg = parseHeroBg(settingsRows.find((r) => r.key === "hero_bg")?.value);
+  const tiktok = parseTikTok(settingsRows.find((r) => r.key === "tiktok")?.value);
   // підписи спец-пунктів навігації беремо з глосарію
   const navLabel: Record<string, string> = { novynky: glossary.nav_novynky, aktsii: glossary.nav_aktsii };
   const navSpecials = NAV_SPECIALS.filter((sp) => navVis[sp.id]).map((sp) => ({ ...sp, label: navLabel[sp.id] ?? sp.label }));
@@ -192,7 +194,7 @@ async function queryPublicData(): Promise<PublicData> {
     id: r.id, authorName: r.author_name, rating: r.rating, text: r.text, createdAt: r.created_at,
   }));
 
-  return { catalog, categories, subcategories, promos, banners, delivery, navSpecials, glossary, contacts, seoBlock, heroBg, reviews };
+  return { catalog, categories, subcategories, promos, banners, delivery, navSpecials, glossary, contacts, seoBlock, heroBg, tiktok, reviews };
 }
 
 /**
