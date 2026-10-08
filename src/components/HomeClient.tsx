@@ -213,13 +213,13 @@ export default function HomeClient() {
         onNavClick={handleNavClick}
         menuOpen={menuOpen}
         onMenuToggle={() => setMenuOpen((v) => !v)}
-        onProductOpen={openProduct}
         onAccountClick={openAccount}
         signedIn={!!signedIn}
       />
       <Hero
         onCtaOrder={() => setCartOpen(true)}
         onCtaMenu={() => scrollTo("menu")}
+        onProductOpen={openProduct}
       />
       <Hits onAdd={add} onCardClick={openProduct} />
       <FullMenu
@@ -235,7 +235,7 @@ export default function HomeClient() {
       <Footer />
       <CartDrawer isOpen={cartOpen} onClose={() => setCartOpen(false)} />
       <ProductModal item={modalItem} list={modalList} onNavigate={navigateProduct} onClose={closeProduct} onAdd={add} />
-      <MobileMenu open={menuOpen} onClose={() => setMenuOpen(false)} onNavClick={handleNavClick} onAccountClick={openAccount} />
+      <MobileMenu open={menuOpen} onClose={() => setMenuOpen(false)} onNavClick={handleNavClick} />
       <AuthModal open={authOpen} errorCode={authError} onClose={() => { setAuthOpen(false); setAuthError(null); }} />
       <MobileCategoryBar active={navFilter} onNavClick={handleNavClick} />
     </>

@@ -13,10 +13,7 @@ export default function MobileMenu({
   open,
   onClose,
   onNavClick,
-  onAccountClick,
 }: {
-  /** кабінет: вхід модалкою або перехід на /account */
-  onAccountClick: () => void;
   open: boolean;
   onClose: () => void;
   onNavClick: (cat: NavCategory) => void;
@@ -89,20 +86,6 @@ export default function MobileMenu({
             Про нас
             <Icon.Arrow width="18" height="18" style={{ color: "var(--text-secondary)" }} />
           </a>
-
-          <button
-            type="button"
-            onClick={() => { onClose(); onAccountClick(); }}
-            style={{
-              width: "100%", display: "flex", alignItems: "center", justifyContent: "space-between",
-              padding: "16px 4px", background: "transparent", border: "none",
-              borderBottom: "1px solid var(--border)", cursor: "pointer", textAlign: "left",
-              fontFamily: "var(--font-display)", fontSize: 22, fontWeight: 600, color: "var(--text-primary)",
-            }}
-          >
-            Особистий кабінет
-            <Icon.User width="18" height="18" style={{ color: "var(--text-secondary)" }} />
-          </button>
 
           {staffRole && (
             <a href="/admin" onClick={onClose}

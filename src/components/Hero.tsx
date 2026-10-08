@@ -4,6 +4,8 @@ import HeroPromoSlider from "./HeroPromoSlider";
 import { TEXTS } from "@/data/site";
 import { useContacts, useHeroBg } from "@/features/publicData";
 import HeroBgLayer from "./HeroBgLayer";
+import SearchBox from "./SearchBox";
+import type { Product } from "@/lib/types";
 import { Icon } from "./icons";
 import { useEffect, useState } from "react";
 import { kyivNow, parseHours } from "@/lib/kyivTime";
@@ -11,9 +13,12 @@ import { kyivNow, parseHours } from "@/lib/kyivTime";
 export default function Hero({
   onCtaOrder,
   onCtaMenu,
+  onProductOpen,
 }: {
   onCtaOrder: () => void;
   onCtaMenu: () => void;
+  /** відкрити товар із пошуку (поле вгорі Hero); list — усі збіги для свайпу */
+  onProductOpen: (item: Product, list: Product[]) => void;
 }) {
   const contacts = useContacts();
   const heroBg = useHeroBg();
@@ -44,6 +49,12 @@ export default function Hero({
           pointerEvents: "none",
         }}
       />
+      {/* пошук — одразу під шапкою, справа (на мобільному — над ейбрауном, на десктопі — поверх верхнього відступу) */}
+      <div className="hero-search">
+        <div className="hero-search-inner">
+          <SearchBox onOpen={onProductOpen} />
+        </div>
+      </div>
       <div
         className="hero-grid"
         style={{

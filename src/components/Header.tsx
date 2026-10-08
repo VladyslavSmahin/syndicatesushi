@@ -2,13 +2,12 @@
 
 import { useEffect, useState } from "react";
 import { Icon } from "./icons";
-import SearchBox from "./SearchBox";
 import BrandMark from "./BrandMark";
 import AdminLink from "./AdminLink";
 import { ASSET_ICONS } from "@/data/site";
 import { useCart } from "@/features/cart/CartContext";
 import { usePublicCategories, usePublicNavSpecials, useContacts } from "@/features/publicData";
-import type { NavCategory, Product } from "@/lib/types";
+import type { NavCategory } from "@/lib/types";
 import { sitePhones, telHref } from "@/lib/contacts";
 
 export default function Header({
@@ -16,7 +15,6 @@ export default function Header({
   onNavClick,
   menuOpen,
   onMenuToggle,
-  onProductOpen,
   onAccountClick,
   signedIn,
 }: {
@@ -24,8 +22,6 @@ export default function Header({
   onAccountClick: () => void;
   signedIn: boolean;
   onCartOpen: () => void;
-  /** відкрити товар (з пошуку) у модалці; list — усі збіги для свайпу */
-  onProductOpen: (item: Product, list: Product[]) => void;
   onNavClick: (cat: NavCategory) => void;
   menuOpen: boolean;
   onMenuToggle: () => void;
@@ -93,16 +89,14 @@ export default function Header({
             </div>
           </div>
 
-          <SearchBox onOpen={onProductOpen} />
-
-          {/* «Адмінка» (лише співробітникам) і кабінет — на мобільному вони в бургер-меню (у шапці мало місця) */}
+          {/* пошук — полем угорі Hero (див. Hero), у шапці лише кабінет */}
+          {/* «Адмінка» (лише співробітникам) — на мобільному в бургер-меню (у шапці мало місця) */}
           <AdminLink className="desktop-only" />
           <button
             type="button"
             onClick={onAccountClick}
             aria-label="Особистий кабінет"
             title={signedIn ? "Особистий кабінет" : "Увійти / зареєструватися"}
-            className="desktop-only"
             style={{
               display: "flex", width: 44, height: 44, border: `1px solid ${signedIn ? "var(--accent)" : "var(--border-light)"}`,
               background: "transparent", color: signedIn ? "var(--accent)" : "var(--text-primary)", cursor: "pointer",

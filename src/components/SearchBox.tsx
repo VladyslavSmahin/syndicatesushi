@@ -1,10 +1,8 @@
 "use client";
 
 import { useEffect, useMemo, useRef, useState } from "react";
-import { Icon } from "./icons";
 import { usePublicCatalog } from "@/features/publicData";
 import type { Product } from "@/lib/types";
-import { useScrollLock } from "@/lib/scrollLock";
 import ThumbImg from "./ThumbImg";
 
 const MAX_RESULTS = 8;
@@ -12,7 +10,7 @@ const MAX_RESULTS = 8;
 // нижній регістр + єдиний апостроф (ʼ ’ ' `), щоб «імбирʼ» знаходило «імбир'»
 const norm = (s: string) => s.toLowerCase().replace(/[ʼ’'`]/g, "'").replace(/\s+/g, " ").trim();
 
-/** Пошук страв за назвою: іконка в шапці → панель під шапкою з полем і випадайкою збігів. */
+/** Пошук страв за назвою: напівпрозоре поле з лупою вгорі Hero, збіги — випадайкою під ним. */
 export default function SearchBox({ onOpen }: { onOpen: (item: Product, list: Product[]) => void }) {
   const catalog = usePublicCatalog();
   const [open, setOpen] = useState(false);
@@ -38,12 +36,10 @@ export default function SearchBox({ onOpen }: { onOpen: (item: Product, list: Pr
 
   const shown = results.slice(0, MAX_RESULTS);
 
-  useScrollLock(open);
   useEffect(() => { setActive(0); }, [q]);
 
   useEffect(() => {
     if (!open) return;
-    inputRef.current?.focus();
     const onKey = (e: KeyboardEvent) => { if (e.key === "Escape") setOpen(false); };
     // клік поза панеллю — закриваємо
     const onDown = (e: PointerEvent) => {
@@ -60,6 +56,7 @@ export default function SearchBox({ onOpen }: { onOpen: (item: Product, list: Pr
   const pick = (item: Product) => {
     setOpen(false);
     setQ("");
+    inputRef.current?.blur();
     onOpen(item, results);
   };
 
@@ -70,82 +67,65 @@ export default function SearchBox({ onOpen }: { onOpen: (item: Product, list: Pr
     else if (e.key === "Enter") { e.preventDefault(); pick(shown[active]); }
   };
 
-  return (
-    <div ref={boxRef}>
-      <button
-        onClick={() => setOpen((v) => !v)}
-        aria-label="Пошук"
-        aria-expanded={open}
-        className="header-icon-btn"
-        style={{ background: open ? "var(--bg-elevated)" : "transparent" }}
-      >
-        {open ? <Icon.Close width="16" height="16" /> : <SearchIcon />}
-      </button>
-
-      {open && (
-        <div className="search-panel fade-in">
-          <div className="search-inner">
-            <div style={{ position: "relative" }}>
-              <span style={{ position: "absolute", left: 14, top: "50%", transform: "translateY(-50%)", color: "var(--text-secondary)", display: "flex" }}>
-                <SearchIcon />
+  const list = q.trim() !== "" && (
+    <div className="search-results" role="listbox">
+      {shown.length === 0 ? (
+        <div style={{ padding: "16px 14px", fontSize: 13, color: "var(--text-secondary)" }}>Нічого не знайдено</div>
+      ) : (
+        shown.map((p, i) => (
+          <button
+            key={p.id}
+            role="option"
+            aria-selected={i === active}
+            className={`search-row ${i === active ? "active" : ""}`}
+            onMouseEnter={() => setActive(i)}
+            onClick={() => pick(p)}
+          >
+            <span className="mini-thumb">
+              {p.photo && (
+                // eslint-disable-next-line @next/next/no-img-element
+                <ThumbImg src={p.photo} alt="" loading="lazy" />
+              )}
+            </span>
+            <span style={{ flex: 1, minWidth: 0, textAlign: "left" }}>
+              <span style={{ display: "block", fontFamily: "var(--font-display)", fontSize: 17, fontWeight: 600, color: "var(--text-primary)", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
+                {p.name}
               </span>
-              <input
-                ref={inputRef}
-                className="form-input"
-                type="search"
-                inputMode="search"
-                enterKeyHint="search"
-                placeholder="Пошук страви…"
-                value={q}
-                onChange={(e) => setQ(e.target.value)}
-                onKeyDown={onInputKey}
-                style={{ paddingLeft: 44, fontSize: 16 /* 16px — iOS не зумить при фокусі */ }}
-                aria-label="Пошук страви"
-              />
-            </div>
-
-            {q.trim() !== "" && (
-              <div className="search-results" role="listbox">
-                {shown.length === 0 ? (
-                  <div style={{ padding: "16px 14px", fontSize: 13, color: "var(--text-secondary)" }}>Нічого не знайдено</div>
-                ) : (
-                  shown.map((p, i) => (
-                    <button
-                      key={p.id}
-                      role="option"
-                      aria-selected={i === active}
-                      className={`search-row ${i === active ? "active" : ""}`}
-                      onMouseEnter={() => setActive(i)}
-                      onClick={() => pick(p)}
-                    >
-                      <span className="mini-thumb">
-                        {p.photo && (
-                          // eslint-disable-next-line @next/next/no-img-element
-                          <ThumbImg src={p.photo} alt="" loading="lazy" />
-                        )}
-                      </span>
-                      <span style={{ flex: 1, minWidth: 0, textAlign: "left" }}>
-                        <span style={{ display: "block", fontFamily: "var(--font-display)", fontSize: 17, fontWeight: 600, color: "var(--text-primary)", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
-                          {p.name}
-                        </span>
-                        {p.weight && <span style={{ fontSize: 11, color: "var(--text-secondary)", letterSpacing: 0.8 }}>{p.weight}</span>}
-                      </span>
-                      <span style={{ fontSize: 14, fontWeight: 500, color: p.oldPrice ? "var(--accent)" : "var(--text-primary)", whiteSpace: "nowrap" }}>
-                        {p.price} <span style={{ fontSize: 11, fontWeight: 400, color: "var(--text-secondary)" }}>грн</span>
-                      </span>
-                    </button>
-                  ))
-                )}
-                {results.length > MAX_RESULTS && (
-                  <div style={{ padding: "10px 14px", fontSize: 11, letterSpacing: 1, color: "var(--text-secondary)", borderTop: "1px solid var(--border)" }}>
-                    Ще {results.length - MAX_RESULTS} — уточніть запит
-                  </div>
-                )}
-              </div>
-            )}
-          </div>
+              {p.weight && <span style={{ fontSize: 11, color: "var(--text-secondary)", letterSpacing: 0.8 }}>{p.weight}</span>}
+            </span>
+            <span style={{ fontSize: 14, fontWeight: 500, color: p.oldPrice ? "var(--accent)" : "var(--text-primary)", whiteSpace: "nowrap" }}>
+              {p.price} <span style={{ fontSize: 11, fontWeight: 400, color: "var(--text-secondary)" }}>грн</span>
+            </span>
+          </button>
+        ))
+      )}
+      {results.length > MAX_RESULTS && (
+        <div style={{ padding: "10px 14px", fontSize: 11, letterSpacing: 1, color: "var(--text-secondary)", borderTop: "1px solid var(--border)" }}>
+          Ще {results.length - MAX_RESULTS} — уточніть запит
         </div>
       )}
+    </div>
+  );
+
+  return (
+    <div ref={boxRef} className="search-inline">
+      <div style={{ position: "relative" }}>
+        <input
+          ref={inputRef}
+          className="search-inline-input"
+          type="search"
+          inputMode="search"
+          enterKeyHint="search"
+          placeholder="Пошук страви…"
+          value={q}
+          onChange={(e) => { setQ(e.target.value); setOpen(true); }}
+          onFocus={() => setOpen(true)}
+          onKeyDown={onInputKey}
+          aria-label="Пошук страви"
+        />
+        <span className="search-inline-icon"><SearchIcon /></span>
+      </div>
+      {open && <div className="search-inline-drop">{list}</div>}
     </div>
   );
 }
