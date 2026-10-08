@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { isStaff } from "@/lib/adminAuth";
-import { convertAndUpload } from "@/lib/imageUpload";
+import { convertAndUpload, uploadOgImage } from "@/lib/imageUpload";
 
 // sharp потребує Node-рантайму (не edge).
 export const runtime = "nodejs";
@@ -25,8 +25,11 @@ export async function POST(req: Request) {
     return NextResponse.json({ ok: false, error: "no_file" }, { status: 400 });
   }
 
+  // og — картинка превʼю посилання: окремо, рівно 1200×630 JPEG
   // hero — фон на весь екран: більший розмір (2560 по довгій стороні), якість 80 — оптимум вага/чіткість
-  const r = folder === "hero"
+  const r = folder === "og"
+    ? await uploadOgImage(file)
+    : folder === "hero"
     ? await convertAndUpload(file, folder, 2560, 80)
     : await convertAndUpload(file, folder, folder === "products" ? 1280 : 1600);
   if ("error" in r) {

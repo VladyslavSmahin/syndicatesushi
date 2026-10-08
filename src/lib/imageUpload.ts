@@ -52,3 +52,28 @@ export async function convertAndUpload(file: File, folder: string, maxDim = 1600
     return { error: "upload_failed", status: 502 };
   }
 }
+
+/** Картинка для превʼю посилання (Open Graph: Telegram, Viber, Facebook…): рівно 1200×630, обрізка по центру,
+ *  JPEG — WebP підтримують не всі месенджери. */
+export async function uploadOgImage(file: File): Promise<UploadResult> {
+  if (!r2Configured()) return { error: "r2_not_configured", status: 503 };
+  if (file.size > MAX_BYTES) return { error: "too_large", status: 413 };
+  let jpg: Buffer;
+  try {
+    const sharp = (await import("sharp")).default;
+    jpg = await sharp(Buffer.from(await file.arrayBuffer()))
+      .rotate()
+      .resize({ width: 1200, height: 630, fit: "cover", position: "centre" })
+      .jpeg({ quality: 86, mozjpeg: true })
+      .toBuffer();
+  } catch (e) {
+    console.error("sharp failed:", (e as Error).message);
+    return { error: "image_processing_failed", status: 500 };
+  }
+  try {
+    return { url: await r2Put(`og/${crypto.randomUUID()}.jpg`, jpg, "image/jpeg") };
+  } catch (e) {
+    console.error("r2 put failed:", (e as Error).message);
+    return { error: "upload_failed", status: 502 };
+  }
+}

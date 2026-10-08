@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { useDbSeoBlock, dbSaveSeoBlock } from "@/features/admin/db";
+import OgImageCard from "@/components/admin/OgImageCard";
 import { DEFAULT_SEO_BLOCK, type SeoBlock, type FaqItem } from "@/lib/seoBlock";
 import s from "@/components/admin/admin.module.css";
 
@@ -52,6 +53,8 @@ export default function SeoTextPage() {
         щоб зрозуміти, що ми доставляємо суші саме в Тульчині. Пишіть звичайною мовою, як пояснювали б клієнту —
         перелік ключових слів без сенсу шкодить, а не допомагає. Абзаци розділяються порожнім рядком.
       </p>
+
+      <OgImageCard />
 
       {loading || !draft ? (
         <div className={s.card}><div className={s.placeholder}><p className={s.hint}>Завантаження…</p></div></div>

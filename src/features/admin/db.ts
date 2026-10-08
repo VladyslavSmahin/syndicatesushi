@@ -752,6 +752,30 @@ export async function dbDeleteHeroPhotoFile(url: string): Promise<void> {
     .catch(() => {});
 }
 
+// ---------- Картинка превʼю посилання (settings, key='og_image') ----------
+/** url — своя картинка з адмінки; null — стандартна /og-cover.jpg. */
+export function useDbOgImage() {
+  const supabase = useMemo(() => createClient(), []);
+  const [url, setUrl] = useState<string | null>(null);
+  const [loading, setLoading] = useState(true);
+  const refetch = useCallback(async () => {
+    setLoading(true);
+    const { data, error } = await supabase.from("settings").select("value").eq("key", "og_image").maybeSingle();
+    if (error) console.error("og_image settings:", error.message);
+    const v = (data?.value as { url?: unknown } | null)?.url;
+    setUrl(typeof v === "string" && v ? v : null);
+    setLoading(false);
+  }, [supabase]);
+  useEffect(() => { refetch(); }, [refetch]);
+  return { url, loading, refetch };
+}
+
+export async function dbSaveOgImage(url: string | null): Promise<string | undefined> {
+  const { error } = await createClient().from("settings").upsert({ key: "og_image", value: { url } }, { onConflict: "key" });
+  if (!error) touchPublic();
+  return error?.message;
+}
+
 // ---------- Налаштування доставки (settings, key='delivery') ----------
 export function useDbDelivery() {
   const supabase = useMemo(() => createClient(), []);

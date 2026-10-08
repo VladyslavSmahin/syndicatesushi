@@ -3,7 +3,8 @@ import { notFound } from "next/navigation";
 import ProductPage from "@/components/ProductPage";
 import { PublicDataProvider } from "@/features/publicData";
 import { fetchPublicData } from "@/features/publicData.server";
-import { SITE_URL, SITE_NAME, CITY, OG_IMAGE } from "@/lib/seo";
+import { SITE_URL, SITE_NAME, CITY } from "@/lib/seo";
+import { fetchOgImage } from "@/features/ogImage.server";
 import type { Product } from "@/lib/types";
 
 // ISR: сторінка кешується, адмінка скидає кеш через revalidateTag(PUBLIC_TAG);
@@ -47,10 +48,11 @@ export async function generateMetadata({ params }: Params): Promise<Metadata> {
 
   const title = `${item.name} — замовити в ${CITY}і`;
   const description = describe(item);
+  const ogImage = await fetchOgImage(); // якщо в страви немає фото
   // openGraph у дочірній сторінці повністю замінює кореневий — тож дублюємо siteName/locale/images
   const images = item.photo
     ? [{ url: item.photo, alt: `${item.name} — суші та роли, ${CITY}` }]
-    : [{ url: OG_IMAGE, width: 1200, height: 630, alt: `${SITE_NAME} — суші та роли, ${CITY}` }];
+    : [{ url: ogImage, width: 1200, height: 630, alt: `${SITE_NAME} — суші та роли, ${CITY}` }];
 
   return {
     title,
@@ -60,7 +62,7 @@ export async function generateMetadata({ params }: Params): Promise<Metadata> {
       type: "article", locale: "uk_UA", siteName: SITE_NAME,
       title, description, url: `/menu/${item.slug}`, images,
     },
-    twitter: { card: "summary_large_image", title, description, images: [item.photo ?? OG_IMAGE] },
+    twitter: { card: "summary_large_image", title, description, images: [item.photo ?? ogImage] },
   };
 }
 
