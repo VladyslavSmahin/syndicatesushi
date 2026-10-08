@@ -4,6 +4,7 @@ import { useEffect, useRef, useState } from "react";
 import { uploadCustomerAvatar, removeCustomerAvatar, type CustomerProfile } from "@/features/account";
 import { downscaleImage } from "@/lib/clientImage";
 import ProfileBgEditor from "./ProfileBgEditor";
+import AvatarEditor from "./AvatarEditor";
 
 const ERR: Record<string, string> = {
   unauthorized: "Сесія завершилась — увійдіть знову.",
@@ -42,6 +43,7 @@ export default function ProfileHero({ profile, ordersCount, onChanged }: {
   const fileRef = useRef<HTMLInputElement>(null);
   const [busy, setBusy] = useState(false);
   const [bgOpen, setBgOpen] = useState(false);
+  const [editing, setEditing] = useState<File | null>(null); // фото, що зараз кадруємо перед завантаженням
   const [err, setErr] = useState("");
 
   const onFile = async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -49,9 +51,15 @@ export default function ProfileHero({ profile, ordersCount, onChanged }: {
     e.target.value = "";
     if (!file) return;
     if (!file.type.startsWith("image/") && !/\.(heic|heif)$/i.test(file.name)) { setErr("Це не зображення."); return; }
+    setErr("");
+    // спершу — кадр під коло й корекція кольорів, завантаження вже після «Зберегти»
+    setEditing(await downscaleImage(file, 2000, 0.92));
+  };
+
+  const uploadEdited = async (result: File) => {
+    setEditing(null);
     setBusy(true); setErr("");
-    const prepared = await downscaleImage(file, 900, 0.88);
-    const code = await uploadCustomerAvatar(prepared);
+    const code = await uploadCustomerAvatar(result);
     setBusy(false);
     if (code) setErr(ERR[code] ?? "Не вдалося завантажити фото. Спробуйте ще раз.");
     else onChanged();
@@ -114,6 +122,7 @@ export default function ProfileHero({ profile, ordersCount, onChanged }: {
         </div>
         {err && <div style={{ fontSize: 12, color: "#E0726A", marginTop: 4 }}>{err}</div>}
       </div>
+      {editing && <AvatarEditor file={editing} onCancel={() => setEditing(null)} onDone={uploadEdited} />}
       {bgOpen && (
         <ProfileBgEditor current={profile.profileBg} name={profile.name?.trim() ?? ""} onClose={() => setBgOpen(false)} onSaved={onChanged} />
       )}
