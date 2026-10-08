@@ -2,6 +2,7 @@
 
 import { Icon, PhotoSlot } from "./icons";
 import { useGloss } from "@/features/publicData";
+import FavoriteStar from "./FavoriteStar";
 import type { Product } from "@/lib/types";
 
 export default function MenuCard({
@@ -36,6 +37,7 @@ export default function MenuCard({
     >
       <div style={{ position: "relative", background: "var(--bg-dark)", aspectRatio: "var(--card-ar, 1 / 1)" }}>
         <PhotoSlot h="100%" photo={item.photo} alt={`${item.name} — суші та роли, Тульчин`} thumb />
+        <FavoriteStar productId={item.id} name={item.name} size={compact ? 28 : 32} />
         {item.badge && (
           <div
             style={{

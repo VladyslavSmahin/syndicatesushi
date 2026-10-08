@@ -190,6 +190,22 @@ body {
 }
 .search-row:last-child { border-bottom: none; }
 .search-row.active { background: var(--bg-elevated); }
+/* зірочка «в обране» */
+.fav-star {
+  flex-shrink: 0; display: flex; align-items: center; justify-content: center; padding: 0; cursor: pointer;
+  color: var(--text-primary); transition: color 0.2s, background 0.2s, border-color 0.2s;
+}
+.fav-star-overlay {
+  position: absolute; top: 8px; right: 8px; z-index: 2; border-radius: 50%;
+  background: rgba(13,11,9,0.55); border: 1px solid rgba(255,255,255,0.18);
+  backdrop-filter: blur(6px); -webkit-backdrop-filter: blur(6px);
+}
+.fav-star-inline { background: transparent; border: 1px solid var(--border-light); border-radius: 50%; color: var(--text-secondary); }
+.fav-star.on { color: var(--gold); border-color: var(--gold); }
+@media (hover: hover) { .fav-star:hover { color: var(--gold); } }
+.fav-pop { animation: fav-pop 0.45s cubic-bezier(.2,.9,.3,1.4); }
+@keyframes fav-pop { 0% { transform: scale(0.6); } 55% { transform: scale(1.35); } 100% { transform: scale(1); } }
+@media (prefers-reduced-motion: reduce) { .fav-pop { animation: none; } }
 /* мініатюра товару (пошук, кошик) */
 .mini-thumb { width: 48px; height: 48px; flex-shrink: 0; background: var(--bg-dark); overflow: hidden; }
 .mini-thumb img { width: 100%; height: 100%; object-fit: cover; display: block; }
@@ -391,16 +407,25 @@ textarea.form-input { resize: vertical; min-height: 120px; font-family: var(--fo
 
 /* вузькі телефони — менше лого, щоб бренд + кошик + бургер не тіснилися */
 @media (max-width: 360px) {
-  :root { --logo-h: 40px; --page-pad: 14px; }
+  :root { --logo-h: 40px; --page-pad: 14px; --header-gap: 6px; --brand-ls: 3px; --brand-ls-sub: 2px; }
+  /* 320px: логотип + кабінет + кошик + бургер мають влазити в один ряд */
+  .hdr-row { gap: 8px !important; }
+  .hdr-btn { width: 38px !important; height: 38px !important; }
 }
 
 /* ===== Кабінет клієнта (mobile-first: база — телефон, далі розширюємо) ===== */
-.acc-tabs { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+.acc-tabs { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 6px; --acc-tab-ls: 1px; }
+/* 3 вкладки кабінету на вузькому телефоні: «ЗАМОВЛЕННЯ · 12» має влазити */
+@media (max-width: 400px) { .acc-tabs { --acc-tab-fs: 10px; --acc-tab-ls: 0.3px; } }
+@media (max-width: 360px) { .acc-tabs { --acc-tab-ls: 0px; } }
+.fav-empty-star { font-size: 40px; line-height: 1; color: var(--gold); animation: fav-float 2.6s ease-in-out infinite; }
+@keyframes fav-float { 0%, 100% { transform: translateY(0) rotate(0); } 50% { transform: translateY(-6px) rotate(8deg); } }
+@media (prefers-reduced-motion: reduce) { .fav-empty-star { animation: none; } }
 .acc-stats { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; }
 .acc-fields { display: grid; grid-template-columns: 1fr; gap: 10px; }
 .acc-stat-num { font-size: 19px; }
 @media (min-width: 640px) {
-  .acc-tabs { display: flex; }
+  .acc-tabs { display: flex; gap: 8px; --acc-tab-ls: 2px; }
   .acc-tabs > button { flex: 0 1 200px; }
   .acc-stats { grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 12px; }
   .acc-fields { grid-template-columns: 1fr 1fr; gap: 12px; }

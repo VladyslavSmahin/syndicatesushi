@@ -6,6 +6,10 @@ import { MIN_PASSWORD } from "./AuthForm";
 import { useRouter } from "next/navigation";
 import { formatPhone, isPhoneValid } from "@/lib/phone";
 import { kyivNow, addDays } from "@/lib/kyivTime";
+import { useFavorites } from "@/features/favorites/FavoritesContext";
+import { createClient } from "@/lib/supabase/client";
+import FavoriteStar from "./FavoriteStar";
+import ThumbImg from "./ThumbImg";
 
 const card: CSSProperties = {
   border: "1px solid var(--border-light)", background: "var(--bg-card)", borderRadius: 10, padding: "clamp(14px, 4vw, 20px)",
@@ -30,7 +34,8 @@ function scheduleLabel(o: AccountOrder): string | null {
 export default function AccountClient() {
   const { loading, profile, signedIn, orders, saveProfile } = useAccount();
   const router = useRouter();
-  const [tab, setTab] = useState<"profile" | "orders">("profile");
+  const [tab, setTab] = useState<"profile" | "orders" | "favorites">("profile");
+  const { ids: favIds } = useFavorites();
   // параметри з посилань: ?error=auth (callback не вдався), ?confirmed=1 (пошту підтверджено), ?reset=1 (новий пароль)
   const [params, setParams] = useState<{ error: boolean; confirmed: boolean; reset: boolean }>({ error: false, confirmed: false, reset: false });
 
@@ -64,10 +69,10 @@ export default function AccountClient() {
         <p style={{ margin: 0, fontSize: 14, color: "#5BB85B" }}>✓ Пошту підтверджено — реєстрацію завершено.</p>
       )}
       <div role="tablist" className="acc-tabs">
-        {([["profile", "Профіль"], ["orders", `Замовлення${orders.length ? ` · ${orders.length}` : ""}`]] as const).map(([t, l]) => (
+        {([["profile", "Профіль"], ["orders", `Замовлення${orders.length ? ` · ${orders.length}` : ""}`], ["favorites", `Обране${favIds.length ? ` · ${favIds.length}` : ""}`]] as const).map(([t, l]) => (
           <button key={t} type="button" role="tab" aria-selected={tab === t} onClick={() => setTab(t)}
             style={{
-              padding: "11px 0", cursor: "pointer", fontFamily: "var(--font-body)", fontSize: 11, letterSpacing: 2, textTransform: "uppercase",
+              padding: "11px 4px", cursor: "pointer", fontFamily: "var(--font-body)", fontSize: "var(--acc-tab-fs, 11px)", letterSpacing: "var(--acc-tab-ls, 2px)", textTransform: "uppercase", whiteSpace: "nowrap",
               background: tab === t ? "var(--bg-elevated)" : "transparent",
               border: `1px solid ${tab === t ? "var(--accent)" : "var(--border-light)"}`,
               color: tab === t ? "var(--accent)" : "var(--text-secondary)",
@@ -90,6 +95,8 @@ export default function AccountClient() {
             </div>
           </Section>
         </>
+      ) : tab === "favorites" ? (
+        <FavoritesList ids={favIds} />
       ) : orders.length === 0 ? (
         <p style={{ color: "var(--text-secondary)", margin: 0 }}>Поки що замовлень немає.</p>
       ) : (
@@ -147,6 +154,66 @@ function Section({ title, storageKey, forceOpen = false, children }: {
       </button>
       {open && children}
     </section>
+  );
+}
+
+interface FavProduct { id: string; name: string; slug: string; price: number; weight: string | null; photo: string | null; available: boolean }
+
+/** Вкладка «Обране»: товари в порядку додавання; знята з продажу страва — приглушена. */
+function FavoritesList({ ids }: { ids: string[] }) {
+  const [items, setItems] = useState<FavProduct[] | null>(null);
+  const key = ids.join(",");
+
+  useEffect(() => {
+    if (!ids.length) { setItems([]); return; }
+    let active = true;
+    createClient()
+      .from("products")
+      .select("id, name, slug, price, weight, image_path, is_available")
+      .in("id", ids)
+      .then(({ data, error }) => {
+        if (error) console.error("favorites products:", error.message);
+        if (!active) return;
+        const byId = new Map((data ?? []).map((p) => [p.id as string, p]));
+        // знятий зовсім (видалений) товар RLS не віддасть — просто не показуємо
+        setItems(ids.flatMap((id) => {
+          const p = byId.get(id);
+          return p ? [{ id, name: p.name, slug: p.slug, price: Number(p.price), weight: p.weight, photo: p.image_path, available: !!p.is_available }] : [];
+        }));
+      });
+    return () => { active = false; };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [key]);
+
+  if (items === null) return <p style={{ color: "var(--text-secondary)", margin: 0 }}>Завантаження…</p>;
+  if (!items.length) {
+    return (
+      <div style={{ ...card, textAlign: "center", padding: "28px 18px" }}>
+        <div className="fav-empty-star" aria-hidden>☆</div>
+        <p style={{ margin: "8px 0 14px", color: "var(--text-secondary)", fontSize: 14, lineHeight: 1.5 }}>
+          Натискайте зірочку на стравах — вони збережуться тут, щоб швидко знайти улюблене.
+        </p>
+        <a href="/#menu" className="btn-secondary" style={{ display: "inline-block", textDecoration: "none" }}>До меню</a>
+      </div>
+    );
+  }
+  return (
+    <div style={{ border: "1px solid var(--border-light)", borderRadius: 10, overflow: "hidden", background: "var(--bg-card)" }}>
+      {items.map((p, i) => (
+        <div key={p.id} style={{ display: "flex", alignItems: "center", gap: 12, padding: "10px 12px", borderTop: i ? "1px solid var(--border)" : "none", opacity: p.available ? 1 : 0.55 }}>
+          <a href={`/menu/${p.slug}`} className="mini-thumb" style={{ borderRadius: 6 }} aria-hidden tabIndex={-1}>
+            {p.photo && <ThumbImg src={p.photo} alt="" loading="lazy" />}
+          </a>
+          <a href={`/menu/${p.slug}`} style={{ flex: 1, minWidth: 0, textDecoration: "none", color: "inherit" }}>
+            <span style={{ display: "block", fontFamily: "var(--font-display)", fontSize: 17, fontWeight: 600, color: "var(--text-primary)", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{p.name}</span>
+            <span style={{ fontSize: 12, color: "var(--text-secondary)" }}>
+              {p.available ? <>{p.price} грн{p.weight ? ` · ${p.weight}` : ""}</> : "Зараз немає в продажу"}
+            </span>
+          </a>
+          <FavoriteStar productId={p.id} name={p.name} variant="inline" size={34} />
+        </div>
+      ))}
+    </div>
   );
 }
 

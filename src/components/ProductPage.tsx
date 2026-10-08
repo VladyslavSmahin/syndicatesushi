@@ -3,6 +3,7 @@
 import { useState } from "react";
 import Link from "next/link";
 import BackButton from "./BackButton";
+import FavoriteStar from "./FavoriteStar";
 import { PhotoSlot } from "./icons";
 import { useCart } from "@/features/cart/CartContext";
 import { usePublicCatalog, usePublicCategories, useContacts } from "@/features/publicData";
@@ -82,9 +83,12 @@ export default function ProductPage({ item }: { item: Product }) {
           </div>
 
           <div>
-            <h1 style={{ fontFamily: "var(--font-display)", fontSize: 40, fontWeight: 700, lineHeight: 1.1, marginBottom: 14 }}>
-              {item.name}
-            </h1>
+            <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: 12, marginBottom: 14 }}>
+              <h1 style={{ fontFamily: "var(--font-display)", fontSize: 40, fontWeight: 700, lineHeight: 1.1, margin: 0 }}>
+                {item.name}
+              </h1>
+              <FavoriteStar productId={item.id} name={item.name} variant="inline" size={40} />
+            </div>
 
             <div style={{ display: "flex", alignItems: "baseline", justifyContent: "space-between", gap: 12, marginBottom: 22, flexWrap: "wrap" }}>
               <span style={{ fontSize: 13, fontWeight: 300, letterSpacing: 2, textTransform: "uppercase", color: "var(--text-secondary)" }}>

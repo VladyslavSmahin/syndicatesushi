@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
+import FavoriteStar from "./FavoriteStar";
 import { Icon, PhotoSlot } from "./icons";
 import type { Product } from "@/lib/types";
 import { useScrollLock } from "@/lib/scrollLock";
@@ -208,9 +209,12 @@ export default function ProductModal({
         </div>
 
         <div style={{ padding: "var(--modal-body-pt, 22px) 32px 28px", display: "flex", flexDirection: "column" }}>
-          <h2 style={{ fontFamily: "var(--font-display)", fontSize: 32, fontWeight: 700, color: "var(--text-primary)", lineHeight: 1.1, marginTop: 12, marginBottom: 10 }}>
-            {item.name}
-          </h2>
+          <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: 12, marginTop: 12, marginBottom: 10 }}>
+            <h2 style={{ fontFamily: "var(--font-display)", fontSize: 32, fontWeight: 700, color: "var(--text-primary)", lineHeight: 1.1, margin: 0 }}>
+              {item.name}
+            </h2>
+            <FavoriteStar productId={item.id} name={item.name} variant="inline" size={38} />
+          </div>
           <div style={{ display: "flex", alignItems: "baseline", justifyContent: "space-between", gap: 12, marginBottom: 18 }}>
             <span style={{ fontSize: 13, fontWeight: 300, letterSpacing: 2, textTransform: "uppercase", color: "var(--text-secondary)" }}>
               {item.pieces}{item.pieces && item.weight ? " · " : ""}{item.weight}
