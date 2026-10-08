@@ -209,7 +209,7 @@ export default function ProductModal({
         </div>
 
         <div style={{ padding: "var(--modal-body-pt, 22px) 32px 28px", display: "flex", flexDirection: "column" }}>
-          <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: 12, marginTop: 12, marginBottom: 10 }}>
+          <div className="pm-title-row" style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: 12, marginTop: 12, marginBottom: 10 }}>
             <h2 style={{ fontFamily: "var(--font-display)", fontSize: 32, fontWeight: 700, color: "var(--text-primary)", lineHeight: 1.1, margin: 0 }}>
               {item.name}
             </h2>
