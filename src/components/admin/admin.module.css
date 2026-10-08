@@ -208,6 +208,28 @@
 .fieldLabel { font-size: 12px; letter-spacing: 2px; text-transform: uppercase; color: var(--text-secondary); }
 
 .statGrid { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 16px; }
+/* плитки статистики (mobile-first): телефон — дрібні плитки по ~3 в ряд,
+   ширше — більші, а на десктопі всі в один ряд */
+.statGridCompact { display: grid; grid-template-columns: repeat(auto-fill, minmax(96px, 1fr)); gap: 6px; }
+.statGridCompact .stat { padding: 8px 10px; }
+.statGridCompact .statNum { font-size: 17px; line-height: 1.1; white-space: nowrap; }
+.statGridCompact .statLabel { font-size: 9px; letter-spacing: 0.5px; margin-top: 4px; line-height: 1.25; }
+.statGridCompact .statSub { font-size: 10px; color: var(--text-secondary); margin-top: 2px; line-height: 1.2; }
+@media (min-width: 700px) {
+  .statGridCompact { grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 10px; }
+  .statGridCompact .stat { padding: 14px 16px; }
+  .statGridCompact .statNum { font-size: 24px; }
+  .statGridCompact .statLabel { font-size: 11px; letter-spacing: 1.5px; margin-top: 6px; }
+  .statGridCompact .statSub { font-size: 12px; margin-top: 4px; }
+}
+@media (min-width: 1200px) {
+  .statGridCompact { grid-auto-flow: column; grid-auto-columns: minmax(0, 1fr); grid-template-columns: none; }
+}
+/* пресети періоду: на телефоні — один ряд з горизонтальним скролом */
+.presetRow { display: flex; gap: 6px; overflow-x: auto; scrollbar-width: none; margin: 0 -2px; padding: 0 2px; }
+.presetRow::-webkit-scrollbar { display: none; }
+.presetRow > * { flex: 0 0 auto; }
+@media (min-width: 700px) { .presetRow { flex-wrap: wrap; overflow: visible; gap: 8px; } }
 .stat { padding: 22px; }
 .statNum { font-family: var(--font-display); font-size: 41px; font-weight: 700; color: var(--text-primary); line-height: 1; }
 .statLabel { font-size: 13px; letter-spacing: 2px; text-transform: uppercase; color: var(--text-secondary); margin-top: 10px; }
@@ -373,3 +395,40 @@
   .heroBlock .range { height: 24px; }
   .heroBlock .btn { padding: 8px 10px; font-size: 11px; letter-spacing: 1px; }
 }
+
+/* ===== Компактний список клієнтів (mobile-first) =====
+   телефон: 2 рядки — ім'я | сума / телефон · замовлень · останнє;
+   ширше: один рядок з колонками */
+.clientList { border: 1px solid var(--border); border-radius: 10px; overflow: hidden; background: var(--bg-card); }
+.clientHead { display: none; }
+.clientRow {
+  display: grid; grid-template-columns: auto auto 1fr;
+  grid-template-areas: "name name sum" "phone count last";
+  gap: 3px 10px; align-items: baseline; width: 100%;
+  padding: 10px 12px; border: none; border-top: 1px solid var(--border);
+  background: transparent; color: var(--text-primary); text-align: left; cursor: pointer; font: inherit;
+}
+.clientRow:first-child { border-top: none; }
+.clientRow:hover { background: rgba(255,255,255,0.02); }
+.cName { grid-area: name; font-family: var(--font-display); font-size: 15px; font-weight: 600; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.cSum { grid-area: sum; justify-self: end; font-size: 14px; font-weight: 700; white-space: nowrap; }
+.cPhone { grid-area: phone; font-size: 12px; color: var(--text-secondary); white-space: nowrap; }
+.cCount { grid-area: count; font-size: 12px; color: var(--text-secondary); white-space: nowrap; }
+.cLast { grid-area: last; justify-self: end; font-size: 12px; color: var(--text-secondary); white-space: nowrap; }
+.cReg { display: inline-block; margin-left: 6px; font-size: 11px; font-family: var(--font-body); font-weight: 400; color: #8fc98f; }
+.cRegNo { color: var(--text-secondary); opacity: 0.6; }
+@media (min-width: 900px) {
+  .clientHead, .clientRow {
+    grid-template-columns: minmax(0, 2fr) 150px 90px 120px 100px;
+    grid-template-areas: "name phone count sum last";
+    align-items: center; padding: 11px 18px;
+  }
+  .clientHead {
+    display: grid; font-size: 11px; letter-spacing: 1.5px; text-transform: uppercase; color: var(--text-secondary);
+    border-bottom: 1px solid var(--border);
+  }
+  .cPhone, .cCount, .cLast { font-size: 13px; }
+  .cCount { justify-self: start; }
+}
+.mobileOnly { display: flex; }
+@media (min-width: 900px) { .mobileOnly { display: none !important; } }

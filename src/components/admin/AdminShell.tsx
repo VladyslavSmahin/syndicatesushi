@@ -44,6 +44,13 @@ const NAV: { group: string; items: { href: string; label: string }[] }[] = [
     ],
   },
   {
+    group: "Клієнти",
+    items: [
+      { href: "/admin/customers", label: "Клієнти" },
+      { href: "/admin/stats", label: "Статистика" },
+    ],
+  },
+  {
     group: "Система",
     items: [
       { href: "/admin/settings", label: "Доставка" },

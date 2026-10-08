@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
+import { useRouter } from "next/navigation";
 import Header from "./Header";
 import Hero from "./Hero";
 import Hits from "./Hits";
@@ -13,6 +14,9 @@ import Footer from "./Footer";
 import CartDrawer from "./CartDrawer";
 import ProductModal from "./ProductModal";
 import MobileMenu from "./MobileMenu";
+import AuthModal from "./AuthModal";
+import { useIsSignedIn, fetchCustomerProfile } from "@/features/account";
+import type { AuthErrorCode } from "./AuthForm";
 import MobileCategoryBar from "./MobileCategoryBar";
 import { useCart } from "@/features/cart/CartContext";
 import { usePublicCatalog } from "@/features/publicData";
@@ -35,6 +39,29 @@ export default function HomeClient() {
   const [modalList, setModalList] = useState<Product[]>([]);
   const [navFilter, setNavFilter] = useState<NavFilter | null>(null);
   const [menuOpen, setMenuOpen] = useState(false);
+  // кабінет: залогінений — переходимо на /account, ні — вхід/реєстрація модалкою поверх сайту
+  const [authOpen, setAuthOpen] = useState(false);
+  const signedIn = useIsSignedIn();
+  const router = useRouter();
+  const [authError, setAuthError] = useState<AuthErrorCode>(null);
+  // залогінений, але профіль не вантажиться — показуємо помилку в модалці, а не окремою сторінкою
+  const openAccount = async () => {
+    if (!signedIn) { setAuthOpen(true); return; }
+    const p = await fetchCustomerProfile().catch(() => null);
+    if (p) router.push("/account");
+    else { setAuthError("profile"); setAuthOpen(true); }
+  };
+  // ?login=1 — сюди веде /account без входу (і невдалий callback): відкриваємо модалку й чистимо URL
+  useEffect(() => {
+    const q = new URLSearchParams(window.location.search);
+    if (q.get("login") !== "1") return;
+    const err = q.get("error");
+    setAuthError(err === "auth" || err === "profile" ? err : null);
+    setAuthOpen(true);
+    q.delete("login"); q.delete("error");
+    const rest = q.toString();
+    window.history.replaceState(window.history.state, "", window.location.pathname + (rest ? `?${rest}` : "") + window.location.hash);
+  }, []);
   const catalog = usePublicCatalog();
   // повернулися «назад» — збережений стан (читаємо до ефектів дочірніх компонентів)
   const [restore] = useState(() => (typeof window === "undefined" ? null : beginHomeRestore()));
@@ -187,6 +214,8 @@ export default function HomeClient() {
         menuOpen={menuOpen}
         onMenuToggle={() => setMenuOpen((v) => !v)}
         onProductOpen={openProduct}
+        onAccountClick={openAccount}
+        signedIn={!!signedIn}
       />
       <Hero
         onCtaOrder={() => setCartOpen(true)}
@@ -206,7 +235,8 @@ export default function HomeClient() {
       <Footer />
       <CartDrawer isOpen={cartOpen} onClose={() => setCartOpen(false)} />
       <ProductModal item={modalItem} list={modalList} onNavigate={navigateProduct} onClose={closeProduct} onAdd={add} />
-      <MobileMenu open={menuOpen} onClose={() => setMenuOpen(false)} onNavClick={handleNavClick} />
+      <MobileMenu open={menuOpen} onClose={() => setMenuOpen(false)} onNavClick={handleNavClick} onAccountClick={openAccount} />
+      <AuthModal open={authOpen} errorCode={authError} onClose={() => { setAuthOpen(false); setAuthError(null); }} />
       <MobileCategoryBar active={navFilter} onNavClick={handleNavClick} />
     </>
   );

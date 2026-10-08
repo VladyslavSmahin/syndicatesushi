@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { sendTelegramMessage, esc } from "@/lib/telegram";
 import { createAdminClient } from "@/lib/supabase/admin";
+import { createClient } from "@/lib/supabase/server";
 import { rateLimit, clientIp } from "@/lib/rateLimit";
 import { parseContacts } from "@/lib/contacts";
 import { kyivNow, addDays, parseHours, toMinutes, PICKUP_DAYS_AHEAD, PICKUP_STEP_MIN } from "@/lib/kyivTime";
@@ -18,7 +19,10 @@ interface OrderBody {
   phone: string;
   address?: string;
   comment?: string;
-  /** самовивіз: бажаний день (YYYY-MM-DD) і час (HH:MM; порожньо = по готовності) */
+  /** на коли (і доставка, і самовивіз): день (YYYY-MM-DD) і час (HH:MM; порожньо = якнайшвидше / по готовності) */
+  scheduleDate?: string;
+  scheduleTime?: string;
+  /** старі назви полів (вкладки, відкриті до оновлення сайту) — лише самовивіз */
   pickupDate?: string;
   pickupTime?: string;
   /** кількість наборів приборів (0 = не потрібні) */
@@ -36,11 +40,11 @@ const DATE_RE = /^\d{4}-\d{2}-\d{2}$/;
 const TIME_RE = /^([01]\d|2[0-3]):[0-5]\d$/;
 
 /** «2026-08-30» + «18:30» → «30.08 о 18:30» (сьогодні/завтра — словами, за київським часом). */
-function formatPickup(date: string, time: string): string {
+function formatSchedule(date: string, time: string, asapLabel: string): string {
   const today = kyivNow().date;
   const [y, m, d] = date.split("-");
   const day = date === today ? "сьогодні" : date === addDays(today, 1) ? "завтра" : `${d}.${m}.${y}`;
-  return time ? `${day} о ${time}` : `${day}, по готовності`;
+  return time ? `${day} о ${time}` : `${day}, ${asapLabel}`;
 }
 
 /** Рядок або відсутнє значення; інше (число, обʼєкт…) — невалідний ввід. */
@@ -72,10 +76,12 @@ export async function POST(req: Request) {
   if (!body || typeof body !== "object") {
     return NextResponse.json({ ok: false, error: "bad_json" }, { status: 400 });
   }
-  const { delivery, name, phone, address, comment, pickupDate, pickupTime, cutlery, promo, consent, items } = body;
+  const { delivery, name, phone, address, comment, cutlery, promo, consent, items } = body;
+  const scheduleDate = body.scheduleDate ?? body.pickupDate;
+  const scheduleTime = body.scheduleTime ?? body.pickupTime;
 
   // строгі типи: не-рядок у текстовому полі — це 400, а не падіння на .trim()
-  if (!optStr(name) || !optStr(phone) || !optStr(address) || !optStr(comment) || !optStr(promo) || !optStr(pickupDate) || !optStr(pickupTime)) {
+  if (!optStr(name) || !optStr(phone) || !optStr(address) || !optStr(comment) || !optStr(promo) || !optStr(scheduleDate) || !optStr(scheduleTime)) {
     return NextResponse.json({ ok: false, error: "bad_fields" }, { status: 400 });
   }
   if (delivery !== "delivery" && delivery !== "pickup") {
@@ -107,11 +113,12 @@ export async function POST(req: Request) {
 
   const supabase = createAdminClient();
 
-  // ---- Самовивіз: дата в межах [сьогодні; +7 днів] і час не в минулому (за київським часом) ----
-  let pickup = "";
-  if (delivery === "pickup") {
-    const date = pickupDate ?? "";
-    const time = pickupTime ?? "";
+  // ---- На коли: дата в межах [сьогодні; +7 днів] і час не в минулому (за київським часом) ----
+  // Самовивіз — день обовʼязковий (пікер завжди його передає). Доставка — без дня = якнайшвидше.
+  let schedule = "";
+  const date = scheduleDate ?? "";
+  const time = scheduleTime ?? "";
+  if (delivery === "pickup" || date) {
     const now = kyivNow();
     if (!DATE_RE.test(date) || date < now.date || date > addDays(now.date, PICKUP_DAYS_AHEAD)) {
       return NextResponse.json({ ok: false, error: "pickup_date_invalid" }, { status: 400 });
@@ -135,8 +142,15 @@ export async function POST(req: Request) {
       // «по готовності» на сьогодні, коли заклад уже зачинився
       return NextResponse.json({ ok: false, error: "pickup_time_passed" }, { status: 400 });
     }
-    pickup = formatPickup(date, time);
+    schedule = formatSchedule(date, time, delivery === "pickup" ? "по готовності" : "якнайшвидше");
   }
+
+  // ---- Акаунт клієнта (якщо залогінений на сайті) — замовлення потрапить в історію ----
+  let userId: string | null = null;
+  try {
+    const { data: { user } } = await (await createClient()).auth.getUser();
+    userId = user?.id ?? null;
+  } catch { /* без сесії — гостьове замовлення */ }
 
   // ---- Авторитетні ціни з БД (захист від підміни ціни на клієнті) ----
   const ids = [...new Set(items.map((i) => i.id).filter((id) => UUID_RE.test(id)))];
@@ -236,8 +250,10 @@ export async function POST(req: Request) {
         phone: phone.trim(),
         delivery_type: delivery,
         address: delivery === "delivery" ? address?.trim() ?? null : null,
-        // окремої колонки під час самовивозу немає — дописуємо його першим рядком коментаря
-        comment: [pickup && `Самовивіз: ${pickup}`, cutleryQty > 0 && `Прибори: ${cutleryQty} шт`, comment?.trim()].filter(Boolean).join("\n") || null,
+        comment: [cutleryQty > 0 && `Прибори: ${cutleryQty} шт`, comment?.trim()].filter(Boolean).join("\n") || null,
+        scheduled_date: schedule ? date : null,
+        scheduled_time: schedule && time ? time : null,
+        user_id: userId,
         subtotal,
         promo_code_id: promoCodeId,
         discount,
@@ -259,6 +275,21 @@ export async function POST(req: Request) {
     console.error("order insert failed:", (e as Error).message);
   }
 
+  // перше замовлення з акаунта: підставляємо ім'я/номер у порожній профіль (номер — непідтверджений)
+  if (dbSaved && userId) {
+    try {
+      const { data: cust } = await supabase.from("customers").select("name, phone").eq("id", userId).maybeSingle();
+      if (cust) {
+        const patch: Record<string, string> = {};
+        if (!cust.name?.trim()) patch.name = name.trim();
+        if (!cust.phone?.trim()) patch.phone = phone.trim();
+        if (Object.keys(patch).length) await supabase.from("customers").update(patch).eq("id", userId);
+      }
+    } catch (e) {
+      console.error("customer profile fill failed:", (e as Error).message);
+    }
+  }
+
   // ---- Сповіщення в Telegram (за авторитетними цінами) ----
   const lines = lineItems.map((i) => `• ${esc(i.name)} × ${i.qty} — ${i.price * i.qty} грн`);
   const buildMsg = (commentHtml: string, itemLines: string[]) => [
@@ -268,7 +299,7 @@ export async function POST(req: Request) {
     `📞 <b>Телефон:</b> ${esc(phone)}`,
     `🚚 <b>Спосіб:</b> ${delivery === "delivery" ? "Доставка" : "Самовивіз"}`,
     delivery === "delivery" && address ? `📍 <b>Адреса:</b> ${esc(address)}` : null,
-    pickup ? `🕒 <b>Забрати:</b> ${esc(pickup)}` : null,
+    `🕒 <b>${delivery === "delivery" ? "Доставити" : "Забрати"}:</b> ${esc(schedule || "якнайшвидше")}`,
     cutleryQty > 0 ? `🥢 <b>Прибори:</b> ${cutleryQty} шт` : null,
     code ? `🎟 <b>Промокод:</b> ${esc(code)}${discount ? ` (−${discount} грн)` : " (не застосовано)"}` : null,
     commentHtml ? `💬 <b>Коментар:</b> ${commentHtml}` : null,

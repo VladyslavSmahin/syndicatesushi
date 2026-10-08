@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useRef, useState, type CSSProperties } from "react";
 import Link from "next/link";
-import { useDbOrders, dbSetOrderStatus, type DbOrder, type OrderStatus } from "@/features/admin/db";
+import { useDbOrders, dbSetOrderStatus, orderScheduleLabel, type DbOrder, type OrderStatus } from "@/features/admin/db";
 import s from "@/components/admin/admin.module.css";
 
 // Колонки дошки = робочий потік заказу. Значення статусів у БД ті самі (new/confirmed/done/canceled).
@@ -144,6 +144,11 @@ function BoardCard({ order, accent, onDragStart, onDragEnd, onPrev, onNext }: {
         <span>· {order.deliveryType === "delivery" ? "🛵 Доставка" : "🏠 Самовивіз"}</span>
         <span>· {qty} шт</span>
       </div>
+      {orderScheduleLabel(order) && (
+        <p className={s.hint} style={{ fontSize: 11, margin: 0, color: order.scheduledTime ? "var(--accent)" : undefined }}>
+          🕒 {order.deliveryType === "delivery" ? "Доставити" : "Забрати"}: {orderScheduleLabel(order)}
+        </p>
+      )}
       {order.address && <p className={s.hint} style={{ fontSize: 11, margin: 0 }}>📍 {order.address}</p>}
       <details style={{ fontSize: 11 }}>
         <summary style={{ cursor: "pointer", color: "var(--text-secondary)" }}>Склад ({order.items.length})</summary>

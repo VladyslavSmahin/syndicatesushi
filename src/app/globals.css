@@ -334,6 +334,7 @@ textarea.form-input { resize: vertical; min-height: 120px; font-family: var(--fo
   .hero-eyebrow { order: 1; margin-bottom: 0 !important; }
   .hero-slider { order: 2; }
   .hero-cta { order: 3; width: 100%; }
+  .hero-hours { order: 4; justify-content: center; margin-top: 0 !important; font-size: 13px !important; }
   .hero-tagline, .hero-lead { display: none; }
   /* h1 не ховаємо через display:none (Google індексує мобільну версію) — лише візуально */
   .hero-title {
@@ -369,4 +370,17 @@ textarea.form-input { resize: vertical; min-height: 120px; font-family: var(--fo
 /* вузькі телефони — менше лого, щоб бренд + кошик + бургер не тіснилися */
 @media (max-width: 360px) {
   :root { --logo-h: 40px; --page-pad: 14px; }
+}
+
+/* ===== Кабінет клієнта (mobile-first: база — телефон, далі розширюємо) ===== */
+.acc-tabs { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+.acc-stats { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; }
+.acc-fields { display: grid; grid-template-columns: 1fr; gap: 10px; }
+.acc-stat-num { font-size: 19px; }
+@media (min-width: 640px) {
+  .acc-tabs { display: flex; }
+  .acc-tabs > button { flex: 0 1 200px; }
+  .acc-stats { grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 12px; }
+  .acc-fields { grid-template-columns: 1fr 1fr; gap: 12px; }
+  .acc-stat-num { font-size: 24px; }
 }

@@ -4,8 +4,8 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { dayOptions, timeSlots } from "@/lib/kyivTime";
 
-// Вибір дати й часу самовивозу: аркуш із «каруселями» (як нативний пікер в iOS).
-// За замовчуванням — найближчий робочий день + «по готовності»; час обирається зі
+// Вибір дати й часу замовлення (самовивіз або доставка): аркуш із «каруселями» (як нативний пікер в iOS).
+// За замовчуванням — найближчий робочий день + «по готовності» / «якнайшвидше»; час обирається зі
 // слотів у межах годин роботи закладу (минулі слоти на сьогодні не показуємо).
 // Дні й слоти рахуються за київським часом (див. @/lib/kyivTime).
 
@@ -13,8 +13,9 @@ const ITEM_H = 40;      // висота пункту каруселі
 const VISIBLE = 5;      // скільки пунктів видно (непарне — щоб був центр)
 
 export default function PickupPicker({
-  date, time, hours, onApply, onClose,
+  delivery = "pickup", date, time, hours, onApply, onClose,
 }: {
+  delivery?: "delivery" | "pickup";
   date: string;
   time: string;           // "" = по готовності
   hours: string;          // години роботи закладу («11:00 — 22:00»)
@@ -43,6 +44,8 @@ export default function PickupPicker({
 
   const dayIndex = Math.max(0, days.findIndex((x) => x.value === d));
   const timeIndex = Math.max(0, slots.indexOf(t));
+  const isDelivery = delivery === "delivery";
+  const title = isDelivery ? "Час доставки" : "Час самовивозу";
 
   return createPortal(
     <>
@@ -57,7 +60,7 @@ export default function PickupPicker({
       <div
         role="dialog"
         aria-modal="true"
-        aria-label="Час самовивозу"
+        aria-label={title}
         className="modal-pop"
         onClick={(e) => e.stopPropagation()}
         style={{
@@ -68,14 +71,14 @@ export default function PickupPicker({
       >
         <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 14 }}>
           <span style={{ fontFamily: "var(--font-display)", fontSize: 20, fontWeight: 700, color: "var(--text-primary)" }}>
-            Час самовивозу
+            {title}
           </span>
           <button type="button" onClick={onClose} aria-label="Закрити"
             style={{ width: 32, height: 32, background: "transparent", border: "1px solid var(--border-light)", color: "var(--text-primary)", cursor: "pointer", fontSize: 16, lineHeight: 1 }}>×</button>
         </div>
 
         <div style={{ display: "flex", gap: 8, marginBottom: 14 }}>
-          {([[true, "По готовності"], [false, "На час"]] as const).map(([v, label]) => (
+          {([[true, isDelivery ? "Якнайшвидше" : "По готовності"], [false, "На час"]] as const).map(([v, label]) => (
             <button key={label} type="button" onClick={() => setAsap(v)} disabled={!v && !slots.length}
               style={{
                 flex: 1, padding: "10px 0", cursor: !v && !slots.length ? "not-allowed" : "pointer",
@@ -101,7 +104,9 @@ export default function PickupPicker({
           {asap ? (
             <div style={{ flex: 1, height: ITEM_H * VISIBLE, display: "flex", alignItems: "center", justifyContent: "center", position: "relative" }}>
               <span style={{ fontSize: 13, color: "var(--text-secondary)", textAlign: "center", lineHeight: 1.5, padding: "0 8px" }}>
-                Приготуємо одразу<br />і зателефонуємо
+                {isDelivery
+                  ? <>Приготуємо одразу<br />й привеземо</>
+                  : <>Приготуємо одразу<br />і зателефонуємо</>}
               </span>
             </div>
           ) : slots.length ? (

@@ -10,6 +10,8 @@ import { dayOptions, firstPickupDay, isPickupStillValid, weekdayLabel } from "@/
 import type { Product, CartItem } from "@/lib/types";
 import { useScrollLock } from "@/lib/scrollLock";
 import ThumbImg from "./ThumbImg";
+import { formatPhone, isPhoneValid } from "@/lib/phone";
+import { useCustomerProfile } from "@/features/account";
 
 const EXTRAS_CATEGORY = "додатково";
 // категорії, для яких потрібні набори приборів (палички, серветки)
@@ -26,22 +28,6 @@ const qtyBtn: CSSProperties = {
 type Step = "cart" | "checkout" | "done";
 type Delivery = "delivery" | "pickup";
 
-// Український номер: лише цифри, формат «093 728 42 98» (10 цифр, починається з 0).
-function phoneDigits(raw: string): string {
-  let d = raw.replace(/\D/g, "");
-  if (d.startsWith("380")) d = "0" + d.slice(3);   // +380XX… → 0XX…
-  else if (d.startsWith("80")) d = "0" + d.slice(2); // 80XX…  → 0XX…
-  return d.slice(0, 10);
-}
-function formatPhone(raw: string): string {
-  const d = phoneDigits(raw);
-  return [d.slice(0, 3), d.slice(3, 6), d.slice(6, 8), d.slice(8, 10)].filter(Boolean).join(" ");
-}
-function isPhoneValid(raw: string): boolean {
-  const d = phoneDigits(raw);
-  return d.length === 10 && d.startsWith("0");
-}
-
 // ліміти довжини полів — ті самі, що перевіряє /api/order
 const MAX_NAME = 100;
 const MAX_PHONE = 30;
@@ -49,7 +35,7 @@ const MAX_ADDRESS = 300;
 const MAX_COMMENT = 1000;
 const MAX_PROMO = 50;
 
-const PICKUP_RESET_MSG = "Обраний час самовивозу вже минув — оберіть, будь ласка, новий.";
+const PICKUP_RESET_MSG = "Обраний час уже минув — оберіть, будь ласка, новий.";
 const GENERIC_ERROR = "Не вдалося надіслати замовлення. Спробуйте ще раз або зателефонуйте нам.";
 
 /** Код помилки /api/order → зрозуміле повідомлення для клієнта. */
@@ -63,7 +49,7 @@ function orderErrorText(code: string | undefined, status: number): string {
     case "item_unavailable": return "Деякі товари вже недоступні — ми прибрали їх з кошика. Перевірте замовлення й підтвердіть ще раз.";
     case "consent_required": return "Підтвердіть згоду на обробку персональних даних.";
     case "address_required": return "Вкажіть адресу доставки.";
-    case "pickup_date_invalid": return "Обраний день самовивозу вже недоступний — оберіть, будь ласка, інший.";
+    case "pickup_date_invalid": return "Обраний день уже недоступний — оберіть, будь ласка, інший.";
     case "pickup_time_passed": return PICKUP_RESET_MSG;
     case "pickup_time_invalid": return "Обраний час поза годинами роботи — оберіть, будь ласка, інший.";
     case "save_failed": return "Не вдалося зберегти замовлення. Спробуйте ще раз або зателефонуйте нам.";
@@ -92,8 +78,15 @@ export default function CartDrawer({ isOpen, onClose }: { isOpen: boolean; onClo
   const [phone, setPhone] = useState("");
   const [address, setAddress] = useState("");
   const [comment, setComment] = useState("");
-  // самовивіз: дата (за замовчуванням — найближчий день зі слотами, за київським часом)
-  // і час ("" = по готовності)
+  // залогінений клієнт — підставляємо ім'я й номер із профілю (лише в порожні поля)
+  const profile = useCustomerProfile(isOpen);
+  useEffect(() => {
+    if (!profile) return;
+    if (profile.name) setName((v) => v || profile.name!.slice(0, MAX_NAME));
+    if (profile.phone) setPhone((v) => v || formatPhone(profile.phone!));
+  }, [profile]);
+  // на коли (і доставка, і самовивіз): дата (за замовчуванням — найближчий день зі слотами,
+  // за київським часом) і час ("" = якнайшвидше / по готовності)
   const [pickupDate, setPickupDate] = useState(() => firstPickupDay(contacts.hours));
   const [pickupTime, setPickupTime] = useState("");
   const [pickupChosen, setPickupChosen] = useState(false); // клієнт сам обирав день/час у пікері
@@ -203,7 +196,7 @@ export default function CartDrawer({ isOpen, onClose }: { isOpen: boolean; onClo
     if (!canSubmit || submitting) return;
     setError("");
     // слот міг минути, поки клієнт заповнював форму — просимо обрати знову
-    if (delivery === "pickup" && revalidatePickup()) {
+    if (revalidatePickup()) {
       setPickupMsg(PICKUP_RESET_MSG);
       setError(PICKUP_RESET_MSG);
       return;
@@ -215,8 +208,8 @@ export default function CartDrawer({ isOpen, onClose }: { isOpen: boolean; onClo
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           delivery, name, phone, address: fullAddress, comment,
-          pickupDate: delivery === "pickup" ? pickupDate : "",
-          pickupTime: delivery === "pickup" ? pickupTime : "",
+          scheduleDate: pickupDate,
+          scheduleTime: pickupTime,
           cutlery: needsCutlery ? cutleryQty : 0,
           promo: promoInfo?.code ?? "", consent, items,
         }),
@@ -345,7 +338,7 @@ export default function CartDrawer({ isOpen, onClose }: { isOpen: boolean; onClo
             <div style={{ flex: 1, overflowY: "auto", padding: "20px 28px", display: "flex", flexDirection: "column", gap: 12 }}>
               <div style={{ display: "flex", gap: 8 }}>
                 {([["delivery", "Доставка"], ["pickup", "Самовивіз"]] as const).map(([val, label]) => (
-                  <button key={val} type="button" onClick={() => { setDelivery(val); if (val === "pickup") revalidatePickup(); }}
+                  <button key={val} type="button" onClick={() => { setDelivery(val); revalidatePickup(); }}
                     style={{ flex: 1, padding: "12px 0", cursor: "pointer", fontFamily: "var(--font-body)", fontSize: 11, letterSpacing: 2, textTransform: "uppercase",
                       background: delivery === val ? "var(--bg-elevated)" : "transparent",
                       border: `1px solid ${delivery === val ? "var(--accent)" : "var(--border-light)"}`,
@@ -364,15 +357,14 @@ export default function CartDrawer({ isOpen, onClose }: { isOpen: boolean; onClo
                   onChange={(e) => setPhone(formatPhone(e.target.value))} style={{ flex: 1, minWidth: 0 }} />
               </div>
 
-              {delivery === "pickup" && (
-                <PickupRow
-                  date={pickupDate}
-                  time={pickupTime}
-                  hours={contacts.hours}
-                  message={pickupMsg}
-                  onOpen={() => { if (!revalidatePickup()) setPickupMsg(""); setPickerOpen(true); }}
-                />
-              )}
+              <PickupRow
+                delivery={delivery}
+                date={pickupDate}
+                time={pickupTime}
+                hours={contacts.hours}
+                message={pickupMsg}
+                onOpen={() => { if (!revalidatePickup()) setPickupMsg(""); setPickerOpen(true); }}
+              />
 
               {delivery === "delivery" && (
                 <div>
@@ -487,6 +479,7 @@ export default function CartDrawer({ isOpen, onClose }: { isOpen: boolean; onClo
 
       {pickerOpen && (
         <PickupPicker
+          delivery={delivery}
           date={pickupDate}
           time={pickupTime}
           hours={contacts.hours}
@@ -572,17 +565,17 @@ function RemovedNotice({ onClose }: { onClose: () => void }) {
   );
 }
 
-/** Рядок «коли забрати»: дата + час, обидві кнопки відкривають той самий пікер. */
-function PickupRow({ date, time, hours, message, onOpen }: { date: string; time: string; hours: string; message: string; onOpen: () => void }) {
+/** Рядок «коли забрати / доставити»: дата + час, обидві кнопки відкривають той самий пікер. */
+function PickupRow({ delivery, date, time, hours, message, onOpen }: { delivery: Delivery; date: string; time: string; hours: string; message: string; onOpen: () => void }) {
   const dayLabel = dayOptions(hours).find((d) => d.value === date)?.label ?? weekdayLabel(date);
   return (
     <div>
       <span style={{ display: "block", fontSize: 10, letterSpacing: 2, textTransform: "uppercase", color: "var(--text-secondary)", marginBottom: 8 }}>
-        Коли забрати
+        {delivery === "delivery" ? "Коли доставити" : "Коли забрати"}
       </span>
       <div style={{ display: "flex", gap: 8 }}>
         <PickupButton label={dayLabel} onClick={onOpen} />
-        <PickupButton label={time || "По готовності"} onClick={onOpen} accent={!!time} />
+        <PickupButton label={time || (delivery === "delivery" ? "Якнайшвидше" : "По готовності")} onClick={onOpen} accent={!!time} />
       </div>
       {message && <p style={{ fontSize: 11, color: "#E0726A", marginTop: 6, lineHeight: 1.5 }}>{message}</p>}
     </div>

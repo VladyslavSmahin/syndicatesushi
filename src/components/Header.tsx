@@ -36,7 +36,12 @@ export default function Header({
   menuOpen,
   onMenuToggle,
   onProductOpen,
+  onAccountClick,
+  signedIn,
 }: {
+  /** кабінет: вхід модалкою або перехід на /account */
+  onAccountClick: () => void;
+  signedIn: boolean;
   onCartOpen: () => void;
   /** відкрити товар (з пошуку) у модалці; list — усі збіги для свайпу */
   onProductOpen: (item: Product, list: Product[]) => void;
@@ -108,6 +113,22 @@ export default function Header({
           </div>
 
           <SearchBox onOpen={onProductOpen} />
+
+          {/* кабінет клієнта — на мобільному він у бургер-меню (у шапці мало місця) */}
+          <button
+            type="button"
+            onClick={onAccountClick}
+            aria-label="Особистий кабінет"
+            title={signedIn ? "Особистий кабінет" : "Увійти / зареєструватися"}
+            className="desktop-only"
+            style={{
+              display: "flex", width: 44, height: 44, border: `1px solid ${signedIn ? "var(--accent)" : "var(--border-light)"}`,
+              background: "transparent", color: signedIn ? "var(--accent)" : "var(--text-primary)", cursor: "pointer",
+              alignItems: "center", justifyContent: "center", flexShrink: 0,
+            }}
+          >
+            <Icon.User width="20" height="20" />
+          </button>
 
           <button
             onClick={onCartOpen}

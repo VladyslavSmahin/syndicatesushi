@@ -4,6 +4,9 @@ import HeroPromoSlider from "./HeroPromoSlider";
 import { TEXTS } from "@/data/site";
 import { useContacts, useHeroBg } from "@/features/publicData";
 import HeroBgLayer from "./HeroBgLayer";
+import { Icon } from "./icons";
+import { useEffect, useState } from "react";
+import { kyivNow, parseHours } from "@/lib/kyivTime";
 
 export default function Hero({
   onCtaOrder,
@@ -76,6 +79,7 @@ export default function Hero({
             <button className="btn-primary" onClick={onCtaOrder}>Замовити</button>
             <button className="btn-secondary" onClick={onCtaMenu}>Переглянути меню</button>
           </div>
+          <WorkHours hours={contacts.hours} />
         </div>
 
         {/* right — вертикальний промо-слайдер */}
@@ -84,5 +88,40 @@ export default function Hero({
         </div>
       </div>
     </section>
+  );
+}
+
+/** Графік роботи + «Відкрито зараз / Зачинено» за київським часом.
+ *  Статус рахуємо лише на клієнті (і оновлюємо щохвилини) — інакше SSR і гідрація розійдуться. */
+function WorkHours({ hours }: { hours: string }) {
+  const [open, setOpen] = useState<boolean | null>(null);
+  useEffect(() => {
+    const tick = () => {
+      const [from, to] = parseHours(hours);
+      const m = kyivNow().minutes;
+      setOpen(m >= from && m < to);
+    };
+    tick();
+    const id = window.setInterval(tick, 60_000);
+    return () => window.clearInterval(id);
+  }, [hours]);
+
+  if (!hours) return null;
+  const opensAt = hours.match(/\d{1,2}:\d{2}/)?.[0];
+  return (
+    <div className="hero-hours" style={{ display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap", marginTop: 28, fontSize: 14, color: "var(--text-primary)" }}>
+      <Icon.Clock width="16" height="16" style={{ color: "var(--accent)", flexShrink: 0 }} />
+      <span style={{ letterSpacing: 0.5 }}>Години роботи: <b style={{ fontWeight: 600 }}>{hours}</b></span>
+      {open !== null && (
+        <span style={{
+          display: "inline-flex", alignItems: "center", gap: 6, fontSize: 11, letterSpacing: 1.5, textTransform: "uppercase",
+          padding: "4px 10px", borderRadius: 999, border: `1px solid ${open ? "#5BB85B" : "var(--border-light)"}`,
+          color: open ? "#5BB85B" : "var(--text-secondary)", background: "rgba(13,11,9,0.4)",
+        }}>
+          <span aria-hidden style={{ width: 7, height: 7, borderRadius: "50%", background: open ? "#5BB85B" : "#8A8A8A" }} />
+          {open ? "Відкрито зараз" : opensAt ? `Зачинено · відкриємось о ${opensAt}` : "Зачинено"}
+        </span>
+      )}
+    </div>
   );
 }

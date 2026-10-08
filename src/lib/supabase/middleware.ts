@@ -3,6 +3,7 @@ import { NextResponse, type NextRequest } from "next/server";
 
 // Оновлює сесію (refresh токенів у cookies) і захищає /admin:
 // без сесії → редірект на /admin/login; із сесією на /admin/login → в /admin.
+// Кабінет клієнта (/account) — лише refresh сесії, без гарду (сторінка сама показує вхід).
 export async function updateSession(request: NextRequest) {
   let response = NextResponse.next({ request });
 
@@ -25,6 +26,9 @@ export async function updateSession(request: NextRequest) {
 
   const { data: { user } } = await supabase.auth.getUser();
 
+  const path = request.nextUrl.pathname;
+  if (!path.startsWith("/admin")) return response;
+
   // Роль із profiles (заповнюється з allowed_staff). Перевіряємо на сервері,
   // а не лише на клієнті — інакше будь-який залогінений Google-акаунт бачив би /admin.
   let isStaff = false;
@@ -33,7 +37,6 @@ export async function updateSession(request: NextRequest) {
     isStaff = profile?.role === "admin" || profile?.role === "editor";
   }
 
-  const path = request.nextUrl.pathname;
   const isLogin = path === "/admin/login";
 
   if (!isLogin) {

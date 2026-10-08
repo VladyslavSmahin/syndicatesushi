@@ -4,7 +4,7 @@ import { useMemo, useState } from "react";
 import Link from "next/link";
 import Modal from "@/components/admin/Modal";
 import AdminSelect from "@/components/admin/AdminSelect";
-import { useDbOrders, dbSetOrderStatus, type DbOrder, type OrderStatus } from "@/features/admin/db";
+import { useDbOrders, dbSetOrderStatus, orderScheduleLabel, type DbOrder, type OrderStatus } from "@/features/admin/db";
 import s from "@/components/admin/admin.module.css";
 
 const STATUSES: { value: OrderStatus; label: string }[] = [
@@ -64,13 +64,13 @@ export default function OrdersPage() {
         <div className={s.tableWrap}>
           <table className={s.table}>
             <thead>
-              <tr><th>Статус</th><th>Клієнт</th><th>Телефон</th><th>Час</th><th>Тип</th><th style={{ textAlign: "right" }}>Сума</th></tr>
+              <tr><th>Статус</th><th>Клієнт</th><th>Телефон</th><th>Створено</th><th>Тип</th><th>На коли</th><th style={{ textAlign: "right" }}>Сума</th></tr>
             </thead>
             <tbody>
               {loading ? (
-                <tr><td colSpan={6} style={{ padding: 20, color: "var(--text-secondary)" }}>Завантаження…</td></tr>
+                <tr><td colSpan={7} style={{ padding: 20, color: "var(--text-secondary)" }}>Завантаження…</td></tr>
               ) : shown.length === 0 ? (
-                <tr><td colSpan={6} style={{ padding: 20, color: "var(--text-secondary)" }}>Замовлень немає.</td></tr>
+                <tr><td colSpan={7} style={{ padding: 20, color: "var(--text-secondary)" }}>Замовлень немає.</td></tr>
               ) : shown.map((o) => (
                 <tr key={o.id} onClick={() => setSelected(o)} style={{ cursor: "pointer" }}>
                   <td data-label="Статус"><span className={`${s.pill} ${statusPill(o.status)}`}>{statusLabel(o.status)}</span></td>
@@ -78,6 +78,7 @@ export default function OrdersPage() {
                   <td data-label="Телефон" style={{ color: "var(--text-secondary)" }}>{o.phone}</td>
                   <td data-label="Час" style={{ color: "var(--text-secondary)" }}>{timeLabel(o.createdAt)}</td>
                   <td data-label="Тип" style={{ color: "var(--text-secondary)" }}>{o.deliveryType === "delivery" ? "Доставка" : "Самовивіз"}</td>
+                  <td data-label="На коли" style={{ color: o.scheduledTime ? "var(--accent)" : "var(--text-secondary)" }}>{orderScheduleLabel(o) ?? "—"}</td>
                   <td data-label="Сума" style={{ textAlign: "right", fontWeight: 700 }}>{o.total} грн</td>
                 </tr>
               ))}
@@ -104,6 +105,10 @@ export default function OrdersPage() {
               />
             </div>
 
+            {orderScheduleLabel(selected) && (
+              <p className={s.hint}>🕒 {selected.deliveryType === "delivery" ? "Доставити" : "Забрати"}: <b style={{ color: "var(--text-primary)" }}>{orderScheduleLabel(selected)}</b></p>
+            )}
+            {selected.userId && <p className={s.hint}>👤 Замовлено з акаунта клієнта</p>}
             {selected.address && <p className={s.hint}>📍 {selected.address}</p>}
             {selected.comment && <p className={s.hint}>💬 {selected.comment}</p>}
 

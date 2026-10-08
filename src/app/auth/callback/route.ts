@@ -1,7 +1,8 @@
 import { NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 
-// OAuth-callback: обмінюємо code на сесію (PKCE) і повертаємось в адмінку.
+// OAuth-callback: обмінюємо code на сесію (PKCE) і повертаємось туди, звідки почали вхід
+// (адмінка або кабінет клієнта — параметр next).
 export async function GET(request: Request) {
   const { searchParams, origin } = new URL(request.url);
   const code = searchParams.get("code");
@@ -14,5 +15,7 @@ export async function GET(request: Request) {
     const { error } = await supabase.auth.exchangeCodeForSession(code);
     if (!error) return NextResponse.redirect(`${origin}${next}`);
   }
-  return NextResponse.redirect(`${origin}/admin/login?error=auth`);
+  // клієнт (кабінет / головна) — модалка входу з помилкою; адмінка — сторінка логіну адмінки
+  const fail = next.startsWith("/admin") ? "/admin/login?error=auth" : "/?login=1&error=auth";
+  return NextResponse.redirect(`${origin}${fail}`);
 }
