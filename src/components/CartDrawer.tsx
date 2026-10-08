@@ -247,6 +247,8 @@ export default function CartDrawer({ isOpen, onClose }: { isOpen: boolean; onClo
       // клієнт погодився оновити номер у профілі (тихо: замовлення вже прийняте)
       if (phoneDiffers && savePhoneToProfile && profile) updateCustomerPhone(profile.id, phone.trim()).catch(() => {});
       setSavePhoneToProfile(null);
+      // наступне замовлення — знову з номером із профілю (навіть якщо це було «лише для цього замовлення»)
+      phoneFromProfile.current = null;
       clear();
       setPromo(""); setPromoInfo(null); setPromoMsg(null); setPromoOpen(false); setCutlery(null);
       setPickupMsg(""); setPickupChosen(false);

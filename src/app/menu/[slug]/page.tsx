@@ -21,6 +21,9 @@ export async function generateStaticParams() {
 
 type Params = { params: Promise<{ slug: string }> };
 
+/** Кириличний slug (напр. «сет-жовтень-3dis4») Next віддає закодованим (%D1%81…) — інакше сторінка страви 404. */
+const decodeSlug = (s: string) => { try { return decodeURIComponent(s); } catch { return s; } };
+
 /** Опис для пошуку: склад страви або дефолтний текст із вагою. */
 function describe(p: Product): string {
   const base = p.composition?.trim() || p.desc?.trim();
@@ -41,7 +44,7 @@ function weightGrams(weight: string): number | undefined {
 }
 
 export async function generateMetadata({ params }: Params): Promise<Metadata> {
-  const { slug } = await params;
+  const slug = decodeSlug((await params).slug);
   const data = await fetchPublicData();
   const item = data.catalog.find((p) => p.slug === slug);
   if (!item) return { title: "Страву не знайдено" };
@@ -67,7 +70,7 @@ export async function generateMetadata({ params }: Params): Promise<Metadata> {
 }
 
 export default async function Page({ params }: Params) {
-  const { slug } = await params;
+  const slug = decodeSlug((await params).slug);
   const data = await fetchPublicData();
   const item = data.catalog.find((p) => p.slug === slug);
   if (!item) notFound();

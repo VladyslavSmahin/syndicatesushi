@@ -776,7 +776,13 @@ export function useDbTikTok() {
 }
 
 export async function dbSaveTikTok(value: TikTokBlock): Promise<string | undefined> {
-  const { error } = await createClient().from("settings").upsert({ key: "tiktok", value }, { onConflict: "key" });
+  const supabase = createClient();
+  // autoVideos/syncedAt веде фонова синхронізація — беремо їх зі свіжого запису, а не з чернетки адмінки
+  // (інакше збереження в адмінці затерло б новіший список роликів, обкладинки старих уже видалені з R2)
+  const { data: cur } = await supabase.from("settings").select("value").eq("key", "tiktok").maybeSingle();
+  const fresh = (cur?.value ?? {}) as { autoVideos?: unknown; syncedAt?: unknown };
+  const merged = { ...value, autoVideos: fresh.autoVideos ?? [], syncedAt: fresh.syncedAt ?? null };
+  const { error } = await supabase.from("settings").upsert({ key: "tiktok", value: merged }, { onConflict: "key" });
   if (!error) touchPublic();
   return error?.message;
 }

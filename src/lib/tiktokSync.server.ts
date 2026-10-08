@@ -84,7 +84,10 @@ export async function syncTikTok(force = false): Promise<{ ok: boolean; error?: 
       if (key?.startsWith("tiktok/") && !block.videos.some((m) => m.id === old.id)) await r2Delete(key).catch(() => {});
     }
 
-    const value = { ...raw, autoVideos: next, syncedAt: new Date().toISOString() };
+    // поки ми тягнули ролики (до ~15 с), адмін міг змінити налаштування — перечитуємо й міняємо лише свої поля
+    const { data: latestRow } = await admin.from("settings").select("value").eq("key", "tiktok").maybeSingle();
+    const latest = (latestRow?.value ?? raw) as Record<string, unknown>;
+    const value = { ...latest, autoVideos: next, syncedAt: new Date().toISOString() };
     const { error } = await admin.from("settings").upsert({ key: "tiktok", value }, { onConflict: "key" });
     if (error) return { ok: false, error: "save_failed" };
     revalidateTag(PUBLIC_TAG);

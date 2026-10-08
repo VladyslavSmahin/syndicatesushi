@@ -49,10 +49,16 @@ export function FavoritesProvider({ children }: { children: React.ReactNode }) {
     if (local.length) {
       const rows = local.map((product_id) => ({ customer_id: profile.id, product_id }));
       const { error } = await supabase.from("customer_favorites").upsert(rows, { ignoreDuplicates: true });
+      const failed: string[] = [];
       if (error) {
-        for (const r of rows) await supabase.from("customer_favorites").upsert(r, { ignoreDuplicates: true });
+        // по одному: товар, якого вже нема в базі (FK), просто відкидаємо; решта помилок — лишаємо локально
+        for (const r of rows) {
+          const { error: e } = await supabase.from("customer_favorites").upsert(r, { ignoreDuplicates: true });
+          if (e && e.code !== "23503") failed.push(r.product_id);
+        }
       }
-      writeLocal([]);
+      // стираємо локальне лише те, що вдалось перенести — інакше гостьове обране зникло б при збої мережі
+      writeLocal(failed);
     }
     const { data, error } = await supabase
       .from("customer_favorites")
