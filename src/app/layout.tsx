@@ -5,6 +5,7 @@ import { SpeedInsights } from "@vercel/speed-insights/next";
 import { CartProvider } from "@/features/cart/CartContext";
 import ScrollTopButton from "@/components/ScrollTopButton";
 import NavTracker from "@/components/NavTracker";
+import PhoneRequiredModal from "@/components/PhoneRequiredModal";
 import { SITE_URL, SITE_NAME, CITY, DEFAULT_TITLE, TITLE_TEMPLATE, DEFAULT_DESCRIPTION, OG_IMAGE } from "@/lib/seo";
 import "./globals.css";
 
@@ -62,6 +63,7 @@ export default function RootLayout({
         <CartProvider>{children}</CartProvider>
         <ScrollTopButton />
         <NavTracker />
+        <PhoneRequiredModal />
         <Analytics />
         <SpeedInsights />
       </body>

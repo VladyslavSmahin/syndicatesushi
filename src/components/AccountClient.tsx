@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, type CSSProperties } from "react";
+import { useEffect, useState, type CSSProperties, type ReactNode } from "react";
 import { useAccount, signOutCustomer, updatePassword, type AccountOrder } from "@/features/account";
 import { MIN_PASSWORD } from "./AuthForm";
 import { useRouter } from "next/navigation";
@@ -77,13 +77,18 @@ export default function AccountClient() {
 
       {tab === "profile" ? (
         <>
-          <ProfileCard key={profile.id + (profile.phone ?? "")} profile={profile} onSave={saveProfile} />
-          <div className="acc-stats">
-            <Stat label="Замовлень" value={String(active.length)} />
-            <Stat label="На суму" value={`${sum} грн`} />
-            <Stat label="Середній чек" value={active.length ? `${Math.round(sum / active.length)} грн` : "—"} />
-            <Stat label="Останнє" value={orders[0] ? new Date(orders[0].createdAt).toLocaleDateString("uk-UA", { timeZone: "Europe/Kyiv" }) : "—"} />
-          </div>
+          {/* без номера блок не згортається — інакше клієнт не побачить, що треба його вказати */}
+          <Section title="Мої дані" storageKey={`acc-collapse:${profile.id}:profile`} forceOpen={!profile.phone}>
+            <ProfileCard key={profile.id + (profile.phone ?? "")} profile={profile} onSave={saveProfile} />
+          </Section>
+          <Section title="Статистика" storageKey={`acc-collapse:${profile.id}:stats`}>
+            <div className="acc-stats">
+              <Stat label="Замовлень" value={String(active.length)} />
+              <Stat label="На суму" value={`${sum} грн`} />
+              <Stat label="Середній чек" value={active.length ? `${Math.round(sum / active.length)} грн` : "—"} />
+              <Stat label="Останнє" value={orders[0] ? new Date(orders[0].createdAt).toLocaleDateString("uk-UA", { timeZone: "Europe/Kyiv" }) : "—"} />
+            </div>
+          </Section>
         </>
       ) : orders.length === 0 ? (
         <p style={{ color: "var(--text-secondary)", margin: 0 }}>Поки що замовлень немає.</p>
@@ -102,6 +107,49 @@ export default function AccountClient() {
   );
 }
 
+/** Блок кабінету, що згортається кліком по заголовку. За замовчуванням розгорнутий;
+ *  стан пам'ятається в localStorage для цього клієнта (storageKey з його id). */
+function Section({ title, storageKey, forceOpen = false, children }: {
+  title: string;
+  storageKey: string;
+  forceOpen?: boolean;
+  children: ReactNode;
+}) {
+  const [stored, setStored] = useState(true);
+  useEffect(() => {
+    try {
+      const v = localStorage.getItem(storageKey);
+      if (v === "1" || v === "0") setStored(v === "1");
+    } catch { /* немає доступу до сховища — лишаємо розгорнутим */ }
+  }, [storageKey]);
+  const open = forceOpen || stored;
+
+  const toggle = () => {
+    if (forceOpen) return;
+    setStored((o) => {
+      try { localStorage.setItem(storageKey, o ? "0" : "1"); } catch { /* ignore */ }
+      return !o;
+    });
+  };
+
+  return (
+    <section style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+      <button type="button" onClick={toggle} aria-expanded={open} disabled={forceOpen}
+        style={{
+          display: "flex", alignItems: "center", gap: 10, padding: 0, background: "transparent", border: "none",
+          cursor: forceOpen ? "default" : "pointer", textAlign: "left", color: "var(--text-secondary)",
+          fontFamily: "var(--font-body)", fontSize: 11, letterSpacing: 2, textTransform: "uppercase",
+        }}>
+        {!forceOpen && (
+          <span style={{ display: "inline-flex", fontSize: 14, transition: "transform 0.2s", transform: open ? "rotate(180deg)" : "none" }}>▾</span>
+        )}
+        {title}
+      </button>
+      {open && children}
+    </section>
+  );
+}
+
 function ProfileCard({ profile, onSave }: {
   profile: NonNullable<ReturnType<typeof useAccount>["profile"]>;
   onSave: (p: { name: string; phone: string }) => Promise<string | null>;
@@ -111,7 +159,9 @@ function ProfileCard({ profile, onSave }: {
   const [msg, setMsg] = useState<{ ok: boolean; text: string } | null>(null);
   const [saving, setSaving] = useState(false);
 
-  const phoneOk = !phone.trim() || isPhoneValid(phone);
+  // номер обовʼязковий (без підтвердження): порожнім профіль не зберігаємо
+  const phoneEmpty = !phone.trim();
+  const phoneOk = isPhoneValid(phone);
   const dirty = name.trim() !== (profile.name ?? "") || phone !== (profile.phone ? formatPhone(profile.phone) : "");
   const phoneChanged = phone !== (profile.phone ? formatPhone(profile.phone) : "");
 
@@ -128,7 +178,7 @@ function ProfileCard({ profile, onSave }: {
     <div style={{ ...card, ...(!profile.phone ? { borderColor: "var(--accent)" } : null) }}>
       {!profile.phone && (
         <p style={{ margin: "0 0 14px", fontSize: 14, color: "var(--accent)" }}>
-          Щоб завершити реєстрацію, вкажіть номер телефону.
+          Щоб завершити реєстрацію, вкажіть номер телефону (підтверджувати не потрібно).
         </p>
       )}
       <div style={{ fontSize: 13, color: "var(--text-secondary)", marginBottom: 16 }}>
@@ -161,7 +211,11 @@ function ProfileCard({ profile, onSave }: {
       {phoneChanged && profile.phoneVerifiedAt && (
         <p style={{ fontSize: 12, color: "#E0A24A", margin: "8px 0 0" }}>Після зміни номера його потрібно буде підтвердити знову.</p>
       )}
-      {!phoneOk && <p style={{ fontSize: 12, color: "#E0726A", margin: "8px 0 0" }}>Невірний формат номера (напр. 093 728 42 98)</p>}
+      {!phoneOk && (
+        <p style={{ fontSize: 12, color: "#E0726A", margin: "8px 0 0" }}>
+          {phoneEmpty ? "Номер телефону обовʼязковий." : "Невірний формат номера (напр. 093 728 42 98)"}
+        </p>
+      )}
 
       <div style={{ display: "flex", alignItems: "center", gap: 12, marginTop: 16 }}>
         <button className="btn-primary" onClick={save} disabled={!dirty || !phoneOk || saving}>
