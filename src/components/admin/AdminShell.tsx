@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import RefreshButton from "./RefreshButton";
+import BrandMark from "../BrandMark";
 import { useAdminAuth } from "@/features/admin/AdminAuthContext";
 import { refreshAdminAction } from "@/features/admin/actions/common";
 import s from "./admin.module.css";
@@ -140,17 +141,40 @@ export default function AdminShell({ children }: { children: React.ReactNode }) 
     [...NAV.flatMap((g) => g.items), TRASH].find((i) => i.href === pathname)?.label ?? "Адмінка";
 
   return (
+    <div className={s.frame}>
+      {/* шапка спільна з сайтом: той самий логотип, клік — на сайт */}
+      <header className={s.topbar}>
+        <div className={s.topLeft}>
+          <button className={s.menuBtn} aria-label="Меню" onClick={() => setNavOpen(true)}>
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"><path d="M4 7h16M4 12h16M4 17h16" /></svg>
+          </button>
+          <BrandMark href="/" title="На сайт" />
+          <span className={s.adminTag}>Адмінпанель</span>
+        </div>
+
+        <div className={s.userBox}>
+          <RefreshButton action={refreshAdminAction} />
+          <Link
+            href={TRASH.href}
+            title="Кошик (видалені товари)"
+            aria-label="Кошик"
+            className={`${s.btn} ${s.btnGhost} ${s.btnSmall}`}
+            style={{ display: "inline-flex", alignItems: "center", ...(pathname === TRASH.href ? { color: "var(--accent)", borderColor: "var(--accent)" } : {}) }}
+          >
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+              <path d="M3 6h18" /><path d="M8 6V4h8v2" /><path d="M19 6l-1 14H6L5 6" /><path d="M10 11v6M14 11v6" />
+            </svg>
+          </Link>
+          {/* аватар — у свій профіль (кабінет на сайті) */}
+          <Link href="/account" className={s.avatar} title={`Мій профіль · ${user.name} · ${user.role}`} aria-label="Мій профіль" style={{ textDecoration: "none" }}>
+            {user.name.charAt(0).toUpperCase()}
+          </Link>
+        </div>
+      </header>
+
     <div className={s.shell}>
       {navOpen && <div className={s.overlay} onClick={() => setNavOpen(false)} />}
       <aside className={`${s.sidebar} ${navOpen ? s.sidebarOpen : ""}`}>
-        <Link href="/admin" className={s.brand}>
-          {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img src="/assets/logo-fish.png" alt="" style={{ height: 34 }} />
-          <div>
-            <div className={s.brandText}>SUSHI</div>
-            <div className={s.brandSub}>Адмінпанель</div>
-          </div>
-        </Link>
 
         {NAV.map((g) => {
           const open = !collapsed.includes(g.group);
@@ -197,33 +221,10 @@ export default function AdminShell({ children }: { children: React.ReactNode }) 
       </aside>
 
       <div className={s.main}>
-        <div className={s.topbar}>
-          <div className={s.topLeft}>
-            <button className={s.menuBtn} aria-label="Меню" onClick={() => setNavOpen(true)}>
-              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"><path d="M4 7h16M4 12h16M4 17h16" /></svg>
-            </button>
-            <div className={s.topTitle}>{title}</div>
-          </div>
-
-          <div className={s.userBox}>
-            <RefreshButton action={refreshAdminAction} />
-            <Link
-              href={TRASH.href}
-              title="Кошик (видалені товари)"
-              aria-label="Кошик"
-              className={`${s.btn} ${s.btnGhost} ${s.btnSmall}`}
-              style={{ display: "inline-flex", alignItems: "center", ...(pathname === TRASH.href ? { color: "var(--accent)", borderColor: "var(--accent)" } : {}) }}
-            >
-              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
-                <path d="M3 6h18" /><path d="M8 6V4h8v2" /><path d="M19 6l-1 14H6L5 6" /><path d="M10 11v6M14 11v6" />
-              </svg>
-            </Link>
-            <div className={s.avatar} title={`${user.name} · ${user.role}`}>{user.name.charAt(0).toUpperCase()}</div>
-          </div>
-        </div>
-
+        <h1 className={s.pageTitle}>{title}</h1>
         <div className={s.content}>{children}</div>
       </div>
+    </div>
     </div>
   );
 }

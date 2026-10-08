@@ -3,32 +3,12 @@
 import { useEffect, useState } from "react";
 import { Icon } from "./icons";
 import SearchBox from "./SearchBox";
+import BrandMark from "./BrandMark";
 import { ASSET_ICONS } from "@/data/site";
 import { useCart } from "@/features/cart/CartContext";
 import { usePublicCategories, usePublicNavSpecials, useContacts } from "@/features/publicData";
 import type { NavCategory, Product } from "@/lib/types";
 import { sitePhones, telHref } from "@/lib/contacts";
-
-function BrandMark() {
-  return (
-    <a
-      href="#"
-      onClick={(e) => { e.preventDefault(); window.scrollTo({ top: 0, behavior: "smooth" }); }}
-      style={{ display: "flex", alignItems: "center", gap: 12, textDecoration: "none" }}
-    >
-      {/* eslint-disable-next-line @next/next/no-img-element */}
-      <img
-        src={ASSET_ICONS.logo}
-        alt="Sushi Syndicate"
-        style={{ height: "var(--logo-h)", width: "auto", display: "block", filter: "drop-shadow(0 2px 8px rgba(0,0,0,0.4))" }}
-      />
-      <div style={{ lineHeight: 0.95 }}>
-        <div style={{ fontFamily: "var(--font-display)", fontSize: 18, fontWeight: 700, letterSpacing: 5, color: "var(--text-primary)" }}>SUSHI</div>
-        <div style={{ fontFamily: "var(--font-display)", fontSize: 10, fontWeight: 400, letterSpacing: 4, color: "var(--text-secondary)", marginTop: 3 }}>SYNDICATE</div>
-      </div>
-    </a>
-  );
-}
 
 export default function Header({
   onCartOpen,
@@ -85,7 +65,7 @@ export default function Header({
       >
         {/* Brand */}
         <div style={{ display: "flex", alignItems: "center", gap: 32 }}>
-          <BrandMark />
+          <BrandMark href="#" onClick={() => window.scrollTo({ top: 0, behavior: "smooth" })} />
         </div>
 
         {/* Desktop nav */}

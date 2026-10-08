@@ -5,11 +5,13 @@
   background: var(--bg-primary);
 }
 
+.frame { min-height: 100vh; background: var(--bg-primary); }
+
 .sidebar {
   position: sticky;
-  top: 0;
+  top: var(--header-h);
   align-self: start;
-  height: 100vh;
+  height: calc(100vh - var(--header-h));
   border-right: 1px solid var(--border);
   background: var(--bg-card);
   display: flex;
@@ -19,26 +21,6 @@
   overflow-y: auto;
 }
 
-.brand {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  padding: 6px 8px 22px;
-  text-decoration: none;
-}
-.brandText {
-  font-family: var(--font-display);
-  font-weight: 700;
-  letter-spacing: 3px;
-  font-size: 18px;
-  color: var(--text-primary);
-}
-.brandSub {
-  font-size: 11px;
-  letter-spacing: 3px;
-  text-transform: uppercase;
-  color: var(--text-secondary);
-}
 
 .navGroupLabel {
   font-size: 11px;
@@ -91,20 +73,29 @@
 
 .main { display: flex; flex-direction: column; min-width: 0; max-width: 100%; }
 
+/* шапка — як на сайті: висота, фон із розмиттям, логотип (клік — на сайт) */
 .topbar {
   position: sticky;
   top: 0;
-  z-index: 20;
+  z-index: 40;
+  height: var(--header-h);
   display: flex;
   align-items: center;
   justify-content: space-between;
   gap: 16px;
-  padding: 16px 28px;
+  padding: 0 var(--page-pad);
   border-bottom: 1px solid var(--border);
-  background: rgba(13, 11, 9, 0.9);
-  backdrop-filter: blur(10px);
+  background: rgba(13, 11, 9, 0.92);
+  backdrop-filter: blur(14px);
 }
-.topTitle { font-family: var(--font-display); font-size: 25px; font-weight: 700; color: var(--text-primary); }
+.adminTag {
+  font-size: 11px; letter-spacing: 3px; text-transform: uppercase; color: var(--text-secondary);
+  padding: 4px 10px; border: 1px solid var(--border-light); border-radius: 999px; white-space: nowrap;
+}
+.pageTitle {
+  font-family: var(--font-display); font-size: 25px; font-weight: 700; color: var(--text-primary);
+  margin: 0; padding: 22px 28px 0;
+}
 .topLeft { display: flex; align-items: center; gap: 12px; min-width: 0; }
 
 .userBox { display: flex; align-items: center; gap: 14px; }
@@ -268,7 +259,7 @@
 @media (max-width: 880px) {
   .shell { grid-template-columns: 1fr; }
   .sidebar {
-    position: fixed; left: 0; top: 0; bottom: 0; width: 260px; z-index: 60;
+    position: fixed; left: 0; top: 0; bottom: 0; height: auto; width: 260px; z-index: 60;
     transform: translateX(-100%); transition: transform 0.25s ease;
   }
   .sidebarOpen { transform: translateX(0); }
@@ -281,7 +272,7 @@
     color: var(--text-primary); border-radius: 6px; cursor: pointer;
   }
   .content { padding: 18px; }
-  .topbar { padding: 14px 18px; }
+  .pageTitle { padding: 16px 18px 0; font-size: 21px; }
   .tableWrap { overflow-x: auto; }
 }
 
@@ -298,10 +289,11 @@
   .content { padding: 14px; }
   .cardBody { padding: 14px; }
 
-  /* верхня панель: заголовок в один рядок, «Оновити» — лише іконка, усе вміщається в 360–390px */
-  .topbar { padding: 10px 14px; gap: 10px; }
-  .topLeft { gap: 10px; flex: 1 1 auto; }
-  .topTitle { font-size: 19px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; min-width: 0; }
+  /* шапка: «Оновити» — лише іконка, мітку «Адмінпанель» ховаємо — усе вміщається в 360–390px */
+  .topbar { gap: 8px; }
+  .topLeft { gap: 8px; flex: 1 1 auto; min-width: 0; }
+  .adminTag { display: none; }
+  .pageTitle { padding: 12px 14px 0; font-size: 19px; }
   .menuBtn { width: 36px; height: 36px; flex-shrink: 0; }
   .userBox { gap: 8px; flex-shrink: 0; }
   .userBox .btn { padding: 9px 10px; }
