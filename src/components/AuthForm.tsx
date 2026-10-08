@@ -9,6 +9,10 @@ import PasswordInput from "./PasswordInput";
 
 export const MIN_PASSWORD = 8;
 
+/** Реєстрація поштою+паролем. Вимкнено, доки сервіс листів (Resend) не підтвердить домен для відправки —
+ *  без листа підтвердження реєстрація обривається. Увімкнути назад: true. Вхід паролем для вже зареєстрованих лишається. */
+const EMAIL_SIGNUP_ENABLED = false;
+
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
 type AuthMode = "login" | "register" | "forgot";
@@ -185,11 +189,20 @@ export default function AuthForm({ errorCode = null, onSignedIn }: { errorCode?:
             </p>
           )}
 
-          <div style={{ display: "flex", alignItems: "center", gap: 10, margin: "18px 0", fontSize: 11, letterSpacing: 2, textTransform: "uppercase", color: "var(--text-secondary)" }}>
-            <span style={{ flex: 1, height: 1, background: "var(--border-light)" }} />або поштою<span style={{ flex: 1, height: 1, background: "var(--border-light)" }} />
-          </div>
+          {(mode === "login" || EMAIL_SIGNUP_ENABLED) && (
+            <div style={{ display: "flex", alignItems: "center", gap: 10, margin: "18px 0", fontSize: 11, letterSpacing: 2, textTransform: "uppercase", color: "var(--text-secondary)" }}>
+              <span style={{ flex: 1, height: 1, background: "var(--border-light)" }} />або поштою<span style={{ flex: 1, height: 1, background: "var(--border-light)" }} />
+            </div>
+          )}
         </>
       )}
+
+      {mode === "register" && !EMAIL_SIGNUP_ENABLED ? (
+        <div style={{ marginTop: 18, padding: "12px 14px", border: "1px dashed var(--border-light)", fontSize: 13, lineHeight: 1.55, color: "var(--text-secondary)" }}>
+          <span style={{ color: "var(--text-primary)" }}>Реєстрація поштою та паролем незабаром зʼявиться.</span>{" "}
+          Зараз з технічних причин ми чекаємо на оновлення цієї функції — будь ласка, зареєструйтеся через Google.
+        </div>
+      ) : (
 
 
       <form onSubmit={submit} style={{ display: "flex", flexDirection: "column", gap: 10 }}>
@@ -230,6 +243,7 @@ export default function AuthForm({ errorCode = null, onSignedIn }: { errorCode?:
           {mode === "forgot" ? "← Назад до входу" : "Забули пароль?"}
         </button>
       </form>
+      )}
     </div>
   );
 }
