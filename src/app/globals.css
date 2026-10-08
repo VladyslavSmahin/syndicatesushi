@@ -501,7 +501,8 @@ textarea.form-input { resize: vertical; min-height: 120px; font-family: var(--fo
 .ph-missing span { font-size: 11px; padding: 2px 8px; border: 1px dashed var(--border-light); border-radius: 999px; color: var(--text-secondary); white-space: nowrap; }
 .ph-bg-btn {
   margin-top: 8px; padding: 5px 12px; border-radius: 999px; cursor: pointer; font-size: 12px;
-  background: rgba(13,11,9,0.4); border: 1px solid var(--border-light); color: var(--text-primary);
+  background: rgba(13,11,9,0.62); border: 1px solid var(--border-light); color: var(--text-primary);
+  backdrop-filter: blur(6px); -webkit-backdrop-filter: blur(6px);
 }
 @media (hover: hover) { .ph-bg-btn:hover { border-color: var(--gold); color: var(--gold); } }
 .ph-link { margin-top: 6px; padding: 0; background: transparent; border: none; cursor: pointer; font-size: 11px; color: var(--text-secondary); text-decoration: underline; }
@@ -515,6 +516,13 @@ textarea.form-input { resize: vertical; min-height: 120px; font-family: var(--fo
 @media (hover: hover) { .repeat-btn:hover { background: var(--accent); color: #0A0908; } }
 .repeat-btn .spin { animation: repeat-spin 0.8s linear infinite; }
 @keyframes repeat-spin { to { transform: rotate(-360deg); } }
+/* кабінет поверх фону: прозорі кнопки й підписи — на темній підкладці, щоб текст читався на будь-якій картинці */
+.acc-root .btn-secondary { background: rgba(13,11,9,0.62); backdrop-filter: blur(6px); -webkit-backdrop-filter: blur(6px); }
+.acc-root section > button[aria-expanded] {
+  align-self: flex-start; padding: 5px 12px !important; border-radius: 999px;
+  background: rgba(13,11,9,0.55) !important; backdrop-filter: blur(6px); -webkit-backdrop-filter: blur(6px);
+}
+.ph-name, .ph-pct, .ph-link { text-shadow: 0 1px 6px rgba(0,0,0,0.85); }
 /* фон кабінету: під усім вмістом сторінки (портал у body, z-index -1) */
 .profile-bg { position: fixed; inset: 0; z-index: -1; pointer-events: none; }
 .profile-bg .mobile-only, .profile-bg .desktop-only { display: block; }
@@ -543,6 +551,12 @@ textarea.form-input { resize: vertical; min-height: 120px; font-family: var(--fo
 }
 .bge-tabs button[aria-selected="true"], .bge-device button[aria-selected="true"] { border-color: var(--gold); color: var(--gold); background: var(--bg-elevated); }
 .bge-device button { flex: 1; }
+.bge-sub button { padding: 5px 10px; font-size: 12px; }
+/* редактор аватарки: кадр під коло */
+.ave-stage { position: relative; width: min(300px, 78vw); aspect-ratio: 1; margin: 0 auto; touch-action: none; cursor: grab; user-select: none; border-radius: 12px; overflow: hidden; background: var(--bg-elevated); }
+.ave-stage:active { cursor: grabbing; }
+.ave-stage canvas { width: 100%; height: 100%; display: block; }
+.ave-mask { position: absolute; inset: 0; border-radius: 50%; box-shadow: 0 0 0 999px rgba(13,11,9,0.62); outline: 2px solid var(--gold); outline-offset: -2px; pointer-events: none; }
 .bge-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; }
 .bge-thumb { aspect-ratio: 3 / 2; padding: 0; border-radius: 10px; overflow: hidden; cursor: pointer; border: 2px solid transparent; background: var(--bg-elevated); }
 .bge-thumb img { width: 100%; height: 100%; object-fit: cover; display: block; }

@@ -12,6 +12,7 @@ import { createClient } from "@/lib/supabase/client";
 import FavoriteStar from "./FavoriteStar";
 import ProfileHero from "./ProfileHero";
 import ProfileBgLayer from "./ProfileBgLayer";
+import PasswordInput from "./PasswordInput";
 import ThumbImg from "./ThumbImg";
 
 const card: CSSProperties = {
@@ -69,7 +70,7 @@ export default function AccountClient() {
   const sum = active.reduce((s, o) => s + o.total, 0);
 
   return (
-    <div style={{ display: "flex", flexDirection: "column", gap: 20 }}>
+    <div className="acc-root" style={{ display: "flex", flexDirection: "column", gap: 20 }}>
       {params.confirmed && (
         <p style={{ margin: 0, fontSize: 14, color: "#5BB85B" }}>✓ Пошту підтверджено — реєстрацію завершено.</p>
       )}
@@ -80,7 +81,9 @@ export default function AccountClient() {
           <button key={t} type="button" role="tab" aria-selected={tab === t} onClick={() => setTab(t)}
             style={{
               padding: "11px 4px", cursor: "pointer", fontFamily: "var(--font-body)", fontSize: "var(--acc-tab-fs, 11px)", letterSpacing: "var(--acc-tab-ls, 2px)", textTransform: "uppercase", whiteSpace: "nowrap",
-              background: tab === t ? "var(--bg-elevated)" : "transparent",
+              // неактивні — теж на напівпрозорій підкладці: фон кабінету може бути будь-якого кольору
+              background: tab === t ? "var(--bg-elevated)" : "rgba(13,11,9,0.62)",
+              backdropFilter: "blur(6px)", WebkitBackdropFilter: "blur(6px)",
               border: `1px solid ${tab === t ? "var(--accent)" : "var(--border-light)"}`,
               color: tab === t ? "var(--accent)" : "var(--text-secondary)",
             }}>{l}</button>
@@ -440,7 +443,7 @@ function NewPasswordCard({ onDone }: { onDone: () => void }) {
   return (
     <form onSubmit={save} style={{ ...card, maxWidth: 440, display: "flex", flexDirection: "column", gap: 10 }}>
       <p style={{ margin: 0, fontSize: 16 }}>Новий пароль</p>
-      <input className="form-input" type="password" autoComplete="new-password" placeholder={`Від ${MIN_PASSWORD} символів`}
+      <PasswordInput className="form-input" autoComplete="new-password" placeholder={`Від ${MIN_PASSWORD} символів`}
         value={password} maxLength={72} onChange={(e) => setPassword(e.target.value)} />
       {error && <p style={{ color: "#E0726A", fontSize: 13, margin: 0 }}>{error}</p>}
       <button type="submit" className="btn-primary" disabled={busy}>{busy ? "Зберігаємо…" : "Зберегти пароль"}</button>
