@@ -55,6 +55,10 @@ export default function ProductsPage() {
   const isAdmin = user?.role === "admin";
 
   const [editing, setEditing] = useState<DbProduct | null>(null);
+  // телефон: рядки товарів згорнуті (назва, ціна, дії); тап по назві — розгорнути склад/наявність/вагу
+  const [expanded, setExpanded] = useState<Set<string>>(() => new Set());
+  const toggleExpanded = (id: string) =>
+    setExpanded((prev) => { const n = new Set(prev); if (n.has(id)) n.delete(id); else n.add(id); return n; });
   const [draft, setDraft] = useState<Draft | null>(null);
   const [newIng, setNewIng] = useState("");
   const [saving, setSaving] = useState(false);
@@ -368,10 +372,10 @@ export default function ProductsPage() {
                     <tr
                       key={p.id}
                       {...(reorderLocked ? {} : drag.rowProps(ids, p.id))}
-                      className={`${drag.dragId === p.id ? s.dragging : ""} ${drag.overId === p.id ? s.dropTarget : ""}`}
+                      className={`${s.rowCollapsible} ${expanded.has(p.id) ? s.rowOpen : ""} ${drag.dragId === p.id ? s.dragging : ""} ${drag.overId === p.id ? s.dropTarget : ""}`}
                     >
                       <td>
-                        <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+                        <div className={s.rowMain} style={{ display: "flex", alignItems: "center", gap: 10 }}>
                           <OrderHandle
                             handleProps={drag.handleProps(p.id)}
                             disabled={reorderLocked}
@@ -380,12 +384,19 @@ export default function ProductsPage() {
                             onUp={() => drag.move(ids, p.id, -1)}
                             onDown={() => drag.move(ids, p.id, 1)}
                           />
-                          <div style={{ width: 38, height: 38, borderRadius: 6, flexShrink: 0, border: "1px solid var(--border)", background: p.photo ? `#0A0908 url(${p.photo}) center/cover no-repeat` : "var(--bg-elevated)" }} />
-                          <span style={{ fontFamily: "var(--font-display)", fontSize: 15, fontWeight: 600, flex: 1, minWidth: 0 }}>{p.name}</span>
-                          {/* моб.: бейдж + ціна у верхньому рядку */}
+                          <div className={s.rowThumb} style={{ width: 38, height: 38, borderRadius: 6, flexShrink: 0, border: "1px solid var(--border)", background: p.photo ? `#0A0908 url(${p.photo}) center/cover no-repeat` : "var(--bg-elevated)" }} />
+                          <span className={s.rowName} onClick={() => toggleExpanded(p.id)}
+                            style={{ fontFamily: "var(--font-display)", fontSize: 15, fontWeight: 600, flex: 1, minWidth: 0 }}>
+                            {p.name}
+                            <span className={s.expandChevron} aria-hidden>{expanded.has(p.id) ? "▴" : "▾"}</span>
+                          </span>
+                          {/* моб.: бейдж + ціна + дії у верхньому рядку */}
                           <span className={s.cardMeta}>
                             {p.badge && <span className={`${s.pill} ${s.pillEditor}`}>{p.badge}</span>}
-                            <span style={{ fontWeight: 700 }}>{p.price} грн</span>
+                            <span style={{ fontWeight: 700, whiteSpace: "nowrap" }}>{p.price} грн</span>
+                          </span>
+                          <span className={s.mobileIcons}>
+                            <RowIconActions onEdit={() => openEdit(p)} onDelete={isAdmin ? () => remove(p) : undefined} />
                           </span>
                         </div>
                       </td>
@@ -405,10 +416,9 @@ export default function ProductsPage() {
                       <td>
                         <div className={s.rowActions}>
                           <span style={{ fontSize: 13, fontWeight: 600, color: "var(--text-secondary)", whiteSpace: "nowrap", marginRight: "auto" }}>{effectiveWeight(p)}</span>
-                          <button className={`${s.btn} ${s.btnGhost} ${s.btnSmall}`} onClick={() => openEdit(p)}>Редагувати</button>
-                          {isAdmin && (
-                            <button className={`${s.btn} ${s.btnDanger} ${s.btnSmall}`} onClick={() => remove(p)}>Видалити</button>
-                          )}
+                          <span className={s.desktopIcons}>
+                            <RowIconActions onEdit={() => openEdit(p)} onDelete={isAdmin ? () => remove(p) : undefined} />
+                          </span>
                         </div>
                       </td>
                     </tr>
@@ -647,5 +657,25 @@ function Field({ label, children, grow }: { label: string; children: React.React
       <span className={s.fieldLabel}>{label}</span>
       {children}
     </div>
+  );
+}
+
+/** Дії рядка іконками: олівець — редагувати, червоний кошик — видалити (лише admin). */
+function RowIconActions({ onEdit, onDelete }: { onEdit: () => void; onDelete?: () => void }) {
+  return (
+    <>
+      <button type="button" className={s.iconBtn} onClick={onEdit} title="Редагувати" aria-label="Редагувати">
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+          <path d="M12 20h9" /><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4Z" />
+        </svg>
+      </button>
+      {onDelete && (
+        <button type="button" className={`${s.iconBtn} ${s.iconBtnDanger}`} onClick={onDelete} title="Видалити" aria-label="Видалити">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+            <path d="M3 6h18" /><path d="M8 6V4h8v2" /><path d="M19 6l-1 14H6L5 6" /><path d="M10 11v6M14 11v6" />
+          </svg>
+        </button>
+      )}
+    </>
   );
 }

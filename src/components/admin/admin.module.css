@@ -436,3 +436,34 @@
 }
 .mobileOnly { display: flex; }
 @media (min-width: 900px) { .mobileOnly { display: none !important; } }
+
+/* ===== Дії рядка іконками + згортання рядків товарів на телефоні ===== */
+.iconBtn {
+  width: 32px; height: 32px; flex-shrink: 0; display: inline-flex; align-items: center; justify-content: center;
+  border: 1px solid var(--border-light); border-radius: 6px; background: transparent; color: var(--text-primary); cursor: pointer;
+}
+.iconBtn:hover { border-color: var(--accent); color: var(--accent); }
+.iconBtnDanger { color: #E0726A; border-color: #5c2b2b; }
+.iconBtnDanger:hover { color: #ff8a80; border-color: #E0726A; }
+.desktopIcons { display: inline-flex; gap: 6px; }
+.mobileIcons, .expandChevron { display: none; }
+@media (max-width: 600px) {
+  .desktopIcons { display: none; }
+  .mobileIcons { display: inline-flex; gap: 6px; flex-shrink: 0; }
+  .rowName { cursor: pointer; }
+  .expandChevron { display: inline; margin-left: 6px; font-size: 11px; color: var(--text-secondary); }
+  /* згорнутий рядок — лише перша клітинка (назва, ціна, дії) */
+  .rowCollapsible:not(.rowOpen) > td:not(:first-child) { display: none !important; }
+  .rowCollapsible { padding-top: 7px !important; padding-bottom: 7px !important; }
+  /* рядок у ширину екрана: менше фото й відступи, назва — до 2 рядків, ціна й іконки не вилазять */
+  .rowMain { width: 100%; min-width: 0; gap: 6px !important; }
+  .rowThumb { width: 32px !important; height: 32px !important; }
+  .rowName {
+    font-size: 14px !important; line-height: 1.25; overflow-wrap: anywhere;
+    display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden;
+  }
+  .rowMain .cardMeta { font-size: 13px; gap: 4px; }
+  .rowMain .iconBtn { width: 30px; height: 30px; }
+  /* бейдж (ХІТ/НОВЕ) у згорнутому рядку забирає місце в назви — показуємо лише в розгорнутому */
+  .rowCollapsible:not(.rowOpen) .cardMeta .pill { display: none; }
+}
