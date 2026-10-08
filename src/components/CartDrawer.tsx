@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useRef, useState, type CSSProperties } from "react";
 import Link from "next/link";
 import { Icon } from "./icons";
-import { useCart, MAX_QTY } from "@/features/cart/CartContext";
+import { useCart, type PriceChange, MAX_QTY } from "@/features/cart/CartContext";
 import { usePublicCatalog, useGloss, useContacts } from "@/features/publicData";
 import PickupPicker from "./PickupPicker";
 import { dayOptions, firstPickupDay, isPickupStillValid, weekdayLabel } from "@/lib/kyivTime";
@@ -60,7 +60,7 @@ function orderErrorText(code: string | undefined, status: number): string {
 }
 
 export default function CartDrawer({ isOpen, onClose }: { isOpen: boolean; onClose: () => void }) {
-  const { items, total, changeQty, remove, clear, add, syncCatalog, removeUnavailable, removedNotice, dismissRemovedNotice } = useCart();
+  const { items, total, changeQty, remove, clear, add, syncCatalog, removeUnavailable, removedNotice, dismissRemovedNotice, priceChanges, dismissPriceChanges } = useCart();
   const catalog = usePublicCatalog();
   const contacts = useContacts();
   // звіряємо кошик (localStorage) з актуальним каталогом: ціни, назви, зниклі товари
@@ -292,6 +292,7 @@ export default function CartDrawer({ isOpen, onClose }: { isOpen: boolean; onClo
           <>
             <div style={{ flex: 1, overflowY: "auto", padding: "8px 28px" }}>
               {removedNotice && <RemovedNotice onClose={dismissRemovedNotice} />}
+              {priceChanges.length > 0 && <PriceNotice changes={priceChanges} onClose={dismissPriceChanges} />}
               {items.map((item) => {
                 // фото беремо з каталогу за id (у кошику в localStorage його немає)
                 const photo = catalog.find((p) => p.id === item.id)?.photo;
@@ -587,6 +588,29 @@ function RemovedNotice({ onClose }: { onClose: () => void }) {
         fontSize: 12, lineHeight: 1.5, color: "var(--text-primary)",
       }}>
       <span style={{ flex: 1 }}>Деякі товари більше недоступні й прибрані з кошика.</span>
+      <button type="button" onClick={onClose} aria-label="Закрити повідомлення"
+        style={{ background: "transparent", border: "none", color: "var(--text-secondary)", cursor: "pointer", fontSize: 16, lineHeight: 1, padding: 0 }}>×</button>
+    </div>
+  );
+}
+
+/** Повідомлення: ціни в кошику оновлено до актуальних (напр. повтор старого замовлення). */
+function PriceNotice({ changes, onClose }: { changes: PriceChange[]; onClose: () => void }) {
+  return (
+    <div role="status"
+      style={{
+        display: "flex", alignItems: "flex-start", gap: 10, margin: "12px 0 4px", padding: "10px 12px",
+        border: "1px solid var(--border-light)", background: "var(--bg-elevated)",
+        fontSize: 12, lineHeight: 1.5, color: "var(--text-primary)",
+      }}>
+      <span style={{ flex: 1 }}>
+        Ціни оновлено до актуальних:
+        {changes.map((c) => (
+          <span key={c.name} style={{ display: "block", color: "var(--text-secondary)" }}>
+            {c.name}: {c.from} → <b style={{ color: c.to > c.from ? "var(--gold)" : "var(--accent)", fontWeight: 500 }}>{c.to} грн</b>
+          </span>
+        ))}
+      </span>
       <button type="button" onClick={onClose} aria-label="Закрити повідомлення"
         style={{ background: "transparent", border: "none", color: "var(--text-secondary)", cursor: "pointer", fontSize: 16, lineHeight: 1, padding: 0 }}>×</button>
     </div>

@@ -17,6 +17,10 @@ export interface CustomerProfile {
   phoneVerifiedAt: string | null;
   /** пошту підтверджено (Google — одразу, email+пароль — після листа) */
   emailConfirmed: boolean;
+  /** фото, завантажене в кабінеті (R2); null — немає */
+  avatarUrl: string | null;
+  /** фото з Google-акаунта (метадані сесії) — показуємо, якщо свого немає */
+  googleAvatar: string | null;
 }
 
 export type AccountOrderStatus = "new" | "confirmed" | "done" | "canceled";
@@ -30,7 +34,8 @@ export interface AccountOrder {
   createdAt: string;
   scheduledDate: string | null;
   scheduledTime: string | null;
-  items: { name: string; price: number; quantity: number }[];
+  /** productId — null, якщо товар відтоді видалили з бази назавжди */
+  items: { productId: string | null; name: string; price: number; quantity: number }[];
 }
 
 /** Повернення після Google / посилання з листа: через callback на сторінку next. */
@@ -83,19 +88,39 @@ async function loadProfile(): Promise<CustomerProfile | null> {
   const { data: { session } } = await supabase.auth.getSession();
   if (!session?.user) return null;
   await supabase.rpc("customer_ensure");
-  const { data } = await supabase
-    .from("customers")
-    .select("id, email, name, phone, phone_norm, phone_verified_at")
-    .eq("id", session.user.id)
-    .maybeSingle();
+  const base = "id, email, name, phone, phone_norm, phone_verified_at";
+  let res = await supabase.from("customers").select(`${base}, avatar_url`).eq("id", session.user.id).maybeSingle();
+  // БД ще без колонки avatar_url (міграція 20261008210000) — профіль без фото, а не зламаний кабінет
+  if (res.error) res = await supabase.from("customers").select(base).eq("id", session.user.id).maybeSingle() as typeof res;
+  const data = res.data as ({ id: string; email: string | null; name: string | null; phone: string | null; phone_norm: string | null; phone_verified_at: string | null; avatar_url?: string | null }) | null;
   if (!data) return null;
-  return { id: data.id, email: data.email ?? session.user.email ?? "", name: data.name, phone: data.phone, phoneNorm: data.phone_norm, phoneVerifiedAt: data.phone_verified_at, emailConfirmed: !!session.user.email_confirmed_at };
+  const meta = session.user.user_metadata ?? {};
+  const google = typeof meta.avatar_url === "string" ? meta.avatar_url : typeof meta.picture === "string" ? meta.picture : null;
+  return {
+    id: data.id, email: data.email ?? session.user.email ?? "", name: data.name, phone: data.phone, phoneNorm: data.phone_norm,
+    phoneVerifiedAt: data.phone_verified_at, emailConfirmed: !!session.user.email_confirmed_at,
+    avatarUrl: data.avatar_url ?? null, googleAvatar: google,
+  };
 }
 
 /** Оновити номер у профілі (з кошика, за згодою клієнта). Зміна номера скидає його підтвердження (тригер у БД). */
 export async function updateCustomerPhone(id: string, phone: string): Promise<boolean> {
   const { error } = await createClient().from("customers").update({ phone }).eq("id", id);
   return !error;
+}
+
+/** Завантажити/замінити фото профілю (сервер обріже до 320×320). Повертає код помилки або null. */
+export async function uploadCustomerAvatar(file: File): Promise<string | null> {
+  const fd = new FormData();
+  fd.append("file", file);
+  const res = await fetch("/api/avatar", { method: "POST", body: fd });
+  const j = await res.json().catch(() => ({}));
+  return res.ok && j.ok ? null : (j.error || `HTTP ${res.status}`);
+}
+
+export async function removeCustomerAvatar(): Promise<boolean> {
+  const res = await fetch("/api/avatar", { method: "DELETE" }).catch(() => null);
+  return !!res?.ok;
 }
 
 /** Профіль поточного клієнта або null (не залогінений / не вдалося завантажити). */
@@ -135,7 +160,7 @@ export function useAccount() {
     if (p) {
       const { data, error } = await supabase
         .from("orders")
-        .select("id, status, delivery_type, address, total, discount, created_at, scheduled_date, scheduled_time, items:order_items(product_name, price, quantity)")
+        .select("id, status, delivery_type, address, total, discount, created_at, scheduled_date, scheduled_time, items:order_items(product_id, product_name, price, quantity)")
         // явний фільтр, а не лише RLS: співробітнику RLS віддає ВСІ замовлення — у кабінеті ж тільки власні
         .or(ownOrdersFilter(p))
         .order("created_at", { ascending: false })
@@ -145,8 +170,8 @@ export function useAccount() {
         id: o.id, status: o.status as AccountOrderStatus, deliveryType: o.delivery_type as "delivery" | "pickup",
         address: o.address, total: Number(o.total), discount: Number(o.discount), createdAt: o.created_at,
         scheduledDate: o.scheduled_date, scheduledTime: o.scheduled_time?.slice(0, 5) ?? null,
-        items: ((o.items ?? []) as { product_name: string; price: number; quantity: number }[])
-          .map((it) => ({ name: it.product_name, price: Number(it.price), quantity: it.quantity })),
+        items: ((o.items ?? []) as { product_id: string | null; product_name: string; price: number; quantity: number }[])
+          .map((it) => ({ productId: it.product_id, name: it.product_name, price: Number(it.price), quantity: it.quantity })),
       })));
     } else {
       setOrders([]);

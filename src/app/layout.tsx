@@ -7,6 +7,7 @@ import { FavoritesProvider } from "@/features/favorites/FavoritesContext";
 import ScrollTopButton from "@/components/ScrollTopButton";
 import NavTracker from "@/components/NavTracker";
 import PhoneRequiredModal from "@/components/PhoneRequiredModal";
+import FavoritesFab from "@/components/FavoritesFab";
 import { SITE_URL, SITE_NAME, CITY, DEFAULT_TITLE, TITLE_TEMPLATE, DEFAULT_DESCRIPTION } from "@/lib/seo";
 import { fetchOgImage } from "@/features/ogImage.server";
 import "./globals.css";
@@ -66,7 +67,7 @@ export default function RootLayout({
   return (
     <html lang="uk" className={`${cormorant.variable} ${jost.variable}`}>
       <body>
-        <CartProvider><FavoritesProvider>{children}</FavoritesProvider></CartProvider>
+        <CartProvider><FavoritesProvider>{children}<FavoritesFab /></FavoritesProvider></CartProvider>
         <ScrollTopButton />
         <NavTracker />
         <PhoneRequiredModal />

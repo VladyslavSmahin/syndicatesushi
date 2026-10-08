@@ -7,8 +7,10 @@ import { useRouter } from "next/navigation";
 import { formatPhone, isPhoneValid } from "@/lib/phone";
 import { kyivNow, addDays } from "@/lib/kyivTime";
 import { useFavorites } from "@/features/favorites/FavoritesContext";
+import { useCart } from "@/features/cart/CartContext";
 import { createClient } from "@/lib/supabase/client";
 import FavoriteStar from "./FavoriteStar";
+import ProfileHero from "./ProfileHero";
 import ThumbImg from "./ThumbImg";
 
 const card: CSSProperties = {
@@ -32,7 +34,7 @@ function scheduleLabel(o: AccountOrder): string | null {
 }
 
 export default function AccountClient() {
-  const { loading, profile, signedIn, orders, saveProfile } = useAccount();
+  const { loading, profile, signedIn, orders, saveProfile, refetch } = useAccount();
   const router = useRouter();
   const [tab, setTab] = useState<"profile" | "orders" | "favorites">("profile");
   const { ids: favIds } = useFavorites();
@@ -42,6 +44,9 @@ export default function AccountClient() {
   useEffect(() => {
     const q = new URLSearchParams(window.location.search);
     setParams({ error: q.get("error") === "auth", confirmed: q.get("confirmed") === "1", reset: q.get("reset") === "1" });
+    // ?tab=favorites — з плаваючої зірочки «Обране»; ?tab=orders — на майбутнє
+    const t = q.get("tab");
+    if (t === "favorites" || t === "orders") setTab(t);
   }, []);
 
   // без профілю окремої сторінки немає: вхід/реєстрація і помилки — модалкою поверх головної
@@ -52,9 +57,8 @@ export default function AccountClient() {
     router.replace(err ? `/?login=1&error=${err}` : "/?login=1");
   }, [toLogin, signedIn, params.error, router]);
 
-  if (loading) return <p style={{ color: "var(--text-secondary)" }}>Завантаження…</p>;
-
-  if (!profile) return <p style={{ color: "var(--text-secondary)" }}>Перенаправлення…</p>;
+  // поки вантажиться (або йде редірект на вхід) — силуети кабінету з переливом замість тексту
+  if (loading || !profile) return <AccountSkeleton />;
 
   if (params.reset) {
     return <NewPasswordCard onDone={() => { setParams((p) => ({ ...p, reset: false })); window.history.replaceState(null, "", "/account"); }} />;
@@ -68,6 +72,7 @@ export default function AccountClient() {
       {params.confirmed && (
         <p style={{ margin: 0, fontSize: 14, color: "#5BB85B" }}>✓ Пошту підтверджено — реєстрацію завершено.</p>
       )}
+      <ProfileHero profile={profile} ordersCount={orders.filter((o) => o.status !== "canceled").length} onChanged={refetch} />
       <div role="tablist" className="acc-tabs">
         {([["profile", "Профіль"], ["orders", `Замовлення${orders.length ? ` · ${orders.length}` : ""}`], ["favorites", `Обране${favIds.length ? ` · ${favIds.length}` : ""}`]] as const).map(([t, l]) => (
           <button key={t} type="button" role="tab" aria-selected={tab === t} onClick={() => setTab(t)}
@@ -157,6 +162,41 @@ function Section({ title, storageKey, forceOpen = false, children }: {
   );
 }
 
+/** Силует кабінету: шапка профілю, вкладки, картка, плитки. */
+function AccountSkeleton() {
+  return (
+    <div aria-busy="true" aria-label="Завантаження кабінету" style={{ display: "flex", flexDirection: "column", gap: 20 }}>
+      <div style={{ display: "flex", alignItems: "center", gap: 16 }}>
+        <span className="skel" style={{ width: 76, height: 76, borderRadius: "50%" }} />
+        <div style={{ flex: 1, display: "flex", flexDirection: "column", gap: 8 }}>
+          <span className="skel" style={{ width: "55%", height: 20 }} />
+          <span className="skel" style={{ width: "35%", height: 12 }} />
+        </div>
+      </div>
+      <div className="acc-tabs">{[0, 1, 2].map((i) => <span key={i} className="skel" style={{ height: 40 }} />)}</div>
+      <span className="skel" style={{ height: 230, borderRadius: 10 }} />
+      <div className="acc-stats">{[0, 1, 2, 3].map((i) => <span key={i} className="skel" style={{ height: 76, borderRadius: 10 }} />)}</div>
+    </div>
+  );
+}
+
+/** Силует списку (обране, замовлення). */
+function ListSkeleton({ rows }: { rows: number }) {
+  return (
+    <div aria-busy="true" aria-label="Завантаження" style={{ border: "1px solid var(--border-light)", borderRadius: 10, overflow: "hidden", background: "var(--bg-card)" }}>
+      {Array.from({ length: rows }, (_, i) => (
+        <div key={i} style={{ display: "flex", alignItems: "center", gap: 12, padding: "10px 12px", borderTop: i ? "1px solid var(--border)" : "none" }}>
+          <span className="skel" style={{ width: 48, height: 48, borderRadius: 6 }} />
+          <div style={{ flex: 1, display: "flex", flexDirection: "column", gap: 6 }}>
+            <span className="skel" style={{ width: "60%", height: 14 }} />
+            <span className="skel" style={{ width: "30%", height: 10 }} />
+          </div>
+        </div>
+      ))}
+    </div>
+  );
+}
+
 interface FavProduct { id: string; name: string; slug: string; price: number; weight: string | null; photo: string | null; available: boolean }
 
 /** Вкладка «Обране»: товари в порядку додавання; знята з продажу страва — приглушена. */
@@ -185,7 +225,7 @@ function FavoritesList({ ids }: { ids: string[] }) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [key]);
 
-  if (items === null) return <p style={{ color: "var(--text-secondary)", margin: 0 }}>Завантаження…</p>;
+  if (items === null) return <ListSkeleton rows={Math.min(Math.max(ids.length, 1), 4)} />;
   if (!items.length) {
     return (
       <div style={{ ...card, textAlign: "center", padding: "28px 18px" }}>
@@ -307,6 +347,18 @@ function Stat({ label: l, value }: { label: string; value: string }) {
  *  Статус замовлення клієнту поки не показуємо (рішення власника, 2026-10-08). */
 function OrderRow({ order: o, first }: { order: AccountOrder; first: boolean }) {
   const [open, setOpen] = useState(false);
+  const { addMany } = useCart();
+  const [repeating, setRepeating] = useState(false);
+  const repeatable = o.items.filter((it) => it.productId);
+
+  // «Повторити»: кладемо позиції в кошик зі старими цінами → на головній кошик звіряється з каталогом:
+  // ціни стають актуальними (з повідомленням, які змінились), зняті з продажу страви прибираються
+  const repeat = () => {
+    if (!repeatable.length || repeating) return;
+    setRepeating(true);
+    addMany(repeatable.map((it) => ({ id: it.productId!, name: it.name, price: it.price, qty: it.quantity })));
+    window.location.href = "/?cart=1";
+  };
   const when = scheduleLabel(o);
   const date = new Date(o.createdAt).toLocaleDateString("uk-UA", { timeZone: "Europe/Kyiv", day: "2-digit", month: "2-digit", year: "2-digit" });
   const qty = o.items.reduce((n, it) => n + it.quantity, 0);
@@ -349,6 +401,15 @@ function OrderRow({ order: o, first }: { order: AccountOrder; first: boolean }) 
             <div style={{ display: "flex", justifyContent: "space-between", color: "var(--text-secondary)", marginTop: 4 }}>
               <span>Знижка</span><span>−{o.discount} грн</span>
             </div>
+          )}
+          {repeatable.length > 0 && (
+            <button type="button" className="btn-primary" onClick={repeat} disabled={repeating}
+              style={{ width: "100%", marginTop: 12 }}>
+              {repeating ? "Додаємо в кошик…" : "↻ Повторити замовлення"}
+            </button>
+          )}
+          {repeatable.length > 0 && repeatable.length < o.items.length && (
+            <p style={{ margin: "6px 0 0", fontSize: 11, color: "var(--text-secondary)" }}>Частини страв уже немає в меню — додамо лише доступні.</p>
           )}
         </div>
       )}

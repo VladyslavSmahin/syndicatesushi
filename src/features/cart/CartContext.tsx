@@ -19,7 +19,14 @@ interface CartContextValue {
   /** у кошику були товари, яких більше немає, — їх прибрано; показати повідомлення */
   removedNotice: boolean;
   dismissRemovedNotice: () => void;
+  /** додати кілька позицій разом (напр. «Повторити замовлення»); ціни звірить каталог */
+  addMany: (list: { id: string; name: string; price: number; qty: number }[]) => void;
+  /** при звірці з каталогом змінились ціни (напр. повтор старого замовлення) — показати які */
+  priceChanges: { name: string; from: number; to: number }[];
+  dismissPriceChanges: () => void;
 }
+
+export type PriceChange = CartContextValue["priceChanges"][number];
 
 const CartContext = createContext<CartContextValue | null>(null);
 
@@ -33,6 +40,7 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
   // останній відомий каталог (null — ще невідомий, звіряти нема з чим)
   const [catalog, setCatalog] = useState<Product[] | null>(null);
   const [removedNotice, setRemovedNotice] = useState(false);
+  const [priceChanges, setPriceChanges] = useState<PriceChange[]>([]);
 
   // відновлення з localStorage
   useEffect(() => {
@@ -63,6 +71,7 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
     const byId = new Map(catalog.map((p) => [p.id, p] as const));
     let changed = false;
     let removed = false;
+    const repriced: PriceChange[] = [];
     const next: CartItem[] = [];
     for (const i of items) {
       const p = byId.get(i.id);
@@ -71,6 +80,7 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
       const qty = Math.min(MAX_QTY, i.qty);
       if (p.name !== i.name || p.price !== i.price || oldPrice !== i.oldPrice || qty !== i.qty) {
         changed = true;
+        if (p.price !== i.price) repriced.push({ name: p.name, from: i.price, to: p.price });
         next.push({ ...i, name: p.name, price: p.price, oldPrice, qty });
       } else next.push(i);
     }
@@ -78,6 +88,7 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
     if (!changed) return;
     setItems(next);
     if (removed) setRemovedNotice(true);
+    if (repriced.length) setPriceChanges(repriced);
   }, [hydrated, catalog, items]);
 
   // порожній каталог = дані не завантажились (або сторінка без каталогу) — не звіряємо,
@@ -93,6 +104,20 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
   }, []);
 
   const dismissRemovedNotice = useCallback(() => setRemovedNotice(false), []);
+  const dismissPriceChanges = useCallback(() => setPriceChanges([]), []);
+
+  const addMany = useCallback((list: { id: string; name: string; price: number; qty: number }[]) => {
+    setItems((prev) => {
+      const next = [...prev];
+      for (const it of list) {
+        const qty = Math.max(1, Math.floor(it.qty));
+        const k = next.findIndex((i) => i.id === it.id);
+        if (k >= 0) next[k] = { ...next[k], qty: Math.min(MAX_QTY, next[k].qty + qty) };
+        else next.push({ id: it.id, name: it.name, price: it.price, qty: Math.min(MAX_QTY, qty) });
+      }
+      return next;
+    });
+  }, []);
 
   const add = useCallback((product: Product, priceOverride?: number) => {
     const price = priceOverride ?? product.price;
@@ -127,7 +152,7 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
   const total = items.reduce((s, i) => s + i.price * i.qty, 0);
 
   return (
-    <CartContext.Provider value={{ items, count, total, add, changeQty, remove, clear, removeUnavailable, syncCatalog, removedNotice, dismissRemovedNotice }}>
+    <CartContext.Provider value={{ items, count, total, add, changeQty, remove, clear, removeUnavailable, syncCatalog, removedNotice, dismissRemovedNotice, addMany, priceChanges, dismissPriceChanges }}>
       {children}
     </CartContext.Provider>
   );

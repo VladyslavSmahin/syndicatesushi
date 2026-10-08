@@ -77,3 +77,27 @@ export async function uploadOgImage(file: File): Promise<UploadResult> {
     return { error: "upload_failed", status: 502 };
   }
 }
+
+/** Фото профілю клієнта: квадрат 320×320 по центру, WebP. Кладе в avatars/<id клієнта>/… */
+export async function uploadAvatar(file: File, customerId: string): Promise<UploadResult> {
+  if (!r2Configured()) return { error: "r2_not_configured", status: 503 };
+  if (file.size > MAX_BYTES) return { error: "too_large", status: 413 };
+  let webp: Buffer;
+  try {
+    const sharp = (await import("sharp")).default;
+    webp = await sharp(Buffer.from(await file.arrayBuffer()))
+      .rotate()
+      .resize({ width: 320, height: 320, fit: "cover", position: "attention" })
+      .webp({ quality: 80 })
+      .toBuffer();
+  } catch (e) {
+    console.error("sharp failed:", (e as Error).message);
+    return { error: "image_processing_failed", status: 500 };
+  }
+  try {
+    return { url: await r2Put(`avatars/${customerId}/${crypto.randomUUID()}.webp`, webp, "image/webp") };
+  } catch (e) {
+    console.error("r2 put failed:", (e as Error).message);
+    return { error: "upload_failed", status: 502 };
+  }
+}

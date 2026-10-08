@@ -25,6 +25,7 @@ const nextConfig = {
   outputFileTracingIncludes: {
     "/api/upload": ["./node_modules/@img/**", "./node_modules/sharp/**"],
     "/api/banners": ["./node_modules/@img/**", "./node_modules/sharp/**"],
+    "/api/avatar": ["./node_modules/@img/**", "./node_modules/sharp/**"],
   },
 };
 
