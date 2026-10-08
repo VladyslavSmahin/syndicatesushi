@@ -167,9 +167,10 @@ export function useCustomerProfile(enabled: boolean): CustomerProfile | null {
   return profile;
 }
 
-/** Власні замовлення: з акаунта + (якщо номер підтверджено) усі на цей номер. */
+/** Власні замовлення: з акаунта + усі на номер із профілю (без підтвердження — рішення власника 2026-10-09). */
 function ownOrdersFilter(p: CustomerProfile): string {
-  const norm = p.phoneVerifiedAt && p.phoneNorm && /^\d+$/.test(p.phoneNorm) ? p.phoneNorm : null;
+  // номер не потребує підтвердження: історія — і з акаунта, і всі замовлення на номер із профілю
+  const norm = p.phoneNorm && /^\d+$/.test(p.phoneNorm) ? p.phoneNorm : null;
   return norm ? `user_id.eq.${p.id},phone_norm.eq.${norm}` : `user_id.eq.${p.id}`;
 }
 

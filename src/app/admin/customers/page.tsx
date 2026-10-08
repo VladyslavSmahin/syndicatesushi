@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useState } from "react";
 import Modal from "@/components/admin/Modal";
 import {
-  useDbCustomers, dbSetCustomerPhoneVerified, dbCustomerOrders, dbAllClientOrders,
+  useDbCustomers, dbCustomerOrders, dbAllClientOrders,
   type DbCustomer, type OrderStatus, type ClientOrder,
 } from "@/features/admin/db";
 import s from "@/components/admin/admin.module.css";
@@ -13,12 +13,6 @@ const STATUS_LABEL: Record<OrderStatus, string> = { new: "Нове", confirmed: 
 const date = (iso: string | null) => (iso ? new Date(iso).toLocaleDateString("uk-UA", { timeZone: "Europe/Kyiv" }) : "—");
 const dateTime = (iso: string) =>
   new Date(iso).toLocaleString("uk-UA", { timeZone: "Europe/Kyiv", day: "2-digit", month: "2-digit", year: "2-digit", hour: "2-digit", minute: "2-digit" });
-
-const VERIFY_ERRORS: Record<string, string> = {
-  taken: "Цей номер уже підтверджено в іншому акаунті.",
-  no_phone: "У клієнта не вказано номер.",
-  forbidden: "Немає прав.",
-};
 
 type Tab = "all" | "registered";
 type Col = "name" | "phone" | "count" | "sum" | "last";
@@ -118,7 +112,7 @@ export default function CustomersPage() {
       <p className={s.hint} style={{ margin: 0, fontSize: 13 }}>
         {tab === "all"
           ? <>Усі, хто будь-коли замовляв (за номером телефону). Сума й кількість — без скасованих. <span className={s.cReg}>✓</span> — є акаунт на сайті ({registeredCount} з {clients.length}).</>
-          : <>Акаунти на сайті. Старі замовлення за номером рахуються лише після підтвердження номера (вручну в картці або автоматично, коли ви підтвердите замовлення з акаунта).</>}
+          : <>Акаунти на сайті. Клієнту рахуються замовлення з акаунта й усі замовлення на номер із його профілю.</>}
       </p>
 
       <div style={{ display: "flex", gap: 8, flexWrap: "wrap", alignItems: "center" }}>
@@ -166,13 +160,12 @@ export default function CustomersPage() {
             <button key={c.id} type="button" className={s.clientRow} onClick={() => setSelected(c)}>
               <span className={s.cName}>
                 {c.name || c.email}
-                <span className={`${s.cReg} ${c.phoneVerifiedAt ? "" : s.cRegNo}`} title={c.phoneVerifiedAt ? "Номер підтверджено" : "Номер не підтверджено"}>
-                  {c.provider === "google" ? "G" : "@"}{c.phoneVerifiedAt ? " ✓" : ""}
+                <span className={s.cReg} title={c.provider === "google" ? "Через Google" : "Поштою"}>
+                  {c.provider === "google" ? "G" : "@"}
                 </span>
               </span>
               <span className={s.cPhone}>
                 {c.phone || "без номера"}
-                {!c.phoneVerifiedAt && c.phoneOrders > 0 && <span style={{ color: "var(--accent)" }}> · +{c.phoneOrders}</span>}
               </span>
               <span className={s.cCount}>{c.ordersCount} замовл.</span>
               <span className={s.cSum}>{money(c.ordersTotal)}</span>
@@ -187,7 +180,7 @@ export default function CustomersPage() {
         </p>
       )}
 
-      {selected && <CustomerModal customer={selected} onClose={() => setSelected(null)} onChanged={refetch} />}
+      {selected && <CustomerModal customer={selected} onClose={() => setSelected(null)} />}
       {selectedClient && <ClientModal client={selectedClient} onClose={() => setSelectedClient(null)} />}
     </div>
   );
@@ -240,10 +233,8 @@ function OrderList({ orders, linkedAll = false, verified = false }: {
   );
 }
 
-function CustomerModal({ customer: c, onClose, onChanged }: { customer: DbCustomer; onClose: () => void; onChanged: () => void }) {
+function CustomerModal({ customer: c, onClose }: { customer: DbCustomer; onClose: () => void }) {
   const [orders, setOrders] = useState<Awaited<ReturnType<typeof dbCustomerOrders>> | null>(null);
-  const [busy, setBusy] = useState(false);
-  const [err, setErr] = useState("");
 
   useEffect(() => {
     let active = true;
@@ -251,15 +242,6 @@ function CustomerModal({ customer: c, onClose, onChanged }: { customer: DbCustom
     dbCustomerOrders(c).then((o) => { if (active) setOrders(o); });
     return () => { active = false; };
   }, [c]);
-
-  const toggleVerified = async () => {
-    setBusy(true);
-    setErr("");
-    const e = await dbSetCustomerPhoneVerified(c.id, !c.phoneVerifiedAt);
-    setBusy(false);
-    if (e) setErr(VERIFY_ERRORS[e] ?? "Не вдалося зберегти.");
-    else onChanged();
-  };
 
   const avg = c.ordersCount ? Math.round(c.ordersTotal / c.ordersCount) : 0;
 
@@ -275,22 +257,10 @@ function CustomerModal({ customer: c, onClose, onChanged }: { customer: DbCustom
           {c.phone ? (
             <>
               <a href={`tel:${c.phone}`} style={{ color: "var(--accent)" }}>{c.phone}</a>
-              <span className={`${s.pill} ${c.phoneVerifiedAt ? s.pillOn : s.pillOff}`}>
-                {c.phoneVerifiedAt ? `підтверджено ${date(c.phoneVerifiedAt)}` : "не підтверджено"}
-              </span>
-              <button className={`${s.btn} ${s.btnGhost} ${s.btnSmall}`} disabled={busy} onClick={toggleVerified}>
-                {c.phoneVerifiedAt ? "Зняти підтвердження" : "Підтвердити номер"}
-              </button>
+              {c.phoneOrders > 0 && <span className={s.hint} style={{ fontSize: 12 }}>· на цей номер {c.phoneOrders} замовл.</span>}
             </>
           ) : <span className={s.hint}>Номер не вказано</span>}
         </div>
-        {err && <p className={s.error} style={{ margin: 0 }}>{err}</p>}
-        {!c.phoneVerifiedAt && c.phoneOrders > 0 && (
-          <p className={s.hint} style={{ margin: 0, fontSize: 13 }}>
-            На цей номер у базі {c.phoneOrders} замовл. Підтверджуйте номер, лише якщо впевнені, що це номер клієнта
-            (напр. зателефонували) — після цього він побачить усю історію за номером в кабінеті.
-          </p>
-        )}
 
         <div className={s.statGridCompact}>
           <MiniStat num={c.ordersCount} label="Замовлень" />
@@ -300,7 +270,7 @@ function CustomerModal({ customer: c, onClose, onChanged }: { customer: DbCustom
 
         <div>
           <div className={s.fieldLabel} style={{ marginBottom: 8 }}>Замовлення</div>
-          {!orders ? <p className={s.hint}>Завантаження…</p> : <OrderList orders={orders} verified={!!c.phoneVerifiedAt} />}
+          {!orders ? <p className={s.hint}>Завантаження…</p> : <OrderList orders={orders} verified />}
         </div>
       </div>
     </Modal>

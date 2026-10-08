@@ -78,12 +78,17 @@ export default function CartDrawer({ isOpen, onClose }: { isOpen: boolean; onClo
   const [phone, setPhone] = useState("");
   const [address, setAddress] = useState("");
   const [comment, setComment] = useState("");
-  // залогінений клієнт — підставляємо ім'я й номер із профілю (лише в порожні поля)
+  // залогінений клієнт — ім'я з профілю (лише в порожнє поле), номер із профілю — завжди
+  // (один раз при завантаженні профілю: він головніший за номер, що лишився в полі з минулого замовлення)
   const profile = useCustomerProfile(isOpen);
+  const phoneFromProfile = useRef<string | null>(null);
   useEffect(() => {
     if (!profile) return;
     if (profile.name) setName((v) => v || profile.name!.slice(0, MAX_NAME));
-    if (profile.phone) setPhone((v) => v || formatPhone(profile.phone!));
+    if (profile.phone && phoneFromProfile.current !== profile.id) {
+      phoneFromProfile.current = profile.id;
+      setPhone(formatPhone(profile.phone));
+    }
   }, [profile]);
   // клієнт змінив номер відносно профілю — питаємо, чи оновити його в профілі (null — ще не відповів)
   const [savePhoneToProfile, setSavePhoneToProfile] = useState<boolean | null>(null);
@@ -182,7 +187,9 @@ export default function CartDrawer({ isOpen, onClose }: { isOpen: boolean; onClo
 
   const addrOk = delivery === "pickup" || !!address.trim();
   const phoneOk = isPhoneValid(phone);
-  const canSubmit = !!name.trim() && phoneOk && addrOk && consent;
+  // номер змінили відносно профілю — спершу відповісти, чи міняти його в профілі
+  const phoneChoicePending = phoneDiffers && savePhoneToProfile === null;
+  const canSubmit = !!name.trim() && phoneOk && addrOk && consent && !phoneChoicePending;
 
   const fullAddress = delivery === "delivery" ? address.trim() : "";
 
@@ -191,6 +198,7 @@ export default function CartDrawer({ isOpen, onClose }: { isOpen: boolean; onClo
     !name.trim() ? "Вкажіть ім'я"
     : !phone.trim() ? "Вкажіть телефон"
     : !phoneOk ? "Невірний формат номера (напр. 093 728 42 98)"
+    : phoneChoicePending ? "Оберіть, чи змінити номер у профілі"
     : delivery === "delivery" && !address.trim() ? "Вкажіть адресу доставки"
     : !consent ? "Підтвердіть згоду на обробку персональних даних"
     : "";
@@ -366,14 +374,19 @@ export default function CartDrawer({ isOpen, onClose }: { isOpen: boolean; onClo
               </div>
 
               {phoneDiffers && profile && (
-                <div style={{ fontSize: 12, lineHeight: 1.5, color: "var(--text-secondary)", border: "1px solid var(--border-light)", padding: "10px 12px" }}>
-                  У профілі інший номер — <b style={{ color: "var(--text-primary)" }}>{formatPhone(profile.phone!)}</b>.{" "}
-                  <button type="button" onClick={() => { setPhone(formatPhone(profile.phone!)); setSavePhoneToProfile(null); }}
-                    style={{ background: "none", border: "none", padding: 0, color: "var(--accent)", textDecoration: "underline", cursor: "pointer", fontSize: 12 }}>
-                    Повернути
-                  </button>
+                <div style={{ fontSize: 12, lineHeight: 1.5, color: "var(--text-secondary)", border: `1px solid ${savePhoneToProfile === null ? "var(--accent)" : "var(--border-light)"}`, padding: "10px 12px" }}>
+                  <div style={{ color: "var(--text-primary)", marginBottom: 6 }}>Змінити номер у профілі?</div>
+                  <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap", fontSize: 13 }}>
+                    <span style={{ textDecoration: "line-through", opacity: 0.7 }}>{formatPhone(profile.phone!)}</span>
+                    <span aria-hidden>→</span>
+                    <b style={{ color: "var(--accent)" }}>{phone}</b>
+                    <button type="button" onClick={() => { setPhone(formatPhone(profile.phone!)); setSavePhoneToProfile(null); }}
+                      style={{ marginLeft: "auto", background: "none", border: "none", padding: 0, color: "var(--text-secondary)", textDecoration: "underline", cursor: "pointer", fontSize: 12 }}>
+                      Повернути старий
+                    </button>
+                  </div>
                   <div style={{ display: "flex", gap: 6, marginTop: 8, flexWrap: "wrap" }}>
-                    {([[true, "Оновити в профілі"], [false, "Лише для цього замовлення"]] as const).map(([v, l]) => (
+                    {([[true, "Так, змінити в профілі"], [false, "Ні, лише для цього замовлення"]] as const).map(([v, l]) => (
                       <button key={l} type="button" onClick={() => setSavePhoneToProfile(v)}
                         style={{
                           flex: "1 1 auto", padding: "8px 10px", cursor: "pointer", fontFamily: "var(--font-body)", fontSize: 10, letterSpacing: 1, textTransform: "uppercase",

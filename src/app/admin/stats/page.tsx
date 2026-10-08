@@ -117,7 +117,6 @@ export default function StatsPage() {
 
   const newUsers = customers.filter((c) => { const d = kyivDay(c.createdAt); return d >= from && d <= to; }).length;
   const usersWithPhone = customers.filter((c) => c.phone).length;
-  const verified = customers.filter((c) => c.phoneVerifiedAt).length;
 
   if (!today) return null;
 
@@ -129,7 +128,6 @@ export default function StatsPage() {
           <Stat num={custLoading ? "…" : customers.length} label="Усього акаунтів" href={CUST_REG} />
           <Stat num={custLoading ? "…" : newUsers} label="Нових за період" href={CUST_REG} />
           <Stat num={custLoading ? "…" : usersWithPhone} label="Вказали телефон" href={CUST_REG} />
-          <Stat num={custLoading ? "…" : verified} label="Номер підтверджено" href={CUST_REG} />
         </div>
       </Collapsible>
 
