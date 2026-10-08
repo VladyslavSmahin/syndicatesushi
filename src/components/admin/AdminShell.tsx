@@ -92,6 +92,18 @@ export default function AdminShell({ children }: { children: React.ReactNode }) 
   // перехід завершено (маршрут змінився) — прибираємо індикатор
   useEffect(() => { setNavOpen(false); setPendingHref(null); }, [pathname]);
 
+  // перейшли на сторінку зі згорнутої групи — розгортаємо її (далі користувач може знову згорнути)
+  useEffect(() => {
+    const active = NAV.find((g) => g.items.some((it) => it.href === pathname))?.group;
+    if (!active) return;
+    setCollapsed((prev) => {
+      if (!prev.includes(active)) return prev;
+      const next = prev.filter((g) => g !== active);
+      try { localStorage.setItem(COLLAPSED_KEY, JSON.stringify(next)); } catch { /* ignore */ }
+      return next;
+    });
+  }, [pathname]);
+
   const signOut = async () => { await logout(); router.replace("/admin/login"); };
 
   // сторінка логіну — без оболонки
@@ -142,9 +154,7 @@ export default function AdminShell({ children }: { children: React.ReactNode }) 
         </Link>
 
         {NAV.map((g) => {
-          // група з поточною сторінкою завжди розгорнута
-          const hasActive = g.items.some((it) => it.href === pathname);
-          const open = hasActive || !collapsed.includes(g.group);
+          const open = !collapsed.includes(g.group);
           return (
           <div key={g.group}>
             <button
@@ -152,7 +162,6 @@ export default function AdminShell({ children }: { children: React.ReactNode }) 
               className={`${s.navGroupLabel} ${s.navGroupToggle}`}
               onClick={() => toggleGroup(g.group)}
               aria-expanded={open}
-              disabled={hasActive}
             >
               {g.group}
               <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"
