@@ -366,10 +366,11 @@ function OrderRow({ order: o, first }: { order: AccountOrder; first: boolean }) 
 
   return (
     <div style={{ borderTop: first ? "none" : "1px solid var(--border)" }}>
+      <div style={{ display: "flex", alignItems: "center", background: open ? "var(--bg-elevated)" : "transparent" }}>
       <button type="button" onClick={() => setOpen((v) => !v)} aria-expanded={open}
         style={{
-          width: "100%", display: "grid", gridTemplateColumns: "1fr auto", gap: "4px 12px", alignItems: "center",
-          padding: "12px 16px", background: open ? "var(--bg-elevated)" : "transparent", border: "none",
+          flex: 1, minWidth: 0, display: "grid", gridTemplateColumns: "1fr auto", gap: "4px 12px", alignItems: "center",
+          padding: repeatable.length ? "12px 10px 12px 16px" : "12px 16px", background: "transparent", border: "none",
           cursor: "pointer", textAlign: "left", color: "var(--text-primary)", fontFamily: "var(--font-body)",
         }}>
         <span style={{ display: "flex", alignItems: "center", gap: 8, fontSize: 14, minWidth: 0 }}>
@@ -383,6 +384,15 @@ function OrderRow({ order: o, first }: { order: AccountOrder; first: boolean }) 
           {qty} шт <span aria-hidden style={{ display: "inline-block", transition: "transform 0.2s", transform: open ? "rotate(180deg)" : "none" }}>▾</span>
         </span>
       </button>
+      {repeatable.length > 0 && (
+        <button type="button" onClick={repeat} disabled={repeating} className="repeat-btn"
+          aria-label={`Повторити замовлення від ${date}`} title="Повторити замовлення">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" className={repeating ? "spin" : undefined}>
+            <path d="M20 11a8 8 0 1 0-2.3 5.7" /><path d="M20 4v7h-7" />
+          </svg>
+        </button>
+      )}
+      </div>
 
       {open && (
         <div style={{ padding: "4px 16px 14px", background: "var(--bg-elevated)", fontSize: 13 }}>
@@ -402,14 +412,8 @@ function OrderRow({ order: o, first }: { order: AccountOrder; first: boolean }) 
               <span>Знижка</span><span>−{o.discount} грн</span>
             </div>
           )}
-          {repeatable.length > 0 && (
-            <button type="button" className="btn-primary" onClick={repeat} disabled={repeating}
-              style={{ width: "100%", marginTop: 12 }}>
-              {repeating ? "Додаємо в кошик…" : "↻ Повторити замовлення"}
-            </button>
-          )}
           {repeatable.length > 0 && repeatable.length < o.items.length && (
-            <p style={{ margin: "6px 0 0", fontSize: 11, color: "var(--text-secondary)" }}>Частини страв уже немає в меню — додамо лише доступні.</p>
+            <p style={{ margin: "8px 0 0", fontSize: 11, color: "var(--text-secondary)" }}>↻ Повтор додасть лише страви, які ще є в меню.</p>
           )}
         </div>
       )}
