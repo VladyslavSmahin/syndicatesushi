@@ -241,6 +241,7 @@ export async function POST(req: Request) {
 
   // ---- Запис замовлення в БД (service role обходить RLS) ----
   let orderId: string | null = null;
+  let phoneNorm: string | null = null; // нормалізований номер (рахує БД) — для пошуку акаунта
   let dbSaved = false;
   try {
     const { data: order, error } = await supabase
@@ -261,10 +262,11 @@ export async function POST(req: Request) {
         total,
         pd_consent_at: new Date().toISOString(),
       })
-      .select("id")
+      .select("id, phone_norm")
       .single();
     if (error) throw error;
     orderId = order.id;
+    phoneNorm = order.phone_norm;
 
     const { error: itemsErr } = await supabase.from("order_items").insert(
       lineItems.map((i) => ({ order_id: orderId, product_id: i.productId, product_name: i.name, price: i.price, quantity: i.qty }))
@@ -290,6 +292,18 @@ export async function POST(req: Request) {
     }
   }
 
+  // ---- Чи є в людини акаунт на сайті (для Telegram) ----
+  let accountLine = "👤 <b>Акаунт:</b> немає";
+  try {
+    if (userId) {
+      const { data: c } = await supabase.from("customers").select("email").eq("id", userId).maybeSingle();
+      accountLine = `👤 <b>Акаунт:</b> замовлено з акаунта${c?.email ? ` (${esc(c.email)})` : ""}`;
+    } else if (phoneNorm) {
+      const { data: cs } = await supabase.from("customers").select("email").eq("phone_norm", phoneNorm).limit(1);
+      if (cs?.length) accountLine = `👤 <b>Акаунт:</b> є на сайті${cs[0].email ? ` (${esc(cs[0].email)})` : ""}, але замовив без входу`;
+    }
+  } catch { /* не критично — лишаємо «немає» */ }
+
   // ---- Сповіщення в Telegram (за авторитетними цінами) ----
   const lines = lineItems.map((i) => `• ${esc(i.name)} × ${i.qty} — ${i.price * i.qty} грн`);
   const buildMsg = (commentHtml: string, itemLines: string[]) => [
@@ -297,6 +311,7 @@ export async function POST(req: Request) {
     "",
     `👤 <b>Ім'я:</b> ${esc(name)}`,
     `📞 <b>Телефон:</b> ${esc(phone)}`,
+    accountLine,
     `🚚 <b>Спосіб:</b> ${delivery === "delivery" ? "Доставка" : "Самовивіз"}`,
     delivery === "delivery" && address ? `📍 <b>Адреса:</b> ${esc(address)}` : null,
     `🕒 <b>${delivery === "delivery" ? "Доставити" : "Забрати"}:</b> ${esc(schedule || "якнайшвидше")}`,

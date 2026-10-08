@@ -58,7 +58,7 @@ export default function SubcategoriesPage() {
         навігацією над товарами, коли обрано відповідну категорію.
       </p>
 
-      <Collapsible title="Нова підкатегорія">
+      <Collapsible title="Нова підкатегорія" storageKey="subcategories:new">
         <form onSubmit={add} style={{ padding: 22 }}>
           <div className={s.formRow}>
             <div className={s.field} style={{ minWidth: 180 }}>

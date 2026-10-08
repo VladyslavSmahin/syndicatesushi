@@ -4,7 +4,7 @@ import { useEffect, useState, type ReactNode } from "react";
 import { useAdminAuth } from "@/features/admin/AdminAuthContext";
 import s from "./admin.module.css";
 
-/** Картка адмінки, що розгортається/згортається кліком по заголовку.
+/** Картка адмінки, що розгортається/згортається кліком по заголовку. За замовчуванням — згорнута.
  *  storageKey — запамʼятовує стан для поточного співробітника (localStorage, ключ з його id);
  *  right — елементи в шапці праворуч (напр. перемикачі), клік по них не згортає картку. */
 export default function Collapsible({

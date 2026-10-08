@@ -22,7 +22,11 @@ export default function OrdersBoardPage() {
   const pending = useRef<Set<string>>(new Set());
   // фільтр за датою; дефолт — сьогодні (виставляємо на клієнті, щоб не ламати гідрацію)
   const [dateFilter, setDateFilter] = useState<string>("");
-  useEffect(() => { setDateFilter(new Date().toLocaleDateString("en-CA")); }, []);
+  // ?date=YYYY-MM-DD — перехід зі статистики за конкретний день
+  useEffect(() => {
+    const d = new URLSearchParams(window.location.search).get("date");
+    setDateFilter(d === "all" ? "" : d && /^\d{4}-\d{2}-\d{2}$/.test(d) ? d : new Date().toLocaleDateString("en-CA"));
+  }, []);
 
   useEffect(() => { setLocal(orders); }, [orders]);
 

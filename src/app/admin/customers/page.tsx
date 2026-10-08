@@ -48,6 +48,10 @@ export default function CustomersPage() {
   const [selectedClient, setSelectedClient] = useState<Client | null>(null);
 
   useEffect(() => { dbAllClientOrders().then(setOrders); }, []);
+  // ?tab=registered — перехід зі статистики одразу на «Зареєстровані»
+  useEffect(() => {
+    if (new URLSearchParams(window.location.search).get("tab") === "registered") setTab("registered");
+  }, []);
 
   // усі клієнти із замовлень, згруповані за номером
   const clients = useMemo<Client[]>(() => {

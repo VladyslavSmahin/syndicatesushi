@@ -1,12 +1,12 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
+import Link from "next/link";
 import { useDbCustomers, dbStatsOrders, dbFirstOrderAt, type StatsOrder } from "@/features/admin/db";
 import { useIsMobile } from "@/features/useIsMobile";
 import { kyivNow, addDays } from "@/lib/kyivTime";
 import s from "@/components/admin/admin.module.css";
 import Collapsible from "@/components/admin/Collapsible";
-import { useSort, SortLabel } from "@/components/admin/useSort";
 
 // Статистика сайту: користувачі + замовлення за обраний період (дні — за київським часом).
 
@@ -124,17 +124,18 @@ export default function StatsPage() {
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: "clamp(12px, 3vw, 20px)" }}>
       {/* користувачі — загалом, не залежать від періоду (крім «нових») */}
-      <Collapsible title="Користувачі сайту" defaultOpen storageKey="stats:users">
+      <Collapsible title="Користувачі сайту" storageKey="stats:users">
         <div className={s.statGridCompact} style={BLOCK_PAD}>
-          <Stat num={custLoading ? "…" : customers.length} label="Усього акаунтів" />
-          <Stat num={custLoading ? "…" : newUsers} label="Нових за період" />
-          <Stat num={custLoading ? "…" : usersWithPhone} label="Вказали телефон" />
-          <Stat num={custLoading ? "…" : verified} label="Номер підтверджено" />
+          <Stat num={custLoading ? "…" : customers.length} label="Усього акаунтів" href={CUST_REG} />
+          <Stat num={custLoading ? "…" : newUsers} label="Нових за період" href={CUST_REG} />
+          <Stat num={custLoading ? "…" : usersWithPhone} label="Вказали телефон" href={CUST_REG} />
+          <Stat num={custLoading ? "…" : verified} label="Номер підтверджено" href={CUST_REG} />
         </div>
       </Collapsible>
 
-      {/* період */}
-      <div className={s.card} style={{ padding: "clamp(10px, 3vw, 16px)", display: "flex", flexDirection: "column", gap: 10 }}>
+      {/* період — у заголовку видно обраний інтервал, навіть коли блок згорнуто */}
+      <Collapsible title={`Період: ${dayLabel(from)}${from !== to ? ` — ${dayLabel(to)}` : ""}`} storageKey="stats:period">
+      <div style={{ padding: "clamp(10px, 3vw, 16px)", display: "flex", flexDirection: "column", gap: 10 }}>
         <div className={s.presetRow}>
           {presets(today, firstDay).map((p) => (
             <button key={p.label} onClick={() => { setFrom(p.from); setTo(p.to); }}
@@ -151,24 +152,26 @@ export default function StatsPage() {
         </div>
         {from > to && <p className={s.error} style={{ margin: 0 }}>Дата «з» пізніше за «по».</p>}
       </div>
+      </Collapsible>
 
       {!stats ? <p className={s.hint}>Завантаження…</p> : (
         <>
-          <Collapsible title="Замовлення за період" defaultOpen storageKey="stats:orders">
+          <Collapsible title="Замовлення за період" storageKey="stats:orders">
             <div className={s.statGridCompact} style={BLOCK_PAD}>
-              <Stat num={stats.ok} label="Замовлень" sub={stats.canceled ? `+ ${stats.canceled} скасовано` : undefined} />
+              <Stat num={stats.ok} label="Замовлень" sub={stats.canceled ? `+ ${stats.canceled} скасовано` : undefined}
+                href={`/admin/orders/board?date=${from === to ? from : "all"}`} />
               <Stat num={money(stats.revenue)} label="Виручка" />
               <Stat num={stats.ok ? money(stats.avg) : "—"} label="Середній чек" />
-              <Stat num={stats.uniquePhones} label="Унікальних клієнтів" sub="за номером телефону" />
+              <Stat num={stats.uniquePhones} label="Унікальних клієнтів" sub="за номером телефону" href="/admin/customers" />
               <Stat num={`${stats.delivery} / ${stats.pickup}`} label="Доставка / самовивіз" />
-              <Stat num={stats.fromAccounts} label="З акаунтів" sub={`гостьових: ${stats.ok - stats.fromAccounts}`} />
+              <Stat num={stats.fromAccounts} label="З акаунтів" sub={`гостьових: ${stats.ok - stats.fromAccounts}`} href={CUST_REG} />
             </div>
             <p className={s.hint} style={{ fontSize: 11, margin: 0, padding: "0 clamp(10px, 3vw, 22px) 12px" }}>
               Виручка й чек — без скасованих замовлень, за сумою «Разом» (без вартості доставки).
             </p>
           </Collapsible>
 
-          <Collapsible title={stats.byMonth ? "По місяцях" : "По днях"} defaultOpen storageKey="stats:chart"
+          <Collapsible title={stats.byMonth ? "По місяцях" : "По днях"} storageKey="stats:chart"
             right={
               <div style={{ display: "flex", gap: 6 }}>
                 {([["count", "Замовлення"], ["revenue", "Виручка"]] as const).map(([v, l]) => (
@@ -179,7 +182,7 @@ export default function StatsPage() {
             <DayChart days={stats.days} metric={metric} byMonth={stats.byMonth} />
           </Collapsible>
 
-          <Collapsible title="Топ товарів" defaultOpen storageKey="stats:top">
+          <Collapsible title="Топ товарів" storageKey="stats:top">
             <TopProducts rows={stats.top} />
           </Collapsible>
         </>
@@ -192,53 +195,67 @@ export default function StatsPage() {
 const BLOCK_PAD = { padding: "clamp(8px, 2.5vw, 16px) clamp(10px, 3vw, 22px)" } as const;
 
 const TOP_LIMIT = 20;
+const CUST_REG = "/admin/customers?tab=registered";
 
-/** Топ товарів: сортування кліком по заголовку колонки. */
+/** Топ товарів — горизонтальні смуги: довжина = кількість або сума (перемикач), найбільші зверху.
+ *  Клік по товару — до нього в «Товари». */
 function TopProducts({ rows }: { rows: { name: string; qty: number; sum: number }[] }) {
-  const { sorted, key, dir, toggle } = useSort(rows, {
-    name: (r) => r.name, qty: (r) => r.qty, sum: (r) => r.sum,
-  }, { key: "qty" });
+  const [by, setBy] = useState<"qty" | "sum">("qty");
   const [all, setAll] = useState(false);
   if (!rows.length) return <p className={s.hint} style={{ padding: 16, margin: 0 }}>Немає замовлень за період.</p>;
+  const val = (r: { qty: number; sum: number }) => (by === "qty" ? r.qty : r.sum);
+  const sorted = [...rows].sort((a, b) => val(b) - val(a) || a.name.localeCompare(b.name, "uk"));
   const shown = all ? sorted : sorted.slice(0, TOP_LIMIT);
-  const th = (k: "name" | "qty" | "sum", label: string) => (
-    <SortLabel active={key === k} dir={dir} onClick={() => toggle(k)}>{label}</SortLabel>
-  );
+  const max = Math.max(1, val(sorted[0]));
   return (
-    <>
-      <div className={s.tableWrap}>
-        <table className={s.table}>
-          <thead><tr><th>{th("name", "Товар")}</th><th>{th("qty", "Кількість")}</th><th style={{ textAlign: "right" }}>{th("sum", "Сума")}</th></tr></thead>
-          <tbody>
-            {shown.map((r) => (
-              <tr key={r.name}>
-                <td data-label="Товар">{r.name}</td>
-                <td data-label="Кількість">{r.qty}</td>
-                <td data-label="Сума" style={{ textAlign: "right" }}>{money(r.sum)}</td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
+    <div style={{ padding: "clamp(10px, 3vw, 16px) clamp(10px, 3vw, 22px)" }}>
+      <div className={s.presetRow} style={{ marginBottom: 10 }}>
+        {([["qty", "За кількістю"], ["sum", "За сумою"]] as const).map(([v, l]) => (
+          <button key={v} onClick={() => setBy(v)} className={`chip square ${by === v ? "active" : ""}`}>{l}</button>
+        ))}
+      </div>
+      <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+        {shown.map((r, i) => (
+          <Link key={r.name} href={`/admin/products?q=${encodeURIComponent(r.name)}`} style={{ textDecoration: "none", color: "inherit" }}
+            title={`${r.name}: ${r.qty} шт · ${money(r.sum)}`}>
+            <div style={{ display: "flex", justifyContent: "space-between", gap: 10, fontSize: 13, marginBottom: 3 }}>
+              <span style={{ minWidth: 0, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                <span style={{ color: "var(--text-secondary)", marginRight: 6 }}>{i + 1}.</span>{r.name}
+              </span>
+              <span style={{ whiteSpace: "nowrap", fontWeight: 700 }}>
+                {by === "qty" ? `${r.qty} шт` : money(r.sum)}
+                <span style={{ fontWeight: 400, color: "var(--text-secondary)", fontSize: 11, marginLeft: 6 }}>
+                  {by === "qty" ? money(r.sum) : `${r.qty} шт`}
+                </span>
+              </span>
+            </div>
+            <div style={{ height: 8, background: "var(--bg-elevated)", borderRadius: 4, overflow: "hidden" }}>
+              <div style={{ width: `${(val(r) / max) * 100}%`, minWidth: 2, height: "100%", background: "var(--accent)", borderRadius: 4 }} />
+            </div>
+          </Link>
+        ))}
       </div>
       {rows.length > TOP_LIMIT && (
-        <button className={`${s.btn} ${s.btnGhost} ${s.btnSmall}`} style={{ margin: 12 }} onClick={() => setAll((v) => !v)}>
+        <button className={`${s.btn} ${s.btnGhost} ${s.btnSmall}`} style={{ marginTop: 12 }} onClick={() => setAll((v) => !v)}>
           {all ? "Згорнути" : `Показати всі (${rows.length})`}
         </button>
       )}
-    </>
+    </div>
   );
 }
 
-function Stat({ num, label, sub }: { num: string | number; label: string; sub?: string }) {
-  return (
-    <div className={s.card}>
-      <div className={s.stat}>
-        <div className={s.statNum}>{num}</div>
-        <div className={s.statLabel}>{label}</div>
-        {sub && <div className={s.statSub}>{sub}</div>}
-      </div>
+/** Плитка: якщо є href — клікабельна (веде туди, де видно деталі). */
+function Stat({ num, label, sub, href }: { num: string | number; label: string; sub?: string; href?: string }) {
+  const body = (
+    <div className={s.stat}>
+      <div className={s.statNum}>{num}</div>
+      <div className={s.statLabel}>{label}{href && <span aria-hidden style={{ marginLeft: 4, opacity: 0.6 }}>›</span>}</div>
+      {sub && <div className={s.statSub}>{sub}</div>}
     </div>
   );
+  return href
+    ? <Link href={href} className={`${s.card} ${s.statLink}`} style={{ textDecoration: "none" }}>{body}</Link>
+    : <div className={s.card}>{body}</div>;
 }
 
 /** Стовпчики по днях: одна метрика, одна шкала; підказка при наведенні. */

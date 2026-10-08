@@ -335,6 +335,7 @@ textarea.form-input { resize: vertical; min-height: 120px; font-family: var(--fo
   .hero-slider { order: 2; }
   .hero-cta { order: 3; width: 100%; }
   .hero-hours { order: 4; justify-content: center; margin-top: 0 !important; font-size: 13px !important; }
+  .hero-address { order: 5; justify-content: center; margin-top: -10px !important; font-size: 13px !important; }
   .hero-tagline, .hero-lead { display: none; }
   /* h1 не ховаємо через display:none (Google індексує мобільну версію) — лише візуально */
   .hero-title {

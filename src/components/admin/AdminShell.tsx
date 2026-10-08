@@ -1,20 +1,20 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import RefreshButton from "./RefreshButton";
 import BrandMark from "../BrandMark";
 import { useAdminAuth } from "@/features/admin/AdminAuthContext";
 import { refreshAdminAction } from "@/features/admin/actions/common";
+import { useScrollLock } from "@/lib/scrollLock";
 import s from "./admin.module.css";
 
 // Кошик (видалені товари) — не пункт меню, а іконка в топбарі: заходять рідко
 const TRASH = { href: "/admin/deleted", label: "Кошик" };
 
-// групи, згорнуті за замовчуванням (стан користувача пам'ятаємо в localStorage)
-const COLLAPSED_DEFAULT = ["Маркетинг", "Замовлення", "Система"];
-const COLLAPSED_KEY = "admin-nav-collapsed";
+// групи меню за замовчуванням згорнуті; стан запамʼятовуємо для кожного співробітника (localStorage, ключ з id)
+const collapsedKey = (uid: string) => `admin-nav-collapsed:${uid}`;
 
 const NAV: { group: string; items: { href: string; label: string }[] }[] = [
   {
@@ -70,22 +70,65 @@ export default function AdminShell({ children }: { children: React.ReactNode }) 
   // куди йде перехід — для миттєвого візуального відгуку (спінер + підсвітка),
   // щоб не складалося враження зависання й не тиснули кілька разів
   const [pendingHref, setPendingHref] = useState<string | null>(null);
-  const [collapsed, setCollapsed] = useState<string[]>(COLLAPSED_DEFAULT);
+  const [collapsed, setCollapsed] = useState<string[]>(() => NAV.map((g) => g.group));
+  const uid = user?.id ?? null;
 
+  const save = useCallback((next: string[]) => {
+    if (!uid) return;
+    try { localStorage.setItem(collapsedKey(uid), JSON.stringify(next)); } catch { /* ignore */ }
+  }, [uid]);
+
+  /** Група поточної сторінки має бути розгорнута (щоб було видно, де ви). */
+  const withActiveOpen = useCallback((list: string[]) => {
+    const active = NAV.find((g) => g.items.some((it) => it.href === pathname))?.group;
+    return active && list.includes(active) ? list.filter((g) => g !== active) : list;
+  }, [pathname]);
+
+  // збережений стан цього співробітника
   useEffect(() => {
+    if (!uid) return;
+    let list: string[] = NAV.map((g) => g.group);
     try {
-      const saved = localStorage.getItem(COLLAPSED_KEY);
-      const parsed = saved ? JSON.parse(saved) : null;
-      if (Array.isArray(parsed)) setCollapsed(parsed.filter((g) => typeof g === "string"));
+      const parsed = JSON.parse(localStorage.getItem(collapsedKey(uid)) ?? "null");
+      if (Array.isArray(parsed)) list = parsed.filter((g): g is string => typeof g === "string");
     } catch { /* немає доступу до сховища — лишаємо дефолт */ }
-  }, []);
+    setCollapsed(withActiveOpen(list));
+    // лише при зміні співробітника; перехід між сторінками обробляє ефект нижче
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [uid]);
 
   const toggleGroup = (group: string) =>
     setCollapsed((prev) => {
       const next = prev.includes(group) ? prev.filter((g) => g !== group) : [...prev, group];
-      try { localStorage.setItem(COLLAPSED_KEY, JSON.stringify(next)); } catch { /* ignore */ }
+      save(next);
       return next;
     });
+
+  // відкрите бургер-меню — сторінка адмінки під ним не прокручується
+  useScrollLock(navOpen);
+
+  // ---- свайп вліво/вправо (телефон) — сусідній розділ меню, наскрізь через групи ----
+  const touch = useRef<{ x: number; y: number; t: number; skip: boolean } | null>(null);
+  const flat = NAV.flatMap((g) => g.items);
+  const onTouchStart = (e: React.TouchEvent) => {
+    const t = e.touches[0];
+    touch.current = { x: t.clientX, y: t.clientY, t: Date.now(), skip: e.touches.length > 1 || !swipeAllowed(e.target as HTMLElement) };
+  };
+  const onTouchEnd = (e: React.TouchEvent) => {
+    const st = touch.current;
+    touch.current = null;
+    if (!st || st.skip || window.innerWidth > 880) return;
+    const t = e.changedTouches[0];
+    const dx = t.clientX - st.x, dy = t.clientY - st.y;
+    // чіткий горизонтальний жест: довгий, швидкий, майже без вертикалі
+    if (Math.abs(dx) < 70 || Math.abs(dx) < Math.abs(dy) * 2 || Date.now() - st.t > 700) return;
+    const i = flat.findIndex((it) => it.href === pathname);
+    if (i < 0) return;
+    const next = flat[i + (dx < 0 ? 1 : -1)];
+    if (!next) return; // крайні розділи — далі нікуди
+    setPendingHref(next.href);
+    router.push(next.href);
+  };
 
   const isLogin = pathname === "/admin/login";
 
@@ -94,15 +137,12 @@ export default function AdminShell({ children }: { children: React.ReactNode }) 
 
   // перейшли на сторінку зі згорнутої групи — розгортаємо її (далі користувач може знову згорнути)
   useEffect(() => {
-    const active = NAV.find((g) => g.items.some((it) => it.href === pathname))?.group;
-    if (!active) return;
     setCollapsed((prev) => {
-      if (!prev.includes(active)) return prev;
-      const next = prev.filter((g) => g !== active);
-      try { localStorage.setItem(COLLAPSED_KEY, JSON.stringify(next)); } catch { /* ignore */ }
+      const next = withActiveOpen(prev);
+      if (next !== prev) save(next);
       return next;
     });
-  }, [pathname]);
+  }, [withActiveOpen, save]);
 
   const signOut = async () => { await logout(); router.replace("/admin/login"); };
 
@@ -213,14 +253,13 @@ export default function AdminShell({ children }: { children: React.ReactNode }) 
         })}
 
         <div style={{ marginTop: "auto", paddingTop: 16 }}>
-          <Link href="/" className={s.navItem}>← На сайт</Link>
           <button className={s.navItem} style={{ width: "100%", textAlign: "left", background: "transparent" }} onClick={signOut}>
             Вийти
           </button>
         </div>
       </aside>
 
-      <div className={s.main}>
+      <div className={s.main} onTouchStart={onTouchStart} onTouchEnd={onTouchEnd}>
         <h1 className={s.pageTitle}>{title}</h1>
         <div className={s.content}>{children}</div>
       </div>
@@ -236,4 +275,17 @@ function Spinner() {
       <path d="M12 3a9 9 0 1 0 9 9" />
     </svg>
   );
+}
+
+/** Чи можна починати свайп-перехід із цього елемента: не з полів вводу, не з модалки
+ *  і не з горизонтально прокручуваних блоків (слайдери чипів, таблиці, графік). */
+function swipeAllowed(el: HTMLElement | null): boolean {
+  if (document.body.style.overflow === "hidden") return false; // відкрита модалка адмінки
+  for (let n = el; n && n !== document.body; n = n.parentElement) {
+    if (/^(INPUT|TEXTAREA|SELECT)$/.test(n.tagName) || n.isContentEditable) return false;
+    if (n.getAttribute("draggable") === "true") return false; // перетягування рядків
+    const ox = getComputedStyle(n).overflowX;
+    if ((ox === "auto" || ox === "scroll") && n.scrollWidth > n.clientWidth + 2) return false;
+  }
+  return true;
 }

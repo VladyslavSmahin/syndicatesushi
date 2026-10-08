@@ -67,6 +67,11 @@ export default function ProductsPage() {
   const [catFilter, setCatFilter] = useState<string>("all"); // id категорії | "all" | "__none__"
   const [subFilter, setSubFilter] = useState<string>("all"); // id підкатегорії | "all" | "__none__"
   const [query, setQuery] = useState("");
+  // ?q=… — перехід зі статистики (топ товарів) одразу з пошуком
+  useEffect(() => {
+    const q = new URLSearchParams(window.location.search).get("q");
+    if (q) setQuery(q);
+  }, []);
   const [badgeFilter, setBadgeFilter] = useState<string>("all"); // "all" | "__any__" | "__none__" | Badge
   const pickCat = (id: string) => { setCatFilter(id); setSubFilter("all"); };
 

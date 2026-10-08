@@ -92,6 +92,12 @@ async function loadProfile(): Promise<CustomerProfile | null> {
   return { id: data.id, email: data.email ?? session.user.email ?? "", name: data.name, phone: data.phone, phoneNorm: data.phone_norm, phoneVerifiedAt: data.phone_verified_at, emailConfirmed: !!session.user.email_confirmed_at };
 }
 
+/** Оновити номер у профілі (з кошика, за згодою клієнта). Зміна номера скидає його підтвердження (тригер у БД). */
+export async function updateCustomerPhone(id: string, phone: string): Promise<boolean> {
+  const { error } = await createClient().from("customers").update({ phone }).eq("id", id);
+  return !error;
+}
+
 /** Профіль поточного клієнта або null (не залогінений / не вдалося завантажити). */
 export const fetchCustomerProfile = () => loadProfile();
 

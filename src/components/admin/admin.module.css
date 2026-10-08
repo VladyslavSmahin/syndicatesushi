@@ -467,3 +467,5 @@
   /* бейдж (ХІТ/НОВЕ) у згорнутому рядку забирає місце в назви — показуємо лише в розгорнутому */
   .rowCollapsible:not(.rowOpen) .cardMeta .pill { display: none; }
 }
+.statLink { transition: border-color 0.2s; }
+.statLink:hover { border-color: var(--accent); }

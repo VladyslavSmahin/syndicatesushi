@@ -82,7 +82,7 @@ export default function CategoriesPage() {
         пункти меню та товари в «Повному меню».
       </p>
 
-      <Collapsible title="Нова категорія">
+      <Collapsible title="Нова категорія" storageKey="categories:new">
         <form onSubmit={handleAdd} style={{ padding: 22 }}>
           <div className={s.formRow}>
             <div className={s.field} style={{ flex: 1, minWidth: 220 }}>

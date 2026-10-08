@@ -10,8 +10,8 @@ import { dayOptions, firstPickupDay, isPickupStillValid, weekdayLabel } from "@/
 import type { Product, CartItem } from "@/lib/types";
 import { useScrollLock } from "@/lib/scrollLock";
 import ThumbImg from "./ThumbImg";
-import { formatPhone, isPhoneValid } from "@/lib/phone";
-import { useCustomerProfile } from "@/features/account";
+import { formatPhone, isPhoneValid, phoneDigits } from "@/lib/phone";
+import { useCustomerProfile, updateCustomerPhone } from "@/features/account";
 
 const EXTRAS_CATEGORY = "додатково";
 // категорії, для яких потрібні набори приборів (палички, серветки)
@@ -85,6 +85,10 @@ export default function CartDrawer({ isOpen, onClose }: { isOpen: boolean; onClo
     if (profile.name) setName((v) => v || profile.name!.slice(0, MAX_NAME));
     if (profile.phone) setPhone((v) => v || formatPhone(profile.phone!));
   }, [profile]);
+  // клієнт змінив номер відносно профілю — питаємо, чи оновити його в профілі (null — ще не відповів)
+  const [savePhoneToProfile, setSavePhoneToProfile] = useState<boolean | null>(null);
+  const profileDigits = profile?.phone ? phoneDigits(profile.phone) : "";
+  const phoneDiffers = !!profileDigits && isPhoneValid(phone) && phoneDigits(phone) !== profileDigits;
   // на коли (і доставка, і самовивіз): дата (за замовчуванням — найближчий день зі слотами,
   // за київським часом) і час ("" = якнайшвидше / по готовності)
   const [pickupDate, setPickupDate] = useState(() => firstPickupDay(contacts.hours));
@@ -232,6 +236,9 @@ export default function CartDrawer({ isOpen, onClose }: { isOpen: boolean; onClo
       // показуємо серверну суму, якщо вона відрізняється від тієї, що бачив клієнт
       setServerTotal(typeof j.total === "number" && j.total !== payable ? j.total : null);
       setStep("done");
+      // клієнт погодився оновити номер у профілі (тихо: замовлення вже прийняте)
+      if (phoneDiffers && savePhoneToProfile && profile) updateCustomerPhone(profile.id, phone.trim()).catch(() => {});
+      setSavePhoneToProfile(null);
       clear();
       setPromo(""); setPromoInfo(null); setPromoMsg(null); setPromoOpen(false); setCutlery(null);
       setPickupMsg(""); setPickupChosen(false);
@@ -354,8 +361,29 @@ export default function CartDrawer({ isOpen, onClose }: { isOpen: boolean; onClo
                   onChange={(e) => setName(e.target.value)} style={{ flex: 1, minWidth: 0 }} />
                 <input className="form-input" type="tel" inputMode="numeric" autoComplete="tel"
                   placeholder="093 728 42 98" value={phone} maxLength={MAX_PHONE}
-                  onChange={(e) => setPhone(formatPhone(e.target.value))} style={{ flex: 1, minWidth: 0 }} />
+                  onChange={(e) => { setPhone(formatPhone(e.target.value)); setSavePhoneToProfile(null); }} style={{ flex: 1, minWidth: 0 }} />
               </div>
+
+              {phoneDiffers && profile && (
+                <div style={{ fontSize: 12, lineHeight: 1.5, color: "var(--text-secondary)", border: "1px solid var(--border-light)", padding: "10px 12px" }}>
+                  У профілі інший номер — <b style={{ color: "var(--text-primary)" }}>{formatPhone(profile.phone!)}</b>.{" "}
+                  <button type="button" onClick={() => { setPhone(formatPhone(profile.phone!)); setSavePhoneToProfile(null); }}
+                    style={{ background: "none", border: "none", padding: 0, color: "var(--accent)", textDecoration: "underline", cursor: "pointer", fontSize: 12 }}>
+                    Повернути
+                  </button>
+                  <div style={{ display: "flex", gap: 6, marginTop: 8, flexWrap: "wrap" }}>
+                    {([[true, "Оновити в профілі"], [false, "Лише для цього замовлення"]] as const).map(([v, l]) => (
+                      <button key={l} type="button" onClick={() => setSavePhoneToProfile(v)}
+                        style={{
+                          flex: "1 1 auto", padding: "8px 10px", cursor: "pointer", fontFamily: "var(--font-body)", fontSize: 10, letterSpacing: 1, textTransform: "uppercase",
+                          background: savePhoneToProfile === v ? "var(--bg-elevated)" : "transparent",
+                          border: `1px solid ${savePhoneToProfile === v ? "var(--accent)" : "var(--border-light)"}`,
+                          color: savePhoneToProfile === v ? "var(--accent)" : "var(--text-secondary)",
+                        }}>{l}</button>
+                    ))}
+                  </div>
+                </div>
+              )}
 
               <PickupRow
                 delivery={delivery}

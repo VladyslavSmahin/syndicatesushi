@@ -46,7 +46,8 @@ export default function AuthForm({ errorCode = null, onSignedIn }: { errorCode?:
 
   const google = async () => {
     setBusy(true);
-    const { error } = await signInCustomer(window.location.pathname);
+    // реєстрація — одразу в профіль (дописати номер); вхід — повертаємось туди, де були
+    const { error } = await signInCustomer(mode === "register" ? "/account" : window.location.pathname);
     if (error) { setError("Не вдалося почати вхід через Google. Спробуйте ще раз."); setBusy(false); }
   };
 
@@ -77,7 +78,7 @@ export default function AuthForm({ errorCode = null, onSignedIn }: { errorCode?:
         return;
       }
       if (needsConfirmation) setSentTo({ email: em, kind: "confirm" });
-      else onSignedIn?.(); // підтвердження пошти вимкнено в Supabase — сесія вже є
+      else window.location.href = "/account"; // підтвердження пошти вимкнено в Supabase — сесія вже є, одразу в профіль
       return;
     }
 

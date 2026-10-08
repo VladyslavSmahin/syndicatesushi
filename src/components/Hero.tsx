@@ -80,6 +80,14 @@ export default function Hero({
             <button className="btn-secondary" onClick={onCtaMenu}>Переглянути меню</button>
           </div>
           <WorkHours hours={contacts.hours} />
+          {contacts.address && (
+            <a className="hero-address" target="_blank" rel="noopener noreferrer"
+              href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(contacts.mapQuery || contacts.address)}`}
+              style={{ display: "flex", alignItems: "center", gap: 10, marginTop: 10, fontSize: 14, color: "var(--text-primary)", textDecoration: "none" }}>
+              <Icon.Pin width="16" height="16" style={{ color: "var(--accent)", flexShrink: 0 }} />
+              <span style={{ borderBottom: "1px dashed var(--border-light)" }}>{contacts.address}</span>
+            </a>
+          )}
         </div>
 
         {/* right — вертикальний промо-слайдер */}

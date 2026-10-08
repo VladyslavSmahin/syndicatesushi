@@ -86,7 +86,7 @@ export default function BulkPriceTool({
 
   return (
     <>
-    <Collapsible title={`Масова зміна цін за ${FILTER_LABEL[filterType]}`}>
+    <Collapsible title={`Масова зміна цін за ${FILTER_LABEL[filterType]}`} storageKey="products:bulk-price">
       <div style={{ padding: 22 }}>
         <p className={s.hint} style={{ marginBottom: 16 }}>
           Підніме (або знизить) ціну всіх товарів обраної групи. Перед застосуванням
