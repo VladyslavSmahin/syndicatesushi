@@ -242,6 +242,7 @@ export async function POST(req: Request) {
   // ---- Запис замовлення в БД (service role обходить RLS) ----
   let orderId: string | null = null;
   let phoneNorm: string | null = null; // нормалізований номер (рахує БД) — для пошуку акаунта
+  let createdAt: string | null = null;  // час запису — від нього рахуємо номер замовлення по рахунку
   let dbSaved = false;
   try {
     const { data: order, error } = await supabase
@@ -262,11 +263,12 @@ export async function POST(req: Request) {
         total,
         pd_consent_at: new Date().toISOString(),
       })
-      .select("id, phone_norm")
+      .select("id, phone_norm, created_at")
       .single();
     if (error) throw error;
     orderId = order.id;
     phoneNorm = order.phone_norm;
+    createdAt = order.created_at;
 
     const { error: itemsErr } = await supabase.from("order_items").insert(
       lineItems.map((i) => ({ order_id: orderId, product_id: i.productId, product_name: i.name, price: i.price, quantity: i.qty }))
@@ -304,14 +306,40 @@ export async function POST(req: Request) {
     }
   } catch { /* не критично — лишаємо «немає» */ }
 
+  // ---- Яке це замовлення по рахунку: у клієнта (акаунт або номер, без скасованих) і загалом на сайті ----
+  // Рахуємо «до цього моменту включно» за created_at, а не загальну кількість —
+  // щоб два одночасні замовлення не отримали однаковий номер і ювілейне не загубилось.
+  let personalNo: number | null = null;
+  let siteNo: number | null = null;
+  if (dbSaved && createdAt) {
+    try {
+      const owner = [userId && `user_id.eq.${userId}`, phoneNorm && `phone_norm.eq.${phoneNorm}`].filter(Boolean).join(",");
+      const [mine, all] = await Promise.all([
+        owner
+          ? supabase.from("orders").select("id", { count: "exact", head: true })
+              .or(owner).neq("status", "canceled").lte("created_at", createdAt)
+          : null,
+        supabase.from("orders").select("id", { count: "exact", head: true }).lte("created_at", createdAt),
+      ]);
+      personalNo = mine?.count ?? null;
+      siteNo = all.count ?? null;
+    } catch { /* не критично — просто без номерів */ }
+  }
+  const personalLine = personalNo ? `🔢 <b>Замовлення клієнта:</b> ${personalNo === 1 ? "перше" : `№ ${personalNo}`}` : null;
+  const jubileeLines = siteNo && siteNo % 100 === 0
+    ? [`🎉🎉🎉 <b>Замовлення № ${siteNo} з сайту!</b> Вітаємо! 🥳\n`]
+    : [];
+
   // ---- Сповіщення в Telegram (за авторитетними цінами) ----
   const lines = lineItems.map((i) => `• ${esc(i.name)} × ${i.qty} — ${i.price * i.qty} грн`);
   const buildMsg = (commentHtml: string, itemLines: string[]) => [
+    ...jubileeLines,
     "🍣 <b>НОВЕ ЗАМОВЛЕННЯ</b>",
     "",
     `👤 <b>Ім'я:</b> ${esc(name)}`,
     `📞 <b>Телефон:</b> ${esc(phone)}`,
     accountLine,
+    personalLine,
     `🚚 <b>Спосіб:</b> ${delivery === "delivery" ? "Доставка" : "Самовивіз"}`,
     delivery === "delivery" && address ? `📍 <b>Адреса:</b> ${esc(address)}` : null,
     `🕒 <b>${delivery === "delivery" ? "Доставити" : "Забрати"}:</b> ${esc(schedule || "якнайшвидше")}`,
