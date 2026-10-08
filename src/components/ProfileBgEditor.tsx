@@ -36,6 +36,7 @@ export default function ProfileBgEditor({ current, name, onClose, onSaved }: {
   const [draft, setDraft] = useState<ProfileBg | null>(current);
   const [customSrc, setCustomSrc] = useState<string | null>(custom);
   const [tab, setTab] = useState<string>(current ? (PROFILE_THEMES.find((t) => t.images.some((i) => i.id === current.src))?.id ?? "custom") : "sushi");
+  const [group, setGroup] = useState<string>(() => (current && findThemeImage(current.src)?.group) || "all");
   const [device, setDevice] = useState<Device>(() => (typeof window !== "undefined" && window.innerWidth > 860 ? "desktop" : "mobile"));
   const [busy, setBusy] = useState("");
   const [msg, setMsg] = useState<{ ok: boolean; text: string } | null>(null);
@@ -149,6 +150,7 @@ export default function ProfileBgEditor({ current, name, onClose, onSaved }: {
   };
 
   const theme = PROFILE_THEMES.find((t) => t.id === tab);
+  const groups = [...new Set((theme?.images ?? []).map((i) => i.group).filter((g): g is string => !!g))];
   const f = draft?.[device] ?? BG_FRAME_DEFAULT;
 
   return createPortal(
@@ -162,13 +164,22 @@ export default function ProfileBgEditor({ current, name, onClose, onSaved }: {
         <div className="bge-body">
           <div className="bge-tabs" role="tablist">
             {PROFILE_THEMES.map((t) => (
-              <button key={t.id} type="button" role="tab" aria-selected={tab === t.id} onClick={() => setTab(t.id)}>{t.emoji} {t.label}</button>
+              <button key={t.id} type="button" role="tab" aria-selected={tab === t.id} onClick={() => { setTab(t.id); setGroup("all"); }}>{t.emoji} {t.label}</button>
             ))}
             <button type="button" role="tab" aria-selected={tab === "custom"} onClick={() => setTab("custom")}>📷 Своє</button>
           </div>
 
+          {/* підгрупи всередині теми (тайтли в «Аніме») */}
+          {groups.length > 1 && (
+            <div className="bge-tabs bge-sub" role="tablist">
+              {["all", ...groups].map((g) => (
+                <button key={g} type="button" role="tab" aria-selected={group === g} onClick={() => setGroup(g)}>{g === "all" ? "Усі" : g}</button>
+              ))}
+            </div>
+          )}
+
           <div className="bge-grid">
-            {theme?.images.map((i) => (
+            {theme?.images.filter((i) => group === "all" || i.group === group).map((i) => (
               <button key={i.id} type="button" className={`bge-thumb${draft?.src === i.id ? " on" : ""}`} onClick={() => pick(i.id)} aria-label={`Фон: ${theme.label}`}>
                 {/* eslint-disable-next-line @next/next/no-img-element */}
                 <img src={thumbUrl(i)} alt="" loading="lazy" />

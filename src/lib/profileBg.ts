@@ -17,11 +17,21 @@ export interface ProfileBg {
   desktop: BgFrame;
 }
 
-export interface ThemeImage { id: string; url: string; credit: string; source: string }
+export interface ThemeImage { id: string; url: string; credit: string; source: string; /** підгрупа всередині теми (напр. тайтл аніме) */ group?: string }
 export interface ProfileTheme { id: string; label: string; emoji: string; images: ThemeImage[] }
 
 /** Готові теми. Картинки — у /public/profile-bg (Unsplash License: безкоштовно, і на комерційному сайті; автор — у credit). */
-const img = (id: string, credit: string, source: string): ThemeImage => ({ id, url: `/profile-bg/${id}.webp`, credit, source });
+const img = (id: string, credit: string, source: string, group?: string): ThemeImage => ({ id, url: `/profile-bg/${id}.webp`, credit, source, ...(group ? { group } : null) });
+
+// тайтли всередині теми «Аніме»: картинки додав власник сайту (profile-bg-incoming → public/profile-bg), права — у правовласників
+const ANIME_TITLES = [
+  ["aot", "Атака титанів", 3],
+  ["naruto", "Наруто", 3],
+  ["onepiece", "Ван Піс", 2],
+  ["sololeveling", "Соло левелінг", 2],
+  ["vinland", "Сага про Вінланд", 2],
+  ["jjk", "Магічна битва", 2],
+] as const;
 
 export const PROFILE_THEMES: ProfileTheme[] = [
   { id: "sushi", label: "Суші", emoji: "🍣", images: [
@@ -32,22 +42,12 @@ export const PROFILE_THEMES: ProfileTheme[] = [
     img("japan-1", "Denys Nevozhai · Unsplash", "https://unsplash.com/photos/D68ADLeMh5Q"),
     img("japan-2", "Loris Boulinguez · Unsplash", "https://unsplash.com/photos/a-red-torii-gate-frames-mount-fuji-and-lush-trees-hZU8GUT5nmw"),
   ] },
-  { id: "anime", label: "Аніме", emoji: "🌸", images: [
-    img("anime-1", "Julien (domsson) · Unsplash", "https://unsplash.com/photos/a-vending-machine-is-lit-up-at-night-3OyTs0T5xDA"),
-    img("anime-2", "Julien (domsson) · Unsplash", "https://unsplash.com/photos/a-city-street-at-night-with-a-red-neon-sign-VlmCw-QL1R4"),
+  { id: "anime", label: "Аніме", emoji: "⚔️", images: [
+    img("anime-1", "Julien (domsson) · Unsplash", "https://unsplash.com/photos/a-vending-machine-is-lit-up-at-night-3OyTs0T5xDA", "Атмосфера"),
+    img("anime-2", "Julien (domsson) · Unsplash", "https://unsplash.com/photos/a-city-street-at-night-with-a-red-neon-sign-VlmCw-QL1R4", "Атмосфера"),
+    ...ANIME_TITLES.flatMap(([id, label, n]) =>
+      Array.from({ length: n }, (_, k) => img(`${id}-${k + 1}`, `«${label}» © правовласники`, "", label))),
   ] },
-  // теми за тайтлами: картинки додав власник сайту (profile-bg-incoming → public/profile-bg), права — у правовласників тайтлів
-  ...([
-    ["aot", "Атака титанів", "🗡️", 3],
-    ["naruto", "Наруто", "🍥", 3],
-    ["onepiece", "Ван Піс", "🏴‍☠️", 2],
-    ["sololeveling", "Соло левелінг", "⚔️", 2],
-    ["vinland", "Сага про Вінланд", "🛡️", 2],
-    ["jjk", "Магічна битва", "👁️", 2],
-  ] as const).map(([id, label, emoji, n]) => ({
-    id, label, emoji,
-    images: Array.from({ length: n }, (_, k) => img(`${id}-${k + 1}`, `«${label}» © правовласники`, "")),
-  })),
 ];
 
 /** Мініатюра теми для вибору в редакторі. */
