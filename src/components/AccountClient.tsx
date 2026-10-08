@@ -11,6 +11,7 @@ import { useCart } from "@/features/cart/CartContext";
 import { createClient } from "@/lib/supabase/client";
 import FavoriteStar from "./FavoriteStar";
 import ProfileHero from "./ProfileHero";
+import ProfileBgLayer from "./ProfileBgLayer";
 import ThumbImg from "./ThumbImg";
 
 const card: CSSProperties = {
@@ -72,6 +73,7 @@ export default function AccountClient() {
       {params.confirmed && (
         <p style={{ margin: 0, fontSize: 14, color: "#5BB85B" }}>✓ Пошту підтверджено — реєстрацію завершено.</p>
       )}
+      <ProfileBgLayer bg={profile.profileBg} />
       <ProfileHero profile={profile} ordersCount={orders.filter((o) => o.status !== "canceled").length} onChanged={refetch} />
       <div role="tablist" className="acc-tabs">
         {([["profile", "Профіль"], ["orders", `Замовлення${orders.length ? ` · ${orders.length}` : ""}`], ["favorites", `Обране${favIds.length ? ` · ${favIds.length}` : ""}`]] as const).map(([t, l]) => (

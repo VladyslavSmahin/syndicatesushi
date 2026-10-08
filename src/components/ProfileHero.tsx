@@ -3,6 +3,7 @@
 import { useEffect, useRef, useState } from "react";
 import { uploadCustomerAvatar, removeCustomerAvatar, type CustomerProfile } from "@/features/account";
 import { downscaleImage } from "@/lib/clientImage";
+import ProfileBgEditor from "./ProfileBgEditor";
 
 const ERR: Record<string, string> = {
   unauthorized: "Сесія завершилась — увійдіть знову.",
@@ -40,6 +41,7 @@ export default function ProfileHero({ profile, ordersCount, onChanged }: {
 
   const fileRef = useRef<HTMLInputElement>(null);
   const [busy, setBusy] = useState(false);
+  const [bgOpen, setBgOpen] = useState(false);
   const [err, setErr] = useState("");
 
   const onFile = async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -104,11 +106,17 @@ export default function ProfileHero({ profile, ordersCount, onChanged }: {
             {missing.map((m) => <span key={m.label}>+ {m.label}</span>)}
           </div>
         )}
-        {profile.avatarUrl && !busy && (
-          <button type="button" onClick={removePhoto} className="ph-link">Прибрати фото</button>
-        )}
+        <div style={{ display: "flex", gap: 12, flexWrap: "wrap", alignItems: "center" }}>
+          <button type="button" onClick={() => setBgOpen(true)} className="ph-bg-btn">🎨 Фон кабінету</button>
+          {profile.avatarUrl && !busy && (
+            <button type="button" onClick={removePhoto} className="ph-link">Прибрати фото</button>
+          )}
+        </div>
         {err && <div style={{ fontSize: 12, color: "#E0726A", marginTop: 4 }}>{err}</div>}
       </div>
+      {bgOpen && (
+        <ProfileBgEditor current={profile.profileBg} name={profile.name?.trim() ?? ""} onClose={() => setBgOpen(false)} onSaved={onChanged} />
+      )}
     </div>
   );
 }

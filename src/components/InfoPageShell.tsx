@@ -5,7 +5,8 @@ import AdminLink from "./AdminLink";
 /** Простий каркас для інфо-сторінок (оферта, про нас тощо) у стилі сайту. */
 export default function InfoPageShell({ title, children }: { title: string; children: React.ReactNode }) {
   return (
-    <main style={{ minHeight: "100vh", background: "var(--bg-primary)", color: "var(--text-primary)" }}>
+    // фон сторінки дає body (той самий колір) — тут прозоро, щоб під вмістом міг лежати фон кабінету
+    <main style={{ minHeight: "100vh", color: "var(--text-primary)" }}>
       <header
         style={{
           position: "sticky", top: 0, zIndex: 10, height: "var(--header-h)",

@@ -127,3 +127,27 @@ export async function uploadTikTokThumb(sourceUrl: string, videoId: string): Pro
 
 /** TikTok без «браузерного» User-Agent відповідає «overload-protect» замість даних. */
 export const BROWSER_UA = "Mozilla/5.0 (Macintosh; Intel Mac OS X 14_0) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/130 Safari/537.36";
+
+/** Своє фото для фону кабінету: до 2400px по довшій стороні, WebP. Кладе в profile-bg/<id клієнта>/… */
+export async function uploadProfileBgImage(file: File, customerId: string): Promise<UploadResult> {
+  if (!r2Configured()) return { error: "r2_not_configured", status: 503 };
+  if (file.size > MAX_BYTES) return { error: "too_large", status: 413 };
+  let webp: Buffer;
+  try {
+    const sharp = (await import("sharp")).default;
+    webp = await sharp(Buffer.from(await file.arrayBuffer()))
+      .rotate()
+      .resize({ width: 2400, height: 2400, fit: "inside", withoutEnlargement: true })
+      .webp({ quality: 80 })
+      .toBuffer();
+  } catch (e) {
+    console.error("sharp failed:", (e as Error).message);
+    return { error: "image_processing_failed", status: 500 };
+  }
+  try {
+    return { url: await r2Put(`profile-bg/${customerId}/${crypto.randomUUID()}.webp`, webp, "image/webp") };
+  } catch (e) {
+    console.error("r2 put failed:", (e as Error).message);
+    return { error: "upload_failed", status: 502 };
+  }
+}

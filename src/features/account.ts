@@ -6,6 +6,7 @@
 
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { createClient } from "@/lib/supabase/client";
+import { parseProfileBg, type ProfileBg } from "@/lib/profileBg";
 
 export interface CustomerProfile {
   id: string;
@@ -21,6 +22,8 @@ export interface CustomerProfile {
   avatarUrl: string | null;
   /** фото з Google-акаунта (метадані сесії) — показуємо, якщо свого немає */
   googleAvatar: string | null;
+  /** фон кабінету (тема або своє фото + кадр для телефона/ПК); null — без фону */
+  profileBg: ProfileBg | null;
 }
 
 export type AccountOrderStatus = "new" | "confirmed" | "done" | "canceled";
@@ -89,17 +92,18 @@ async function loadProfile(): Promise<CustomerProfile | null> {
   if (!session?.user) return null;
   await supabase.rpc("customer_ensure");
   const base = "id, email, name, phone, phone_norm, phone_verified_at";
-  let res = await supabase.from("customers").select(`${base}, avatar_url`).eq("id", session.user.id).maybeSingle();
-  // БД ще без колонки avatar_url (міграція 20261008210000) — профіль без фото, а не зламаний кабінет
+  // нові колонки можуть ще не бути в БД (міграції 20261008210000 / 20261008230000) — тоді без них, а не зламаний кабінет
+  let res = await supabase.from("customers").select(`${base}, avatar_url, profile_bg`).eq("id", session.user.id).maybeSingle();
+  if (res.error) res = await supabase.from("customers").select(`${base}, avatar_url`).eq("id", session.user.id).maybeSingle() as typeof res;
   if (res.error) res = await supabase.from("customers").select(base).eq("id", session.user.id).maybeSingle() as typeof res;
-  const data = res.data as ({ id: string; email: string | null; name: string | null; phone: string | null; phone_norm: string | null; phone_verified_at: string | null; avatar_url?: string | null }) | null;
+  const data = res.data as ({ id: string; email: string | null; name: string | null; phone: string | null; phone_norm: string | null; phone_verified_at: string | null; avatar_url?: string | null; profile_bg?: unknown }) | null;
   if (!data) return null;
   const meta = session.user.user_metadata ?? {};
   const google = typeof meta.avatar_url === "string" ? meta.avatar_url : typeof meta.picture === "string" ? meta.picture : null;
   return {
     id: data.id, email: data.email ?? session.user.email ?? "", name: data.name, phone: data.phone, phoneNorm: data.phone_norm,
     phoneVerifiedAt: data.phone_verified_at, emailConfirmed: !!session.user.email_confirmed_at,
-    avatarUrl: data.avatar_url ?? null, googleAvatar: google,
+    avatarUrl: data.avatar_url ?? null, googleAvatar: google, profileBg: parseProfileBg(data.profile_bg),
   };
 }
 
@@ -121,6 +125,31 @@ export async function uploadCustomerAvatar(file: File): Promise<string | null> {
 export async function removeCustomerAvatar(): Promise<boolean> {
   const res = await fetch("/api/avatar", { method: "DELETE" }).catch(() => null);
   return !!res?.ok;
+}
+
+/** Фон кабінету: своє фото (сервер стисне й збереже з поточним кадром). Повертає код помилки або null. */
+export async function uploadProfileBg(file: File): Promise<string | null> {
+  const fd = new FormData();
+  fd.append("file", file);
+  const res = await fetch("/api/profile-bg", { method: "POST", body: fd });
+  const j = await res.json().catch(() => ({}));
+  return res.ok && j.ok ? null : (j.error || `HTTP ${res.status}`);
+}
+
+/** Зберегти тему/кадр фону; null — прибрати фон. */
+export async function saveProfileBg(bg: ProfileBg | null): Promise<string | null> {
+  const res = await fetch("/api/profile-bg", bg
+    ? { method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify(bg) }
+    : { method: "DELETE" });
+  const j = await res.json().catch(() => ({}));
+  return res.ok && j.ok ? null : (j.error || `HTTP ${res.status}`);
+}
+
+/** Запропонувати тематику фону — йде повідомленням у Telegram. */
+export async function suggestTheme(text: string): Promise<string | null> {
+  const res = await fetch("/api/theme-suggest", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ text }) });
+  const j = await res.json().catch(() => ({}));
+  return res.ok && j.ok ? null : (j.error || `HTTP ${res.status}`);
 }
 
 /** Профіль поточного клієнта або null (не залогінений / не вдалося завантажити). */

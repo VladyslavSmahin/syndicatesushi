@@ -499,6 +499,11 @@ textarea.form-input { resize: vertical; min-height: 120px; font-family: var(--fo
 .ph-pct.full { color: var(--gold); }
 .ph-missing { display: flex; flex-wrap: wrap; gap: 4px 6px; margin-top: 6px; }
 .ph-missing span { font-size: 11px; padding: 2px 8px; border: 1px dashed var(--border-light); border-radius: 999px; color: var(--text-secondary); white-space: nowrap; }
+.ph-bg-btn {
+  margin-top: 8px; padding: 5px 12px; border-radius: 999px; cursor: pointer; font-size: 12px;
+  background: rgba(13,11,9,0.4); border: 1px solid var(--border-light); color: var(--text-primary);
+}
+@media (hover: hover) { .ph-bg-btn:hover { border-color: var(--gold); color: var(--gold); } }
 .ph-link { margin-top: 6px; padding: 0; background: transparent; border: none; cursor: pointer; font-size: 11px; color: var(--text-secondary); text-decoration: underline; }
 @media (prefers-reduced-motion: reduce) { .ph-ring-fg { transition: none; } }
 /* «Повторити замовлення» — праворуч від суми в рядку історії */
@@ -510,6 +515,64 @@ textarea.form-input { resize: vertical; min-height: 120px; font-family: var(--fo
 @media (hover: hover) { .repeat-btn:hover { background: var(--accent); color: #0A0908; } }
 .repeat-btn .spin { animation: repeat-spin 0.8s linear infinite; }
 @keyframes repeat-spin { to { transform: rotate(-360deg); } }
+/* фон кабінету: під усім вмістом сторінки (портал у body, z-index -1) */
+.profile-bg { position: fixed; inset: 0; z-index: -1; pointer-events: none; }
+.profile-bg .mobile-only, .profile-bg .desktop-only { display: block; }
+@media (max-width: 860px) { .profile-bg .desktop-only { display: none !important; } }
+@media (min-width: 861px) { .profile-bg .mobile-only { display: none !important; } }
+.profile-bg-fade { position: absolute; left: 0; right: 0; bottom: 0; height: 35%; background: linear-gradient(transparent, var(--bg-primary)); }
+/* редактор фону кабінету: на телефоні — аркуш на весь екран, на ПК — модалка */
+.bge-overlay { position: fixed; inset: 0; z-index: 1000; background: rgba(0,0,0,0.75); display: flex; align-items: flex-end; justify-content: center; }
+.bge {
+  width: 100%; max-width: 560px; max-height: 94dvh; display: flex; flex-direction: column;
+  background: var(--bg-card); border: 1px solid var(--border-light); border-radius: 16px 16px 0 0; box-shadow: 0 -12px 40px rgba(0,0,0,0.5);
+}
+@media (min-width: 861px) { .bge-overlay { align-items: center; padding: 16px; } .bge { border-radius: 16px; } }
+.bge-head { display: flex; align-items: center; justify-content: space-between; padding: 14px 16px; border-bottom: 1px solid var(--border); }
+.bge-title { font-family: var(--font-display); font-size: 22px; font-weight: 700; }
+.bge-x { width: 34px; height: 34px; display: flex; align-items: center; justify-content: center; background: transparent; border: 1px solid var(--border-light); color: var(--text-primary); cursor: pointer; }
+.bge-body { padding: 14px 16px; overflow-y: auto; display: flex; flex-direction: column; gap: 12px; overscroll-behavior: contain; }
+/* у колонці з прокруткою елементи не стискаються по висоті (інакше сплющує вкладки й превʼю) */
+.bge-body > * { flex-shrink: 0; }
+.bge-fake-ava { flex-shrink: 0; }
+.bge-tabs, .bge-device { display: flex; gap: 6px; overflow-x: auto; scrollbar-width: none; }
+.bge-tabs::-webkit-scrollbar { display: none; }
+.bge-tabs button, .bge-device button {
+  flex-shrink: 0; padding: 8px 12px; border-radius: 999px; cursor: pointer; font-size: 13px; white-space: nowrap;
+  background: transparent; border: 1px solid var(--border-light); color: var(--text-secondary);
+}
+.bge-tabs button[aria-selected="true"], .bge-device button[aria-selected="true"] { border-color: var(--gold); color: var(--gold); background: var(--bg-elevated); }
+.bge-device button { flex: 1; }
+.bge-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; }
+.bge-thumb { aspect-ratio: 3 / 2; padding: 0; border-radius: 10px; overflow: hidden; cursor: pointer; border: 2px solid transparent; background: var(--bg-elevated); }
+.bge-thumb img { width: 100%; height: 100%; object-fit: cover; display: block; }
+.bge-thumb.on { border-color: var(--gold); }
+.bge-upload { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 2px; color: var(--text-secondary); font-size: 22px; border: 1px dashed var(--border-light); }
+.bge-upload span { font-size: 11px; }
+.bge-preview { position: relative; overflow: hidden; border-radius: 12px; border: 1px solid var(--border); background: var(--bg-primary); margin: 0 auto; }
+.bge-preview.mobile { width: min(200px, 55vw); aspect-ratio: 9 / 18; }
+.bge-preview.desktop { width: 100%; aspect-ratio: 16 / 9; }
+.bge-fake { position: absolute; inset: 0; padding: 12% 10%; display: flex; flex-direction: column; gap: 6px; pointer-events: none; }
+.bge-preview { touch-action: none; cursor: grab; user-select: none; -webkit-user-select: none; }
+.bge-preview:active { cursor: grabbing; }
+.bge-preview img { -webkit-user-drag: none; pointer-events: none; }
+.bge-zoom { position: absolute; right: 8px; bottom: 8px; padding: 2px 8px; border-radius: 999px; font-size: 11px; color: #fff; background: rgba(13,11,9,0.6); pointer-events: none; }
+.bge-hint { margin: -4px 0 0; text-align: center; font-size: 11px; color: var(--text-secondary); }
+.bge-fake-ava { width: 34px; height: 34px; border-radius: 50%; border: 2px solid var(--gold); background: var(--bg-elevated); }
+.bge-fake-name { font-family: var(--font-display); font-size: 15px; font-weight: 700; color: var(--text-primary); }
+.bge-fake-line { height: 8px; width: 80%; border-radius: 4px; background: rgba(255,255,255,0.18); }
+.bge-fake-line.short { width: 50%; }
+.bge-sliders { display: grid; grid-template-columns: 1fr; gap: 8px; }
+@media (min-width: 500px) { .bge-sliders { grid-template-columns: 1fr 1fr; } }
+.bge-sliders label { display: flex; flex-direction: column; gap: 2px; font-size: 12px; color: var(--text-secondary); }
+.bge-sliders b { color: var(--text-primary); font-weight: 500; }
+.bge-sliders input { width: 100%; accent-color: var(--gold); }
+.bge-link { align-self: flex-start; padding: 0; background: transparent; border: none; cursor: pointer; font-size: 12px; color: var(--text-secondary); text-decoration: underline; }
+.bge-idea { display: flex; flex-direction: column; gap: 8px; }
+.bge-credit { margin: 0; font-size: 10px; color: var(--text-secondary); opacity: 0.7; }
+.bge-foot { display: flex; gap: 8px; justify-content: flex-end; padding: 12px 16px calc(12px + env(safe-area-inset-bottom)); border-top: 1px solid var(--border); }
+.bge-foot .btn-primary { flex: 1; }
+@media (min-width: 861px) { .bge-foot .btn-primary { flex: 0 1 200px; } }
 /* скелетон із переливом (завантаження) */
 .skel {
   display: block; border-radius: 4px;

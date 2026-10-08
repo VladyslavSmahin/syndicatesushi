@@ -28,6 +28,7 @@ const nextConfig = {
     "/api/avatar": ["./node_modules/@img/**", "./node_modules/sharp/**"],
     "/api/tiktok": ["./node_modules/@img/**", "./node_modules/sharp/**"],
     "/api/tiktok/sync": ["./node_modules/@img/**", "./node_modules/sharp/**"],
+    "/api/profile-bg": ["./node_modules/@img/**", "./node_modules/sharp/**"],
     "/": ["./node_modules/@img/**", "./node_modules/sharp/**"],
   },
 };
