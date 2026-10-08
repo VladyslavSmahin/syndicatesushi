@@ -1,5 +1,6 @@
 "use client";
 
+import PasswordInput from "@/components/PasswordInput";
 import { useEffect, useState } from "react";
 import { createClient } from "@/lib/supabase/client";
 import s from "@/components/admin/admin.module.css";
@@ -90,9 +91,8 @@ export default function LoginPage() {
             value={email}
             onChange={(e) => { setEmail(e.target.value); setError(""); }}
           />
-          <input
+          <PasswordInput
             className={s.input}
-            type="password"
             placeholder="Пароль"
             autoComplete="current-password"
             value={password}

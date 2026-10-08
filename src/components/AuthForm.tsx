@@ -5,6 +5,7 @@ import {
   signInCustomer, signUpCustomer, signInCustomerPassword, resendConfirmation, requestPasswordReset, signOutCustomer,
 } from "@/features/account";
 import { formatPhone, isPhoneValid } from "@/lib/phone";
+import PasswordInput from "./PasswordInput";
 
 export const MIN_PASSWORD = 8;
 
@@ -22,6 +23,22 @@ const ERROR_TEXT: Record<Exclude<AuthErrorCode, null>, string> = {
   auth: "Не вдалося увійти. Якщо ви переходили за посиланням із листа — відкрийте його в цьому ж браузері або просто увійдіть з паролем.",
   profile: "Вхід виконано, але профіль не завантажився. Спробуйте пізніше або вийдіть і увійдіть іншим способом.",
 };
+
+/** Зрозуміла причина невдалої реєстрації (коди Supabase Auth); решта — загальний текст. */
+function signUpErrorText(error: { message: string; code?: string; status?: number }): string {
+  const m = `${error.code ?? ""} ${error.message}`;
+  if (/already|registered|user_already_exists|email_exists/i.test(m)) return "Ця пошта вже зареєстрована — увійдіть.";
+  if (/rate.?limit|over_email_send_rate_limit|too many/i.test(m) || error.status === 429)
+    return "Забагато спроб — сервіс листів тимчасово обмежив надсилання. Спробуйте за годину або увійдіть через Google.";
+  if (/not.?authori[sz]ed|email_address_not_authorized/i.test(m))
+    return "Зараз не можемо надіслати лист на цю пошту. Увійдіть через Google — це миттєво.";
+  if (/sending.*email|confirmation email|smtp/i.test(m))
+    return "Не вдалося надіслати лист підтвердження. Спробуйте пізніше або увійдіть через Google.";
+  if (/email_address_invalid|invalid.*email|email.*invalid/i.test(m)) return "Цю пошту не прийнято — перевірте адресу або спробуйте іншу.";
+  if (/weak_password|password/i.test(m)) return "Пароль надто простий — додайте цифри або літери.";
+  if (/signup_disabled|signups not allowed/i.test(m)) return "Реєстрація поштою зараз вимкнена — увійдіть через Google.";
+  return "Не вдалося зареєструватися. Спробуйте ще раз.";
+}
 
 export default function AuthForm({ errorCode = null, onSignedIn }: { errorCode?: AuthErrorCode; onSignedIn?: () => void }) {
   const [mode, setMode] = useState<AuthMode>("login");
@@ -74,7 +91,8 @@ export default function AuthForm({ errorCode = null, onSignedIn }: { errorCode?:
       const { error, needsConfirmation } = await signUpCustomer({ email: em, password, name: name.trim(), phone: phone.trim() });
       setBusy(false);
       if (error) {
-        setError(/already|registered/i.test(error.message) ? "Ця пошта вже зареєстрована — увійдіть." : "Не вдалося зареєструватися. Спробуйте ще раз.");
+        console.error("signUp:", (error as { code?: string }).code, error.message);
+        setError(signUpErrorText(error));
         return;
       }
       if (needsConfirmation) setSentTo({ email: em, kind: "confirm" });
@@ -185,7 +203,7 @@ export default function AuthForm({ errorCode = null, onSignedIn }: { errorCode?:
         <input className="form-input" type="email" placeholder="Пошта *" value={email} maxLength={200} autoComplete="email"
           onChange={(e) => setEmail(e.target.value)} />
         {mode !== "forgot" && (
-          <input className="form-input" type="password" placeholder={mode === "register" ? `Пароль * (від ${MIN_PASSWORD} символів)` : "Пароль"}
+          <PasswordInput className="form-input" placeholder={mode === "register" ? `Пароль * (від ${MIN_PASSWORD} символів)` : "Пароль"}
             value={password} maxLength={72} autoComplete={mode === "register" ? "new-password" : "current-password"}
             onChange={(e) => setPassword(e.target.value)} />
         )}
