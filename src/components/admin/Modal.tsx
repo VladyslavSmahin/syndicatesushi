@@ -1,6 +1,8 @@
 "use client";
 
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
+import { createPortal } from "react-dom";
+import { useScrollLock } from "@/lib/scrollLock";
 import s from "./admin.module.css";
 
 export default function Modal({
@@ -14,14 +16,19 @@ export default function Modal({
   children: React.ReactNode;
   footer?: React.ReactNode;
 }) {
+  // спільне блокування скролу (як на сайті): iOS ігнорує body overflow:hidden — сторінка під вікном не повинна їздити
+  useScrollLock(true);
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => { if (e.key === "Escape") onClose(); };
     window.addEventListener("keydown", onKey);
-    document.body.style.overflow = "hidden";
-    return () => { window.removeEventListener("keydown", onKey); document.body.style.overflow = ""; };
+    return () => window.removeEventListener("keydown", onKey);
   }, [onClose]);
+  // портал у body: вікно може відкриватись із шапки/меню з backdrop-filter — тоді fixed рахувався б від них
+  const [mounted, setMounted] = useState(false);
+  useEffect(() => setMounted(true), []);
+  if (!mounted) return null;
 
-  return (
+  return createPortal(
     <div
       onClick={onClose}
       className="fade-in"
@@ -36,13 +43,14 @@ export default function Modal({
           <div className={s.cardTitle}>{title}</div>
           <button className={`${s.btn} ${s.btnGhost} ${s.btnSmall}`} onClick={onClose}>Закрити</button>
         </div>
-        <div style={{ padding: 22, overflowY: "auto" }}>{children}</div>
+        <div style={{ padding: 22, overflowY: "auto", overscrollBehavior: "contain" }}>{children}</div>
         {footer && (
           <div style={{ padding: "16px 22px", borderTop: "1px solid var(--border)", display: "flex", justifyContent: "flex-end", gap: 10 }}>
             {footer}
           </div>
         )}
       </div>
-    </div>
+    </div>,
+    document.body,
   );
 }
