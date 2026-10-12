@@ -6,6 +6,7 @@ import { usePathname, useRouter } from "next/navigation";
 import RefreshButton from "./RefreshButton";
 import SushiLoader from "./SushiLoader";
 import Modal from "./Modal";
+import { WhatsNewBell, VersionLink } from "./WhatsNew";
 import { ADMIN_HELP } from "@/lib/adminHelp";
 import BrandMark from "../BrandMark";
 import { useAdminAuth } from "@/features/admin/AdminAuthContext";
@@ -203,6 +204,7 @@ export default function AdminShell({ children }: { children: React.ReactNode }) 
 
         <div className={s.userBox}>
           <SushiLoader navigating={!!pendingHref} />
+          <WhatsNewBell uid={user.id} />
           <RefreshButton action={refreshAdminAction} />
           <Link
             href={TRASH.href}
@@ -266,6 +268,7 @@ export default function AdminShell({ children }: { children: React.ReactNode }) 
           <button className={s.navItem} style={{ width: "100%", textAlign: "left", background: "transparent" }} onClick={signOut}>
             Вийти
           </button>
+          <VersionLink />
         </div>
       </aside>
 
