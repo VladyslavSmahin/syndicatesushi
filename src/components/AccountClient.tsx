@@ -42,6 +42,7 @@ export default function AccountClient() {
   const { ids: favIds } = useFavorites();
   // параметри з посилань: ?error=auth (callback не вдався), ?confirmed=1 (пошту підтверджено), ?reset=1 (новий пароль)
   const [params, setParams] = useState<{ error: boolean; confirmed: boolean; reset: boolean }>({ error: false, confirmed: false, reset: false });
+  const [pwChanged, setPwChanged] = useState(false);
 
   useEffect(() => {
     const q = new URLSearchParams(window.location.search);
@@ -63,7 +64,7 @@ export default function AccountClient() {
   if (loading || !profile) return <AccountSkeleton />;
 
   if (params.reset) {
-    return <NewPasswordCard onDone={() => { setParams((p) => ({ ...p, reset: false })); window.history.replaceState(null, "", "/account"); }} />;
+    return <NewPasswordCard onDone={() => { setParams((p) => ({ ...p, reset: false })); setPwChanged(true); window.history.replaceState(null, "", "/account"); }} />;
   }
 
   const active = orders.filter((o) => o.status !== "canceled");
@@ -73,6 +74,9 @@ export default function AccountClient() {
     <div className="acc-root" style={{ display: "flex", flexDirection: "column", gap: 20 }}>
       {params.confirmed && (
         <p style={{ margin: 0, fontSize: 14, color: "#5BB85B" }}>✓ Пошту підтверджено — реєстрацію завершено.</p>
+      )}
+      {pwChanged && (
+        <p style={{ margin: 0, fontSize: 14, color: "#5BB85B" }}>✓ Пароль змінено — наступного разу входьте з новим.</p>
       )}
       <ProfileBgLayer bg={profile.profileBg} />
       <ProfileHero profile={profile} ordersCount={orders.filter((o) => o.status !== "canceled").length} onChanged={() => refetch(true)} />
@@ -433,12 +437,17 @@ function NewPasswordCard({ onDone }: { onDone: () => void }) {
     setBusy(true);
     const { error } = await updatePassword(password);
     setBusy(false);
-    if (error) setError("Не вдалося змінити пароль. Спробуйте ще раз.");
-    else onDone();
+    if (error) {
+      const m = `${(error as { code?: string }).code ?? ""} ${error.message}`;
+      setError(/same_password|different from the old/i.test(m) ? "Новий пароль збігається зі старим — придумайте інший."
+        : /weak_password|weak/i.test(m) ? "Пароль надто простий — додайте цифри або літери."
+        : "Не вдалося змінити пароль. Спробуйте ще раз або запросіть нове посилання.");
+    } else onDone();
   };
   return (
     <form onSubmit={save} style={{ ...card, maxWidth: 440, display: "flex", flexDirection: "column", gap: 10 }}>
       <p style={{ margin: 0, fontSize: 16 }}>Новий пароль</p>
+      <p style={{ margin: 0, fontSize: 12, color: "var(--text-secondary)" }}>Придумайте новий пароль — далі входите з ним.</p>
       <PasswordInput className="form-input" autoComplete="new-password" placeholder={`Від ${MIN_PASSWORD} символів`}
         value={password} maxLength={72} onChange={(e) => setPassword(e.target.value)} />
       {error && <p style={{ color: "#E0726A", fontSize: 13, margin: 0 }}>{error}</p>}

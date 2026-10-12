@@ -58,7 +58,7 @@ export default function HomeClient() {
     const q = new URLSearchParams(window.location.search);
     if (q.get("login") !== "1") return;
     const err = q.get("error");
-    setAuthError(err === "auth" || err === "profile" ? err : null);
+    setAuthError(err === "auth" || err === "profile" || err === "reset" ? err : null);
     setAuthOpen(true);
     q.delete("login"); q.delete("error");
     const rest = q.toString();

@@ -21,11 +21,12 @@ type AuthMode = "login" | "register" | "forgot";
  *  Google — пошта вже підтверджена Google; номер (обовʼязковий) клієнт вкаже одразу після входу — у кабінеті або у вікні PhoneRequiredModal.
  *  Пошта + пароль — обовʼязкові ім'я, пошта, номер; увійти можна лише після підтвердження пошти з листа.
  *  onSignedIn — викликається після входу паролем (модалка закривається). */
-export type AuthErrorCode = "auth" | "profile" | null;
+export type AuthErrorCode = "auth" | "profile" | "reset" | null;
 
 const ERROR_TEXT: Record<Exclude<AuthErrorCode, null>, string> = {
   auth: "Не вдалося увійти. Якщо ви переходили за посиланням із листа — відкрийте його в цьому ж браузері або просто увійдіть з паролем.",
   profile: "Вхід виконано, але профіль не завантажився. Спробуйте пізніше або вийдіть і увійдіть іншим способом.",
+  reset: "Посилання для зміни пароля застаріло або вже використане. Введіть пошту — надішлемо нове.",
 };
 
 /** Зрозуміла причина невдалої реєстрації (коди Supabase Auth); решта — загальний текст. */
@@ -54,6 +55,8 @@ export default function AuthForm({ errorCode = null, onSignedIn }: { errorCode?:
   const [error, setError] = useState("");
   useEffect(() => {
     if (errorCode) setError(ERROR_TEXT[errorCode]);
+    // прострочене посилання з листа — одразу форма «Забули пароль?»
+    if (errorCode === "reset") setMode("forgot");
   }, [errorCode]);
   // лист надіслано: показуємо екран «перевірте пошту» з можливістю надіслати ще раз
   const [sentTo, setSentTo] = useState<{ email: string; kind: "confirm" | "reset" } | null>(null);
@@ -82,7 +85,12 @@ export default function AuthForm({ errorCode = null, onSignedIn }: { errorCode?:
       setBusy(true);
       const { error } = await requestPasswordReset(em);
       setBusy(false);
-      if (error) setError("Не вдалося надіслати лист. Спробуйте пізніше.");
+      if (error) {
+        console.error("reset password:", (error as { code?: string }).code, error.message);
+        setError(/rate.?limit|too many|over_email_send/i.test(`${(error as { code?: string }).code ?? ""} ${error.message}`) || (error as { status?: number }).status === 429
+          ? "Забагато запитів — зачекайте кілька хвилин і спробуйте ще раз."
+          : "Не вдалося надіслати лист. Спробуйте пізніше.");
+      }
       else setSentTo({ email: em, kind: "reset" });
       return;
     }
