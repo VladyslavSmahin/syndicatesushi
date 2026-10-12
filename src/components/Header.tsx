@@ -1,5 +1,6 @@
 "use client";
 
+import ThemeToggle from "./ThemeToggle";
 import { useEffect, useState } from "react";
 import { Icon } from "./icons";
 import BrandMark from "./BrandMark";
@@ -48,7 +49,7 @@ export default function Header({
     <header
       style={{
         position: "fixed", top: 0, left: 0, right: 0, zIndex: 100,
-        background: scrolled ? "rgba(13,11,9,0.97)" : "rgba(13,11,9,0.92)",
+        background: scrolled ? "var(--glass-strong)" : "var(--glass)",
         backdropFilter: "blur(14px)",
         borderBottom: `1px solid ${scrolled ? "var(--border)" : "transparent"}`,
         transition: "background 0.3s, border-color 0.3s",
@@ -93,6 +94,8 @@ export default function Header({
           {/* пошук — полем угорі Hero (див. Hero), у шапці лише кабінет */}
           {/* «Адмінка» (лише співробітникам) — на мобільному в бургер-меню (у шапці мало місця) */}
           <AdminLink className="desktop-only" />
+          {/* перемикач теми: на ПК — у шапці, на телефоні — у бургер-меню (у шапці мало місця) */}
+          <ThemeToggle className="desktop-only" />
           <button
             type="button"
             onClick={onAccountClick}
@@ -118,13 +121,13 @@ export default function Header({
             }}
           >
             {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img src={ASSET_ICONS.cart} alt="Кошик" style={{ width: 22, height: 22, filter: "invert(0.95)", display: "block" }} />
+            <img src={ASSET_ICONS.cart} alt="Кошик" style={{ width: 22, height: 22, filter: "var(--icon-filter)", display: "block" }} />
             {count > 0 && (
               <span
                 style={{
                   position: "absolute", top: -6, right: -6, minWidth: 18, height: 18, padding: "0 5px",
                   background: "var(--accent)", borderRadius: 9, fontSize: 9, fontWeight: 500,
-                  color: "#0A0908", display: "flex", alignItems: "center", justifyContent: "center",
+                  color: "var(--on-accent)", display: "flex", alignItems: "center", justifyContent: "center",
                 }}
               >
                 {count}

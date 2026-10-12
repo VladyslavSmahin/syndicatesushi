@@ -75,7 +75,7 @@ export default function HeroBgLayer({ photos, intervalMin = 5 }: { photos: HeroP
         );
       })}
       {/* плавний перехід у фон сторінки знизу */}
-      <div style={{ position: "absolute", inset: 0, zIndex: 2, background: "linear-gradient(180deg, transparent 55%, #0D0B09 100%)" }} />
+      <div style={{ position: "absolute", inset: 0, zIndex: 2, background: "linear-gradient(180deg, transparent var(--hero-fade), var(--page-bg) 100%)" }} />
     </div>
   );
 }

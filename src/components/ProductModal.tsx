@@ -200,7 +200,7 @@ export default function ProductModal({
               style={{
                 position: "absolute", top: 20, left: 20, padding: "6px 12px",
                 background: item.badge === "НОВЕ" ? "var(--badge-new)" : "var(--accent)",
-                color: "#0A0908", fontSize: 11, fontWeight: 500, letterSpacing: 2.5, textTransform: "uppercase",
+                color: item.badge === "НОВЕ" ? "#1A1208" : "var(--on-accent)", fontSize: 11, fontWeight: 500, letterSpacing: 2.5, textTransform: "uppercase",
               }}
             >
               {item.badge === "ХІТ" ? "ХІТ ПРОДАЖІВ" : item.badge}

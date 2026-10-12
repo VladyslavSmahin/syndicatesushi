@@ -8,6 +8,8 @@ import ScrollTopButton from "@/components/ScrollTopButton";
 import NavTracker from "@/components/NavTracker";
 import PhoneRequiredModal from "@/components/PhoneRequiredModal";
 import FavoritesFab from "@/components/FavoritesFab";
+import RefCapture from "@/components/RefCapture";
+import { THEME_BOOT } from "@/lib/theme";
 import { SITE_URL, SITE_NAME, CITY, DEFAULT_TITLE, TITLE_TEMPLATE, DEFAULT_DESCRIPTION } from "@/lib/seo";
 import { fetchOgImage } from "@/features/ogImage.server";
 import "./globals.css";
@@ -65,12 +67,17 @@ export default function RootLayout({
   children: React.ReactNode;
 }) {
   return (
-    <html lang="uk" className={`${cormorant.variable} ${jost.variable}`}>
+    // suppressHydrationWarning: data-theme ставить скрипт до гідрації (світла тема)
+    <html lang="uk" className={`${cormorant.variable} ${jost.variable}`} suppressHydrationWarning>
+      <head>
+        <script dangerouslySetInnerHTML={{ __html: THEME_BOOT }} />
+      </head>
       <body>
         <CartProvider><FavoritesProvider>{children}<FavoritesFab /></FavoritesProvider></CartProvider>
         <ScrollTopButton />
         <NavTracker />
         <PhoneRequiredModal />
+        <RefCapture />
         <Analytics />
         <SpeedInsights />
       </body>

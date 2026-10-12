@@ -44,7 +44,7 @@ export default function MenuCard({
               position: "absolute", top: 8, left: 8, padding: "3px 8px",
               background: item.badge === "НОВЕ" ? "var(--badge-new)" : "rgba(26,23,20,0.85)",
               border: item.badge === "НОВЕ" ? "none" : "1px solid var(--border-light)",
-              color: item.badge === "НОВЕ" ? "#1A1208" : "var(--text-primary)",
+              color: item.badge === "НОВЕ" ? "#1A1208" : "#F2EFE9",
               fontSize: 9, fontWeight: 500, letterSpacing: 2.5, textTransform: "uppercase",
               backdropFilter: "blur(6px)",
             }}
@@ -95,7 +95,7 @@ export default function MenuCard({
             color: "var(--accent)", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center",
             transition: "all 0.2s",
           }}
-          onMouseEnter={(e) => { e.currentTarget.style.background = "var(--accent)"; e.currentTarget.style.color = "#0A0908"; e.currentTarget.style.borderColor = "var(--accent)"; }}
+          onMouseEnter={(e) => { e.currentTarget.style.background = "var(--accent)"; e.currentTarget.style.color = "var(--on-accent)"; e.currentTarget.style.borderColor = "var(--accent)"; }}
           onMouseLeave={(e) => { e.currentTarget.style.background = "var(--bg-elevated)"; e.currentTarget.style.color = "var(--accent)"; e.currentTarget.style.borderColor = "var(--border-light)"; }}
         >
           <Icon.Plus width="13" height="13" />

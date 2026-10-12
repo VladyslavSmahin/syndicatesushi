@@ -3,107 +3,115 @@
 import { useCallback, useEffect, useRef, useState, type CSSProperties } from "react";
 import { usePublicBanners } from "@/features/publicData";
 
-const AUTO_MS = 5000;        // авто-перемикання кожні 5с
-const AFTER_MANUAL_MS = 5000; // після ручного — пауза (≥ 3с) до авто
+const AUTO_MS = 5000;  // авто-перемикання кожні 5с
+const SWIPE_PX = 40;   // з якого зсуву свайп перемикає банер
 
-// Hero-слайдер банерів: просто картинки, які клієнт завантажує в адмінці.
-// Без кліку/ціни — банер генерується клієнтом цілком як зображення.
+// Hero-слайдер банерів: картинки, які клієнт завантажує в адмінці (без кліку/ціни).
+// Телефон: банер на всю ширину, сусідні — за краєм. ПК: поточний по центру, попередній і наступний
+// виглядають напівпрозорими з боків (клік по них — перейти). Свайп / перетягування, стрілки й точки під банером,
+// авто-перемикання (пауза, поки курсор над банером, палець на ньому або вкладка прихована).
 export default function HeroPromoSlider() {
   const banners = usePublicBanners();
-  const [current, setCurrent] = useState(0);
-  const timer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const len = banners.length;
+  const [current, setCurrent] = useState(0);
+  const [dx, setDx] = useState(0);          // зсув під пальцем/мишею, px
+  const [paused, setPaused] = useState(false);
+  const boxRef = useRef<HTMLDivElement>(null);
+  const drag = useRef<{ x: number; y: number; id: number; horizontal: boolean | null } | null>(null);
 
-  const schedule = useCallback((delay: number) => {
-    if (timer.current) clearTimeout(timer.current);
-    if (!len) return;
-    timer.current = setTimeout(() => {
-      setCurrent((c) => (c + 1) % len);
-      schedule(AUTO_MS);
-    }, delay);
-  }, [len]);
+  const go = useCallback((i: number) => setCurrent(((i % len) + len) % len), [len]);
 
+  // авто: перезапускається після кожного перемикання (у т.ч. ручного) — повна пауза 5с
   useEffect(() => {
-    schedule(AUTO_MS);
-    return () => { if (timer.current) clearTimeout(timer.current); };
-  }, [schedule]);
+    if (len < 2 || paused) return;
+    const t = setTimeout(() => { if (!document.hidden) go(current + 1); }, AUTO_MS);
+    return () => clearTimeout(t);
+  }, [current, len, paused, go]);
 
-  const goTo = (i: number) => {
-    if (i === current) return;
-    setCurrent(i);
-    schedule(AFTER_MANUAL_MS); // після ручного — мінімум 3с (тут 5с) до авто
-  };
-
-  // зміщення слайда відносно центру з урахуванням «закільцьовування»
+  // зміщення слайда відносно поточного з урахуванням «закільцьовування»: −1 — попередній, 1 — наступний
   const offsetOf = (i: number) => {
     let o = i - current;
     if (o > len / 2) o -= len;
     if (o < -len / 2) o += len;
     return o;
   };
+  // попередні зміщення — щоб знати, які слайди були приховані (див. jump)
+  const prevOffsets = useRef<number[]>([]);
+  useEffect(() => { prevOffsets.current = banners.map((_, i) => offsetOf(i)); });
 
   if (!len) return null; // немає активних банерів — слайдер не показуємо
 
-  const styleFor = (o: number): CSSProperties => {
-    const base: CSSProperties = {
-      gridArea: "1 / 1",
-      width: "100%",
-      aspectRatio: "16 / 9",
-      transition: "transform 0.6s cubic-bezier(0.4,0,0.2,1), opacity 0.6s, filter 0.6s",
-      willChange: "transform, opacity",
-    };
-    if (o === 0) {
-      return { ...base, transform: "translateY(0) translateZ(0) scale(1)", opacity: 1, filter: "brightness(1)", zIndex: 30 };
+  const onDown = (e: React.PointerEvent) => {
+    if (len < 2 || (e.pointerType === "mouse" && e.button !== 0)) return;
+    drag.current = { x: e.clientX, y: e.clientY, id: e.pointerId, horizontal: null };
+  };
+  const onMove = (e: React.PointerEvent) => {
+    const d = drag.current;
+    if (!d || d.id !== e.pointerId) return;
+    const mx = e.clientX - d.x, my = e.clientY - d.y;
+    // перший помітний рух вирішує: гортаємо банер чи сторінку
+    if (d.horizontal === null && Math.hypot(mx, my) > 8) {
+      d.horizontal = Math.abs(mx) > Math.abs(my);
+      if (d.horizontal) boxRef.current?.setPointerCapture(e.pointerId);
     }
-    if (Math.abs(o) === 1) {
-      return {
-        ...base,
-        transform: `translateY(${o * 52}%) translateZ(-170px) scale(0.8)`,
-        opacity: 0.85, filter: "brightness(0.4)", zIndex: 20,
-      };
-    }
-    // далі за межами — ховаємо
-    return { ...base, transform: `translateY(${o > 0 ? 90 : -90}%) translateZ(-340px) scale(0.65)`, opacity: 0, zIndex: 10 };
+    if (d.horizontal) setDx(mx);
+  };
+  const onUp = () => {
+    const d = drag.current;
+    drag.current = null;
+    if (d?.horizontal && Math.abs(dx) > SWIPE_PX) go(current + (dx < 0 ? 1 : -1));
+    setDx(0);
   };
 
   return (
+    <div className="hps-wrap">
     <div
-      style={{
-        position: "relative", width: "100%", aspectRatio: "4 / 3",
-        display: "grid", placeItems: "center", perspective: 1200, overflow: "hidden",
-        // мʼяке затемнення зверху/знизу, щоб сусідні слайди «йшли в темряву»
-        WebkitMaskImage: "linear-gradient(180deg, transparent 0%, #000 16%, #000 84%, transparent 100%)",
-        maskImage: "linear-gradient(180deg, transparent 0%, #000 16%, #000 84%, transparent 100%)",
-      }}
+      ref={boxRef}
+      className={`hps${len > 1 ? " multi" : ""}${dx ? " dragging" : ""}`}
+      style={{ "--dx": `${dx}px` } as CSSProperties}
+      onPointerDown={onDown}
+      onPointerMove={onMove}
+      onPointerUp={onUp}
+      onPointerCancel={onUp}
+      onMouseEnter={() => setPaused(true)}
+      onMouseLeave={() => setPaused(false)}
+      onKeyDown={(e) => { if (e.key === "ArrowLeft") go(current - 1); if (e.key === "ArrowRight") go(current + 1); }}
+      role="region"
+      aria-roledescription="carousel"
+      aria-label="Акції та новини"
     >
-      {banners.map((b, i) => (
-        <div
-          key={b.id}
-          style={{
-            ...styleFor(offsetOf(i)),
-            border: "1px solid var(--border)", borderRadius: 8, overflow: "hidden", background: "#0A0908",
-            boxShadow: offsetOf(i) === 0 ? "0 16px 50px rgba(0,0,0,0.55)" : "none",
-          }}
-        >
-          {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img src={b.image} alt="" style={{ width: "100%", height: "100%", objectFit: "cover", display: "block" }} />
-        </div>
-      ))}
+      {banners.map((b, i) => {
+        const o = offsetOf(i);
+        // слайд, що був далеко (прихований), «перестрибує» на нове місце без анімації — не пролітає через видимі
+        const jump = Math.abs(prevOffsets.current[i] ?? o) >= 2;
+        return (
+          <div key={b.id} className="hps-slide" data-pos={o === 0 ? "center" : Math.abs(o) === 1 ? "side" : "far"}
+            aria-hidden={o !== 0}
+            style={{ "--o": o, transition: dx || jump ? "none" : undefined } as CSSProperties}
+            onClick={() => { if (Math.abs(o) === 1) go(i); }}>
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img src={b.image} alt="" draggable={false} loading={i === 0 ? "eager" : "lazy"} />
+          </div>
+        );
+      })}
+    </div>
 
-      {/* індикатори — вертикально, збоку справа */}
-      <div style={{ position: "absolute", top: 0, bottom: 0, right: 14, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 8, zIndex: 40 }}>
-        {banners.map((_, i) => (
-          <button
-            key={i}
-            onClick={() => goTo(i)}
-            aria-label={`Банер ${i + 1}`}
-            style={{
-              width: 8, height: i === current ? 22 : 8, borderRadius: 4, padding: 0, cursor: "pointer",
-              border: "none", background: i === current ? "var(--accent)" : "rgba(255,255,255,0.45)", transition: "all 0.3s",
-            }}
-          />
-        ))}
-      </div>
+      {/* стрілки й точки — під банером, щоб не закривати текст і ціну на картинці */}
+      {len > 1 && (
+        <div className="hps-nav">
+          <button type="button" className="hps-arrow" aria-label="Попередній банер" onClick={() => go(current - 1)}>‹</button>
+          <div className="hps-dots">
+            {banners.map((b, i) => (
+              <button key={b.id} type="button" className={`hps-dot${i === current ? " on" : ""}`}
+                aria-label={`Банер ${i + 1}`} aria-current={i === current} onClick={() => go(i)}>
+                {/* активна точка заповнюється за час до наступного банера */}
+                {i === current && !paused && <span key={current} style={{ animationDuration: `${AUTO_MS}ms` }} />}
+              </button>
+            ))}
+          </div>
+          <button type="button" className="hps-arrow" aria-label="Наступний банер" onClick={() => go(current + 1)}>›</button>
+        </div>
+      )}
     </div>
   );
 }

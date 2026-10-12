@@ -5,6 +5,7 @@ import { createClient } from "@/lib/supabase/server";
 import { rateLimit, clientIp } from "@/lib/rateLimit";
 import { parseContacts } from "@/lib/contacts";
 import { kyivNow, addDays, parseHours, toMinutes, PICKUP_DAYS_AHEAD, PICKUP_STEP_MIN } from "@/lib/kyivTime";
+import { findReferrer, referralBlock, firstName, REFERRAL_PERCENT } from "@/lib/referral.server";
 
 interface IncomingItem {
   id: string;        // uuid товару з каталогу
@@ -235,6 +236,28 @@ export async function POST(req: Request) {
     }
   }
 
+  // ---- Код запрошення друга (якщо це не звичайний промокод): −10% лише на перше замовлення ----
+  let referrerId: string | null = null;
+  let referralLine: string | null = null;
+  if (code && !promoCodeId) {
+    try {
+      const ref = await findReferrer(supabase, code);
+      if (ref) {
+        const block = await referralBlock(supabase, ref, { userId, phone });
+        const who = esc(firstName(ref.name) ?? "клієнта");
+        if (!block) {
+          referrerId = ref.id;
+          discount = Math.min(subtotal, Math.round((subtotal * REFERRAL_PERCENT) / 100));
+          referralLine = `🎁 <b>Запрошення:</b> від ${who} (код ${esc(code)}) — −${REFERRAL_PERCENT}% на перше замовлення`;
+        } else {
+          referralLine = `🎁 <b>Запрошення:</b> код ${esc(code)} від ${who} не застосовано — ${block === "self" ? "власний код" : "це не перше замовлення"}`;
+        }
+      }
+    } catch (e) {
+      console.error("referral check failed:", (e as Error).message);
+    }
+  }
+
   // ---- Доставка ----
   // Вартість доставки рахується менеджером окремо (від 100 грн, залежно від відстані),
   // тому в замовленні delivery_cost = 0, а адреса йде в Telegram/адмінку для прорахунку.
@@ -261,6 +284,7 @@ export async function POST(req: Request) {
         user_id: userId,
         subtotal,
         promo_code_id: promoCodeId,
+        ...(referrerId ? { referrer_id: referrerId } : {}),
         discount,
         delivery_cost: deliveryCost,
         total,
@@ -347,7 +371,7 @@ export async function POST(req: Request) {
     delivery === "delivery" && address ? `📍 <b>Адреса:</b> ${esc(address)}` : null,
     `🕒 <b>${delivery === "delivery" ? "Доставити" : "Забрати"}:</b> ${esc(schedule || "якнайшвидше")}`,
     cutleryQty > 0 ? `🥢 <b>Прибори:</b> ${cutleryQty} шт${cutleryNote}` : null,
-    code ? `🎟 <b>Промокод:</b> ${esc(code)}${discount ? ` (−${discount} грн)` : " (не застосовано)"}` : null,
+    referralLine ?? (code ? `🎟 <b>Промокод:</b> ${esc(code)}${discount ? ` (−${discount} грн)` : " (не застосовано)"}` : null),
     commentHtml ? `💬 <b>Коментар:</b> ${commentHtml}` : null,
     "",
     "<b>Позиції:</b>",

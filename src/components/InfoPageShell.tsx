@@ -10,7 +10,7 @@ export default function InfoPageShell({ title, children }: { title: string; chil
       <header
         style={{
           position: "sticky", top: 0, zIndex: 10, height: "var(--header-h)",
-          borderBottom: "1px solid var(--border)", background: "rgba(13,11,9,0.92)", backdropFilter: "blur(12px)",
+          borderBottom: "1px solid var(--border)", background: "var(--glass)", backdropFilter: "blur(12px)",
           display: "flex", alignItems: "center",
         }}
       >

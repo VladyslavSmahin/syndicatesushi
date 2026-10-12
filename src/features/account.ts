@@ -184,6 +184,18 @@ export async function suggestTheme(text: string): Promise<string | null> {
   return res.ok && j.ok ? null : (j.error || `HTTP ${res.status}`);
 }
 
+export interface MyReferral { code: string; friends: number; rewarded: number; points: number }
+
+/** «Запроси друга»: свій код (створюється при першому зверненні) + скільки друзів замовили й бали.
+ *  null — міграції ще немає або не вдалося. */
+export async function fetchMyReferral(): Promise<MyReferral | null> {
+  const supabase = createClient();
+  const [code, stats] = await Promise.all([supabase.rpc("customer_ref_code"), supabase.rpc("my_referrals")]);
+  if (code.error || !code.data) return null;
+  const row = (Array.isArray(stats.data) ? stats.data[0] : stats.data) as { friends?: number; rewarded?: number; points?: number } | null;
+  return { code: String(code.data), friends: Number(row?.friends ?? 0), rewarded: Number(row?.rewarded ?? 0), points: Number(row?.points ?? 0) };
+}
+
 /** Профіль поточного клієнта або null (не залогінений / не вдалося завантажити). */
 export const fetchCustomerProfile = () => loadProfile();
 

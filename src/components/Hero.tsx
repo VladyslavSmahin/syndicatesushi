@@ -26,6 +26,7 @@ export default function Hero({
   return (
     <section
       id="hero"
+      className="theme-dark"
       style={{
         position: "relative",
         padding: "var(--hero-pt) var(--page-pad) var(--py)",

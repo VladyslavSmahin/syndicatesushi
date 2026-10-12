@@ -1,6 +1,8 @@
 import { NextResponse } from "next/server";
 import { createAdminClient } from "@/lib/supabase/admin";
+import { createClient } from "@/lib/supabase/server";
 import { rateLimit, clientIp } from "@/lib/rateLimit";
+import { findReferrer, referralBlock, firstName, REFERRAL_PERCENT } from "@/lib/referral.server";
 
 // екранує спецсимволи LIKE (%, _, \), щоб ввід не змінював семантику пошуку
 const escapeLike = (s: string) => s.replace(/[\\%_]/g, (m) => "\\" + m);
@@ -13,7 +15,7 @@ export async function POST(req: Request) {
     return NextResponse.json({ ok: false, error: "rate_limited" }, { status: 429, headers: { "Retry-After": String(rl.retryAfter) } });
   }
 
-  let body: { code?: string; subtotal?: number };
+  let body: { code?: string; subtotal?: number; phone?: string };
   try {
     body = await req.json();
   } catch {
@@ -24,7 +26,8 @@ export async function POST(req: Request) {
   const subtotal = Math.max(0, Number(body.subtotal) || 0);
   if (!code) return NextResponse.json({ ok: true, valid: false });
 
-  const { data: pc } = await createAdminClient()
+  const supabase = createAdminClient();
+  const { data: pc } = await supabase
     .from("promo_codes")
     .select("discount_type, discount_value, is_active, valid_until, usage_limit, used_count")
     .ilike("code", escapeLike(code))
@@ -33,6 +36,19 @@ export async function POST(req: Request) {
   const valid = pc && pc.is_active
     && (!pc.valid_until || new Date(pc.valid_until) > new Date())
     && (pc.usage_limit == null || pc.used_count < pc.usage_limit);
+  if (!pc) {
+    // не промокод — може, код запрошення друга (−10% на перше замовлення)
+    const ref = await findReferrer(supabase, code);
+    if (ref) {
+      let userId: string | null = null;
+      try { userId = (await (await createClient()).auth.getUser()).data.user?.id ?? null; } catch { /* гість */ }
+      const phone = typeof body.phone === "string" ? body.phone.slice(0, 30) : null;
+      const block = await referralBlock(supabase, ref, { userId, phone });
+      if (block) return NextResponse.json({ ok: true, valid: false, reason: block });
+      const discount = Math.min(subtotal, Math.round((subtotal * REFERRAL_PERCENT) / 100));
+      return NextResponse.json({ ok: true, valid: true, discountType: "percent", value: REFERRAL_PERCENT, discount, referral: { name: firstName(ref.name) } });
+    }
+  }
   if (!valid) return NextResponse.json({ ok: true, valid: false });
 
   const v = Number(pc!.discount_value);

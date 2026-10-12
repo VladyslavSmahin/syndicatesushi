@@ -257,7 +257,7 @@ export default function FullMenu({
             style={{
               position: "fixed", left: "var(--fab-left, 14px)", bottom: "var(--fab-bottom, 78px)", zIndex: 95,
               height: 40, padding: "0 13px", borderRadius: 20,
-              background: "var(--accent)", color: "#0A0908", border: "none", cursor: "pointer",
+              background: "var(--accent)", color: "var(--on-accent)", border: "none", cursor: "pointer",
               display: "flex", alignItems: "center", gap: 6, boxShadow: "0 6px 18px rgba(0,0,0,0.45)",
               fontFamily: "var(--font-body)", fontSize: 11, fontWeight: 600, letterSpacing: 0.8, textTransform: "uppercase",
             }}

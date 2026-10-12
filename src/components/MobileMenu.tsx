@@ -1,5 +1,6 @@
 "use client";
 
+import ThemeToggle from "./ThemeToggle";
 import Link from "next/link";
 import { Icon } from "./icons";
 import { ASSET_ICONS } from "@/data/site";
@@ -47,9 +48,11 @@ export default function MobileMenu({
         <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "0 20px", height: "var(--header-h)", borderBottom: "1px solid var(--border)", flexShrink: 0 }}>
           <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
             {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img src={ASSET_ICONS.logo} alt="" style={{ height: 34 }} />
+            <img src={ASSET_ICONS.logo} alt="" className="site-logo" style={{ height: 34 }} />
             <div style={{ fontFamily: "var(--font-display)", fontWeight: 700, letterSpacing: 4, color: "var(--text-primary)" }}>SUSHI</div>
           </div>
+          <div style={{ display: "flex", gap: 8 }}>
+          <ThemeToggle />
           <button
             onClick={onClose}
             aria-label="Закрити меню"
@@ -57,6 +60,7 @@ export default function MobileMenu({
           >
             <Icon.Close width="18" height="18" />
           </button>
+          </div>
         </div>
 
         {/* nav + contacts */}

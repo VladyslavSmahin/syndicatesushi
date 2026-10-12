@@ -13,6 +13,7 @@ import { useScrollLock } from "@/lib/scrollLock";
 import ThumbImg from "./ThumbImg";
 import { formatPhone, isPhoneValid, phoneDigits } from "@/lib/phone";
 import { useCustomerProfile, updateCustomerPhone, useIsSignedIn } from "@/features/account";
+import { readRef, clearRef } from "@/lib/referral";
 
 const EXTRAS_CATEGORY = "додатково";
 // категорії, для яких потрібні набори приборів (палички, серветки)
@@ -116,7 +117,8 @@ export default function CartDrawer({ isOpen, onClose }: { isOpen: boolean; onClo
   const [serverTotal, setServerTotal] = useState<number | null>(null);
   const [promo, setPromo] = useState("");
   // застосований промокод (підтверджений сервером) + повідомлення/стан перевірки
-  const [promoInfo, setPromoInfo] = useState<{ code: string; discountType: "percent" | "fixed"; value: number } | null>(null);
+  // referral — код запрошення друга (імʼя того, хто запросив), а не звичайний промокод
+  const [promoInfo, setPromoInfo] = useState<{ code: string; discountType: "percent" | "fixed"; value: number; referral?: string | null } | null>(null);
   const [promoMsg, setPromoMsg] = useState<{ ok: boolean; text: string } | null>(null);
   const [promoChecking, setPromoChecking] = useState(false);
   const [promoOpen, setPromoOpen] = useState(false); // поле промокоду згорнуте за замовчуванням
@@ -168,24 +170,26 @@ export default function CartDrawer({ isOpen, onClose }: { isOpen: boolean; onClo
   };
 
   // перевірка промокоду на сервері (без створення замовлення)
-  const applyPromo = async () => {
-    const code = promo.trim();
+  const applyPromo = async (codeArg?: string) => {
+    const code = (codeArg ?? promo).trim();
     if (!code || promoChecking) return;
     setPromoChecking(true);
     setPromoMsg(null);
     try {
       const res = await fetch("/api/promo/check", {
         method: "POST", headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ code, subtotal: total }),
+        body: JSON.stringify({ code, subtotal: total, phone: isPhoneValid(phone) ? phone : undefined }),
       });
       const j = await res.json();
       if (res.status === 429) { setPromoMsg({ ok: false, text: "Забагато спроб, зачекайте хвилину." }); return; }
       if (j.valid) {
-        setPromoInfo({ code, discountType: j.discountType, value: j.value });
-        setPromoMsg({ ok: true, text: `Промокод застосовано: −${j.discount} грн` });
+        const referral = j.referral ? (j.referral.name ?? "друга") : null;
+        setPromoInfo({ code, discountType: j.discountType, value: j.value, referral });
+        setPromoMsg({ ok: true, text: referral ? `Запрошення від ${referral}: −${j.value}% на перше замовлення (−${j.discount} грн)` : `Промокод застосовано: −${j.discount} грн` });
       } else {
         setPromoInfo(null);
-        setPromoMsg({ ok: false, text: "Промокод неактуальний." });
+        setPromoMsg({ ok: false, text: j.reason === "not_first" ? "Код друга діє лише на перше замовлення." : j.reason === "self" ? "Це ваш власний код — поділіться ним із друзями." : "Промокод неактуальний." });
+        if (j.reason && codeArg) clearRef();
       }
     } catch {
       setPromoMsg({ ok: false, text: "Не вдалося перевірити промокод." });
@@ -193,6 +197,16 @@ export default function CartDrawer({ isOpen, onClose }: { isOpen: boolean; onClo
       setPromoChecking(false);
     }
   };
+
+  // прийшли за посиланням друга — на оформленні код підставляється сам (сервер перевірить, чи це перше замовлення)
+  useEffect(() => {
+    if (step !== "checkout" || promo.trim() || promoInfo) return;
+    const ref = readRef();
+    if (!ref) return;
+    setPromo(ref); setPromoOpen(true);
+    applyPromo(ref);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [step]);
 
   const needsCutlery = items.some((i) => CUTLERY_CATEGORIES.includes(catById.get(i.id) ?? ""));
   const cutleryQty = cutlery ?? autoCutlery(total);
@@ -263,6 +277,7 @@ export default function CartDrawer({ isOpen, onClose }: { isOpen: boolean; onClo
       // наступне замовлення — знову з номером із профілю (навіть якщо це було «лише для цього замовлення»)
       phoneFromProfile.current = null;
       clear();
+      if (promoInfo?.referral) clearRef();
       setPromo(""); setPromoInfo(null); setPromoMsg(null); setPromoOpen(false); setCutlery(null);
       setPickupMsg(""); setPickupChosen(false);
     } catch {
@@ -461,7 +476,7 @@ export default function CartDrawer({ isOpen, onClose }: { isOpen: boolean; onClo
                     color: promoInfo ? "var(--accent)" : "var(--text-secondary)",
                   }}
                 >
-                  {promoInfo ? `Промокод ${promoInfo.code} · −${discount} грн` : "У мене є промокод"}
+                  {promoInfo ? `${promoInfo.referral ? `🎁 Запрошення від ${promoInfo.referral}` : `Промокод ${promoInfo.code}`} · −${discount} грн` : "У мене є промокод"}
                   <span aria-hidden style={{ fontSize: 11, transition: "transform 0.2s", transform: promoOpen ? "rotate(180deg)" : "none" }}>▾</span>
                 </button>
                 <button type="button" onClick={() => setCommentOpen((v) => !v)}
@@ -489,7 +504,7 @@ export default function CartDrawer({ isOpen, onClose }: { isOpen: boolean; onClo
                   />
                   <button
                     type="button"
-                    onClick={applyPromo}
+                    onClick={() => applyPromo()}
                     disabled={!promo.trim() || promoChecking || !!promoInfo}
                     style={{
                       position: "absolute", right: 8, top: "50%", transform: "translateY(-50%)",

@@ -53,7 +53,7 @@ export default function MobileCategoryBar({
                 padding: "9px 16px", borderRadius: 10, cursor: "pointer", whiteSpace: "nowrap",
                 background: act ? "var(--accent)" : "var(--bg-elevated)",
                 border: `1px solid ${act ? "var(--accent)" : "var(--border-light)"}`,
-                color: act ? "#0A0908" : "var(--text-primary)", fontFamily: "var(--font-body)",
+                color: act ? "var(--on-accent)" : "var(--text-primary)", fontFamily: "var(--font-body)",
                 fontSize: 13, fontWeight: act ? 600 : 500, letterSpacing: 0.5,
                 transition: "background 0.15s, color 0.15s",
               }}

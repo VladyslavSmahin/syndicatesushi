@@ -33,7 +33,7 @@ export default function ProductPage({ item }: { item: Product }) {
       <header
         style={{
           position: "sticky", top: 0, zIndex: 10, height: "var(--header-h)",
-          borderBottom: "1px solid var(--border)", background: "rgba(13,11,9,0.92)", backdropFilter: "blur(12px)",
+          borderBottom: "1px solid var(--border)", background: "var(--glass)", backdropFilter: "blur(12px)",
           display: "flex", alignItems: "center",
         }}
       >
@@ -42,7 +42,7 @@ export default function ProductPage({ item }: { item: Product }) {
           <BackButton />
           <Link href="/" style={{ display: "flex", alignItems: "center", gap: 10, textDecoration: "none" }}>
             {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img src={ASSET_ICONS.logo} alt="Sushi Syndicate" style={{ height: 34 }} />
+            <img src={ASSET_ICONS.logo} alt="Sushi Syndicate" className="site-logo" style={{ height: 34 }} />
             <span style={{ fontFamily: "var(--font-display)", fontWeight: 700, letterSpacing: 4, color: "var(--text-primary)" }}>SUSHI</span>
           </Link>
           </div>
@@ -74,7 +74,7 @@ export default function ProductPage({ item }: { item: Product }) {
                 style={{
                   position: "absolute", top: 16, left: 16, padding: "6px 12px",
                   background: item.badge === "НОВЕ" ? "var(--badge-new)" : "var(--accent)",
-                  color: "#0A0908", fontSize: 11, fontWeight: 500, letterSpacing: 2.5, textTransform: "uppercase",
+                  color: item.badge === "НОВЕ" ? "#1A1208" : "var(--on-accent)", fontSize: 11, fontWeight: 500, letterSpacing: 2.5, textTransform: "uppercase",
                 }}
               >
                 {item.badge === "ХІТ" ? "ХІТ ПРОДАЖІВ" : item.badge}

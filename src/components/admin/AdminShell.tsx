@@ -76,6 +76,13 @@ export default function AdminShell({ children }: { children: React.ReactNode }) 
   const router = useRouter();
   const [navOpen, setNavOpen] = useState(false);
   const [helpOpen, setHelpOpen] = useState(false);
+  // адмінка завжди темна: якщо на сайті була світла тема — знімаємо її тут і повертаємо при виході
+  useEffect(() => {
+    const el = document.documentElement;
+    const was = el.dataset.theme;
+    delete el.dataset.theme;
+    return () => { if (was) el.dataset.theme = was; };
+  }, []);
   // куди йде перехід — для миттєвого візуального відгуку (спінер + підсвітка),
   // щоб не складалося враження зависання й не тиснули кілька разів
   const [pendingHref, setPendingHref] = useState<string | null>(null);

@@ -1,7 +1,8 @@
 "use client";
 
 import { useEffect, useState, type CSSProperties, type ReactNode } from "react";
-import { useAccount, signOutCustomer, updatePassword, type AccountOrder } from "@/features/account";
+import { useAccount, signOutCustomer, updatePassword, fetchMyReferral, type AccountOrder, type MyReferral } from "@/features/account";
+import { refLink, REF_PERCENT, REF_POINTS } from "@/lib/referral";
 import { MIN_PASSWORD } from "./AuthForm";
 import { useRouter } from "next/navigation";
 import { formatPhone, isPhoneValid } from "@/lib/phone";
@@ -86,7 +87,7 @@ export default function AccountClient() {
             style={{
               padding: "11px 4px", cursor: "pointer", fontFamily: "var(--font-body)", fontSize: "var(--acc-tab-fs, 11px)", letterSpacing: "var(--acc-tab-ls, 2px)", textTransform: "uppercase", whiteSpace: "nowrap",
               // неактивні — теж на напівпрозорій підкладці: фон кабінету може бути будь-якого кольору
-              background: tab === t ? "var(--bg-elevated)" : "rgba(13,11,9,0.62)",
+              background: tab === t ? "var(--bg-elevated)" : "var(--glass-soft)",
               backdropFilter: "blur(6px)", WebkitBackdropFilter: "blur(6px)",
               border: `1px solid ${tab === t ? "var(--accent)" : "var(--border-light)"}`,
               color: tab === t ? "var(--accent)" : "var(--text-secondary)",
@@ -100,6 +101,7 @@ export default function AccountClient() {
           <Section title="Мої дані" storageKey={`acc-collapse:${profile.id}:profile`} forceOpen={!profile.phone}>
             <ProfileCard key={profile.id + (profile.phone ?? "")} profile={profile} onSave={saveProfile} />
           </Section>
+          <InviteSection uid={profile.id} />
           <Section title="Статистика" storageKey={`acc-collapse:${profile.id}:stats`}>
             <div className="acc-stats">
               <Stat label="Замовлень" value={String(active.length)} />
@@ -123,6 +125,60 @@ export default function AccountClient() {
         <button className="btn-secondary" onClick={async () => { await signOutCustomer(); window.location.href = "/"; }}>
           Вийти
         </button>
+      </div>
+    </div>
+  );
+}
+
+/** Блок «Запросити друга» — лише коли код є (якщо міграції ще немає або запит не вдався — блоку не видно). */
+function InviteSection({ uid }: { uid: string }) {
+  const [ref, setRef] = useState<MyReferral | null | undefined>(undefined);
+  useEffect(() => { fetchMyReferral().then(setRef).catch(() => setRef(null)); }, []);
+  if (ref === null) return null;
+  return (
+    <Section title="Запросити друга" storageKey={`acc-collapse:${uid}:invite`}>
+      {ref === undefined ? <span className="skel" style={{ height: 120, borderRadius: 10, display: "block" }} /> : <InviteCard ref_={ref} />}
+    </Section>
+  );
+}
+
+/** «Запросити друга»: особистий код і посилання. Другу — −10% на перше замовлення,
+ *  вам — +10 балів, коли його замовлення виконано. */
+function InviteCard({ ref_: ref }: { ref_: MyReferral }) {
+  const [copied, setCopied] = useState<"link" | "code" | null>(null);
+
+  const link = refLink(ref.code);
+  const copy = async (what: "link" | "code") => {
+    try { await navigator.clipboard.writeText(what === "link" ? link : ref.code); setCopied(what); setTimeout(() => setCopied(null), 1800); } catch { /* ignore */ }
+  };
+  const share = async () => {
+    const text = `Тримай −${REF_PERCENT}% на перше замовлення в Sushi Syndicate 🍣`;
+    if (navigator.share) { try { await navigator.share({ title: "Sushi Syndicate", text, url: link }); return; } catch { return; } }
+    copy("link");
+  };
+
+  return (
+    <div style={{ ...card, display: "flex", flexDirection: "column", gap: 12 }}>
+      <p style={{ margin: 0, fontSize: 13, lineHeight: 1.5, color: "var(--text-secondary)" }}>
+        Другу — <b style={{ color: "var(--accent)" }}>−{REF_PERCENT}%</b> на перше замовлення, вам — <b style={{ color: "var(--accent)" }}>+{REF_POINTS} балів</b>, коли його замовлення виконано.
+      </p>
+      <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
+        <button type="button" onClick={() => copy("code")} title="Скопіювати код"
+          style={{ fontFamily: "var(--font-display)", fontSize: 24, letterSpacing: 4, padding: "6px 14px", borderRadius: 8, cursor: "pointer",
+            border: "1px dashed var(--accent)", background: "rgba(201,168,76,0.08)", color: "var(--text-primary)" }}>
+          {ref.code}
+        </button>
+        <span style={{ fontSize: 12, color: copied ? "#5BB85B" : "var(--text-secondary)" }}>
+          {copied === "code" ? "✓ Код скопійовано" : copied === "link" ? "✓ Посилання скопійовано" : "або ввести як промокод"}
+        </span>
+      </div>
+      <div style={{ display: "flex", gap: 8 }}>
+        <button type="button" className="btn-primary" style={{ flex: 1 }} onClick={share}>Поділитися</button>
+        <button type="button" className="btn-secondary" style={{ flex: 1 }} onClick={() => copy("link")}>Скопіювати посилання</button>
+      </div>
+      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8 }}>
+        <Stat label="Друзів замовило" value={String(ref.friends)} />
+        <Stat label="Мої бали" value={String(ref.points)} />
       </div>
     </div>
   );
