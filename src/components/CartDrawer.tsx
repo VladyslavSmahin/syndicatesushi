@@ -153,6 +153,19 @@ export default function CartDrawer({ isOpen, onClose }: { isOpen: boolean; onClo
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isOpen]);
 
+  // прийшли за посиланням друга — на оформленні код підставляється сам (сервер перевірить, чи це перше замовлення).
+  // Хук — до «if (!isOpen) return null» (порядок хуків не має залежати від того, чи відкритий кошик);
+  // applyPromo оголошено нижче, тому кличемо через ref.
+  useEffect(() => {
+    if (!isOpen || step !== "checkout" || promo.trim() || promoInfo) return;
+    const ref = readRef();
+    if (!ref) return;
+    setPromo(ref); setPromoOpen(true);
+    applyPromoRef.current?.(ref);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [step, isOpen]);
+  const applyPromoRef = useRef<((code?: string) => Promise<void>) | null>(null);
+
   if (!isOpen) return null;
 
   // знижка рахується наживо з поточної суми (працює при зміні кількості)
@@ -198,15 +211,7 @@ export default function CartDrawer({ isOpen, onClose }: { isOpen: boolean; onClo
     }
   };
 
-  // прийшли за посиланням друга — на оформленні код підставляється сам (сервер перевірить, чи це перше замовлення)
-  useEffect(() => {
-    if (step !== "checkout" || promo.trim() || promoInfo) return;
-    const ref = readRef();
-    if (!ref) return;
-    setPromo(ref); setPromoOpen(true);
-    applyPromo(ref);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [step]);
+  applyPromoRef.current = applyPromo;
 
   const needsCutlery = items.some((i) => CUTLERY_CATEGORIES.includes(catById.get(i.id) ?? ""));
   const cutleryQty = cutlery ?? autoCutlery(total);

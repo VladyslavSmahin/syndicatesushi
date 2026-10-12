@@ -8,6 +8,14 @@ export interface Release { version: string; date: string; title: string; groups:
 
 export const CHANGELOG: Release[] = [
   {
+    version: "1.11",
+    date: "2026-10-12",
+    title: "Кошик знову відкривається",
+    groups: [
+      { area: "Виправлення", items: ["Після оновлення 1.10 кошик не відкривався (сторінка видавала помилку). Виправлено."] },
+    ],
+  },
+  {
     version: "1.10",
     date: "2026-10-12",
     title: "Світла тема, нові банери й «Запроси друга»",
