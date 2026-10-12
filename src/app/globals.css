@@ -951,3 +951,13 @@ html.theme-anim, html.theme-anim *, html.theme-anim *::before, html.theme-anim *
 .co-cert-txt small { font-size: 11px; color: var(--text-secondary); }
 .co-cert-check { width: 20px; height: 20px; flex-shrink: 0; border-radius: 50%; border: 1px solid rgba(201,168,76,0.6); display: flex; align-items: center; justify-content: center; font-size: 12px; color: #1A1208; }
 .co-cert.on .co-cert-check { background: var(--gold); border-color: var(--gold); }
+/* вхід із вбудованого браузера Instagram / Telegram… — підказка відкрити в Safari/Chrome */
+.inapp-hint {
+  margin-bottom: 14px; padding: 10px 12px; border-radius: 10px; font-size: 12px; line-height: 1.5; color: var(--text-secondary);
+  background: rgba(232,165,71,0.1); border: 1px solid rgba(232,165,71,0.45);
+}
+.inapp-hint b { color: var(--text-primary); font-weight: 500; }
+.inapp-hint button {
+  display: block; margin-top: 8px; padding: 6px 12px; border-radius: 999px; cursor: pointer; font-size: 11px; letter-spacing: 1px;
+  background: transparent; border: 1px solid rgba(232,165,71,0.6); color: var(--text-primary); font-family: var(--font-body);
+}

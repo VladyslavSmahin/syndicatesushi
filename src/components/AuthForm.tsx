@@ -66,6 +66,11 @@ export default function AuthForm({ errorCode = null, onSignedIn }: { errorCode?:
   const em = email.trim().toLowerCase();
   const emailOk = EMAIL_RE.test(em);
 
+  // вбудований браузер Instagram / Facebook / Telegram / TikTok: там Google-вхід заборонений, а запити іноді «зависають»
+  const [inApp, setInApp] = useState(false);
+  useEffect(() => { setInApp(isInAppBrowser()); }, []);
+  const [linkCopied, setLinkCopied] = useState(false);
+
   const switchMode = (m: AuthMode) => { setMode(m); setError(""); setUnconfirmed(false); };
 
   const google = async () => {
@@ -83,8 +88,9 @@ export default function AuthForm({ errorCode = null, onSignedIn }: { errorCode?:
 
     if (mode === "forgot") {
       setBusy(true);
-      const { error } = await requestPasswordReset(em);
+      const { error } = await withTimeout(requestPasswordReset(em));
       setBusy(false);
+      if (error && isTimeout(error)) { setError(timeoutText(inApp)); return; }
       if (error) {
         console.error("reset password:", (error as { code?: string }).code, error.message);
         setError(/rate.?limit|too many|over_email_send/i.test(`${(error as { code?: string }).code ?? ""} ${error.message}`) || (error as { status?: number }).status === 429
@@ -100,8 +106,9 @@ export default function AuthForm({ errorCode = null, onSignedIn }: { errorCode?:
       if (!isPhoneValid(phone)) { setError("Вкажіть номер у форматі 093 728 42 98."); return; }
       if (password.length < MIN_PASSWORD) { setError(`Пароль — щонайменше ${MIN_PASSWORD} символів.`); return; }
       setBusy(true);
-      const { error, needsConfirmation } = await signUpCustomer({ email: em, password, name: name.trim(), phone: phone.trim() });
+      const { error, needsConfirmation } = await withTimeout(signUpCustomer({ email: em, password, name: name.trim(), phone: phone.trim() }));
       setBusy(false);
+      if (error && isTimeout(error)) { setError(timeoutText(inApp)); return; }
       if (error) {
         console.error("signUp:", (error as { code?: string }).code, error.message);
         setError(signUpErrorText(error));
@@ -113,8 +120,9 @@ export default function AuthForm({ errorCode = null, onSignedIn }: { errorCode?:
     }
 
     setBusy(true);
-    const { error } = await signInCustomerPassword(em, password);
+    const { error } = await withTimeout(signInCustomerPassword(em, password));
     setBusy(false);
+    if (error && isTimeout(error)) { setError(timeoutText(inApp)); return; }
     if (error) {
       if (/not confirmed/i.test(error.message)) { setUnconfirmed(true); setError("Пошту ще не підтверджено — перейдіть за посиланням із листа."); }
       else setError("Невірна пошта або пароль.");
@@ -125,7 +133,7 @@ export default function AuthForm({ errorCode = null, onSignedIn }: { errorCode?:
 
   const resend = async (to: string) => {
     setBusy(true);
-    const { error } = await resendConfirmation(to);
+    const { error } = await withTimeout(resendConfirmation(to));
     setBusy(false);
     if (error) setError("Не вдалося надіслати лист. Спробуйте за хвилину.");
     else setResent(true);
@@ -172,6 +180,17 @@ export default function AuthForm({ errorCode = null, onSignedIn }: { errorCode?:
                 color: mode === m ? "var(--accent)" : "var(--text-secondary)",
               }}>{l}</button>
           ))}
+        </div>
+      )}
+
+      {/* вбудований браузер соцмережі: Google-вхід там заборонений самим Google, а запити можуть зависати */}
+      {inApp && mode !== "forgot" && (
+        <div className="inapp-hint">
+          <b>Ви у вбудованому браузері застосунку.</b> Вхід через Google тут не працює, а реєстрація може зависнути.
+          Відкрийте сайт у Safari або Chrome: меню <b>⋯</b> → «Відкрити в браузері».
+          <button type="button" onClick={async () => {
+            try { await navigator.clipboard.writeText(window.location.origin + "/?login=1"); setLinkCopied(true); } catch { /* ignore */ }
+          }}>{linkCopied ? "✓ Посилання скопійовано" : "Скопіювати посилання"}</button>
         </div>
       )}
 
@@ -254,4 +273,34 @@ export default function AuthForm({ errorCode = null, onSignedIn }: { errorCode?:
       )}
     </div>
   );
+}
+
+// ---- захист від «вічного» «Зачекайте…» ----
+// Якщо запит до Supabase не відповів за 20 с (буває у вбудованих браузерах соцмереж / при поганому звʼязку) —
+// повертаємо помилку замість нескінченного очікування; так само для мережевого винятку.
+const AUTH_TIMEOUT_MS = 20_000;
+type AuthErr = { message: string; code?: string; status?: number };
+async function withTimeout<T extends { error: unknown }>(p: Promise<T>): Promise<T | (Omit<T, "error"> & { error: AuthErr; needsConfirmation?: boolean })> {
+  const timeout = new Promise<{ error: AuthErr }>((r) => setTimeout(() => r({ error: { message: "timeout", code: "client_timeout" } }), AUTH_TIMEOUT_MS));
+  try {
+    return (await Promise.race([p, timeout])) as T;
+  } catch (e) {
+    return { error: { message: (e as Error)?.message || "network", code: "client_network" } } as unknown as T;
+  }
+}
+const isTimeout = (e: unknown) => {
+  const c = (e as { code?: string })?.code;
+  return c === "client_timeout" || c === "client_network";
+};
+const timeoutText = (inApp: boolean) => inApp
+  ? "Сервер не відповів. У вбудованому браузері соцмережі вхід часто не працює: відкрийте сайт у Safari або Chrome і спробуйте ще раз."
+  : "Сервер не відповів. Перевірте інтернет і спробуйте ще раз.";
+
+/** Вбудований браузер застосунку (Instagram, Facebook, Messenger, TikTok, Telegram, Viber…). */
+function isInAppBrowser(): boolean {
+  if (typeof navigator === "undefined") return false;
+  const ua = navigator.userAgent || "";
+  if (/Instagram|FBAN|FBAV|FB_IAB|FBIOS|Messenger|musical_ly|TikTok|Bytedance|Line\/|Viber|Telegram|; wv\)/i.test(ua)) return true;
+  // Telegram на iOS не пише себе в UA, але додає свій обʼєкт
+  return typeof window !== "undefined" && "TelegramWebviewProxy" in window;
 }

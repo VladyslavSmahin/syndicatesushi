@@ -4,7 +4,9 @@ import { useCallback, useEffect, useRef, useState, type CSSProperties } from "re
 import { usePublicBanners } from "@/features/publicData";
 
 const AUTO_MS = 5000;  // авто-перемикання кожні 5с
-const SWIPE_PX = 40;   // з якого зсуву свайп перемикає банер
+const SWIPE_PX = 30;    // з якого зсуву перемикає повільний свайп (або 8% ширини банера, що менше)
+const FLICK_PX = 10;    // швидкий змах: достатньо такого зсуву…
+const FLICK_SPEED = 0.25; // …якщо палець рухався швидше за 0.25 px/мс
 
 // Hero-слайдер банерів: картинки, які клієнт завантажує в адмінці (без кліку/ціни).
 // Телефон: банер на всю ширину, сусідні — за краєм. ПК: поточний по центру, попередній і наступний
@@ -15,18 +17,19 @@ export default function HeroPromoSlider() {
   const len = banners.length;
   const [current, setCurrent] = useState(0);
   const [dx, setDx] = useState(0);          // зсув під пальцем/мишею, px
-  const [paused, setPaused] = useState(false);
+  const [paused, setPaused] = useState(false); // курсор миші над банером (лише ПК; дотик паузу не ставить)
   const boxRef = useRef<HTMLDivElement>(null);
-  const drag = useRef<{ x: number; y: number; id: number; horizontal: boolean | null } | null>(null);
+  const drag = useRef<{ x: number; y: number; id: number; horizontal: boolean | null; t0: number } | null>(null);
+  const dxRef = useRef(0);
 
   const go = useCallback((i: number) => setCurrent(((i % len) + len) % len), [len]);
 
   // авто: перезапускається після кожного перемикання (у т.ч. ручного) — повна пауза 5с
   useEffect(() => {
-    if (len < 2 || paused) return;
+    if (len < 2 || paused || dx) return; // поки тягнуть — не перемикаємо
     const t = setTimeout(() => { if (!document.hidden) go(current + 1); }, AUTO_MS);
     return () => clearTimeout(t);
-  }, [current, len, paused, go]);
+  }, [current, len, paused, dx, go]);
 
   // зміщення слайда відносно поточного з урахуванням «закільцьовування»: −1 — попередній, 1 — наступний
   const offsetOf = (i: number) => {
@@ -43,23 +46,34 @@ export default function HeroPromoSlider() {
 
   const onDown = (e: React.PointerEvent) => {
     if (len < 2 || (e.pointerType === "mouse" && e.button !== 0)) return;
-    drag.current = { x: e.clientX, y: e.clientY, id: e.pointerId, horizontal: null };
+    drag.current = { x: e.clientX, y: e.clientY, id: e.pointerId, horizontal: null, t0: performance.now() };
   };
   const onMove = (e: React.PointerEvent) => {
     const d = drag.current;
     if (!d || d.id !== e.pointerId) return;
     const mx = e.clientX - d.x, my = e.clientY - d.y;
-    // перший помітний рух вирішує: гортаємо банер чи сторінку
-    if (d.horizontal === null && Math.hypot(mx, my) > 8) {
-      d.horizontal = Math.abs(mx) > Math.abs(my);
-      if (d.horizontal) boxRef.current?.setPointerCapture(e.pointerId);
+    // перший помітний рух вирішує: гортаємо банер чи сторінку (горизонталь — з невеликою перевагою)
+    if (d.horizontal === null && Math.hypot(mx, my) > 6) {
+      d.horizontal = Math.abs(mx) > Math.abs(my) * 0.8;
+      if (d.horizontal) { try { boxRef.current?.setPointerCapture(e.pointerId); } catch { /* вказівник уже відпущено */ } }
     }
-    if (d.horizontal) setDx(mx);
+    if (d.horizontal) {
+      dxRef.current = mx;
+      setDx(mx);
+    }
   };
   const onUp = () => {
     const d = drag.current;
     drag.current = null;
-    if (d?.horizontal && Math.abs(dx) > SWIPE_PX) go(current + (dx < 0 ? 1 : -1));
+    const moved = dxRef.current;
+    dxRef.current = 0;
+    if (d?.horizontal) {
+      const w = boxRef.current?.clientWidth ?? 400;
+      const far = Math.abs(moved) > Math.min(SWIPE_PX, w * 0.08);
+      // швидкий змах: середня швидкість за весь жест
+      const flick = Math.abs(moved) > FLICK_PX && Math.abs(moved) / Math.max(1, performance.now() - d.t0) > FLICK_SPEED;
+      if (far || flick) go(current + (moved < 0 ? 1 : -1));
+    }
     setDx(0);
   };
 
@@ -73,8 +87,8 @@ export default function HeroPromoSlider() {
       onPointerMove={onMove}
       onPointerUp={onUp}
       onPointerCancel={onUp}
-      onMouseEnter={() => setPaused(true)}
-      onMouseLeave={() => setPaused(false)}
+      onPointerEnter={(e) => { if (e.pointerType === "mouse") setPaused(true); }}
+      onPointerLeave={(e) => { if (e.pointerType === "mouse") setPaused(false); }}
       onKeyDown={(e) => { if (e.key === "ArrowLeft") go(current - 1); if (e.key === "ArrowRight") go(current + 1); }}
       role="region"
       aria-roledescription="carousel"
