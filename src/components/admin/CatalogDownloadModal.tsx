@@ -158,9 +158,6 @@ export default function CatalogDownloadModal({
             {cb(showDesc, setShowDesc, "Опис і склад (грамовка)")}
             {cb(showIngredients, setShowIngredients, "Окрема сторінка «Інгредієнти» (КБЖУ на 100 г)")}
           </div>
-          <p className={s.hint} style={{ fontSize: 11, marginTop: 10 }}>
-            Вага й кількість шт показуються завжди. У каталог потрапляють усі товари (зокрема приховані).
-          </p>
           {err && <p style={{ color: "var(--danger, #b8002e)", fontSize: 12, marginTop: 8 }}>{err}</p>}
         </div>
       </div>

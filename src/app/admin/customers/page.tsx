@@ -99,7 +99,6 @@ export default function CustomersPage() {
   }, [customers]);
 
   const loading = tab === "all" ? !orders || custLoading : custLoading;
-  const registeredCount = clients.filter((c) => c.account).length;
 
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
@@ -109,11 +108,6 @@ export default function CustomersPage() {
         ))}
       </div>
 
-      <p className={s.hint} style={{ margin: 0, fontSize: 13 }}>
-        {tab === "all"
-          ? <>Усі, хто будь-коли замовляв (за номером телефону). Сума й кількість — без скасованих. <span className={s.cReg}>✓</span> — є акаунт на сайті ({registeredCount} з {clients.length}).</>
-          : <>Акаунти на сайті. Клієнту рахуються замовлення з акаунта й усі замовлення на номер із його профілю.</>}
-      </p>
 
       <div style={{ display: "flex", gap: 8, flexWrap: "wrap", alignItems: "center" }}>
         <input className={s.input} value={q} onChange={(e) => setQ(e.target.value)} placeholder="Пошук: ім'я, номер, email"
@@ -147,7 +141,7 @@ export default function CustomersPage() {
                 </span>
               </span>
               <span className={s.cPhone}>{c.phone}</span>
-              <span className={s.cCount}>{c.count} замовл.</span>
+              <span className={s.cCount}>{c.count} зам.</span>
               <span className={s.cSum}>{money(c.sum)}</span>
               <span className={s.cLast}>{shortDate(c.lastAt)}</span>
             </button>
@@ -167,18 +161,13 @@ export default function CustomersPage() {
               <span className={s.cPhone}>
                 {c.phone || "без номера"}
               </span>
-              <span className={s.cCount}>{c.ordersCount} замовл.</span>
+              <span className={s.cCount}>{c.ordersCount} зам.</span>
               <span className={s.cSum}>{money(c.ordersTotal)}</span>
               <span className={s.cLast}>{shortDate(c.lastOrderAt ?? c.createdAt)}</span>
             </button>
           ))
         )}
       </div>
-      {tab === "registered" && (
-        <p className={s.hint} style={{ margin: 0, fontSize: 12 }}>
-          G — через Google, @ — поштою; ✓ — номер підтверджено; <span style={{ color: "var(--accent)" }}>+N</span> — замовлень на номер, які привʼяжуться після підтвердження.
-        </p>
-      )}
 
       {selected && <CustomerModal customer={selected} onClose={() => setSelected(null)} />}
       {selectedClient && <ClientModal client={selectedClient} onClose={() => setSelectedClient(null)} />}

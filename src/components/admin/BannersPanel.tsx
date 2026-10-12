@@ -110,12 +110,6 @@ export default function BannersPanel() {
         <input ref={fileRef} type="file" accept="image/*" hidden onChange={onFile} />
       </div>
 
-      <p className={s.hint} style={{ margin: "0 0 14px" }}>
-        Клієнт сам готує банер як картинку — тут лише завантаження. Сайт автоматично конвертує
-        у <code>WebP</code> і кладе у сховище. Активні банери показуються в слайдері на головній,
-        у заданому порядку. Порядок — перетягніть картку або стрілками ↑/↓. Рекомендований формат —
-        горизонтальний (16:9), до {MAX_MB} МБ.
-      </p>
 
       {error && <p className={s.hint} style={{ color: "var(--danger, #e35)", margin: "0 0 14px" }}>{error}</p>}
 

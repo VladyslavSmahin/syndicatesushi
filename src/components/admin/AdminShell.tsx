@@ -4,6 +4,9 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import RefreshButton from "./RefreshButton";
+import SushiLoader from "./SushiLoader";
+import Modal from "./Modal";
+import { ADMIN_HELP } from "@/lib/adminHelp";
 import BrandMark from "../BrandMark";
 import { useAdminAuth } from "@/features/admin/AdminAuthContext";
 import { refreshAdminAction } from "@/features/admin/actions/common";
@@ -15,6 +18,16 @@ const TRASH = { href: "/admin/deleted", label: "Кошик" };
 
 // групи меню за замовчуванням згорнуті; стан запамʼятовуємо для кожного співробітника (localStorage, ключ з id)
 const collapsedKey = (uid: string) => `admin-nav-collapsed:${uid}`;
+
+// «Огляд» + «Клієнти» + «Статистика» — одна сторінка з табами (пункт меню — лише «Огляд»)
+const OVERVIEW_TABS = [
+  { href: "/admin", label: "Огляд" },
+  { href: "/admin/customers", label: "Клієнти" },
+  { href: "/admin/stats", label: "Статистика" },
+];
+const isOverview = (p: string) => OVERVIEW_TABS.some((t) => t.href === p);
+/** Пункт меню, що відповідає сторінці (таби огляду → «Огляд»). */
+const navHref = (p: string) => (isOverview(p) ? "/admin" : p);
 
 const NAV: { group: string; items: { href: string; label: string }[] }[] = [
   {
@@ -29,26 +42,10 @@ const NAV: { group: string; items: { href: string; label: string }[] }[] = [
     ],
   },
   {
-    group: "Маркетинг",
-    items: [
-      { href: "/admin/promos", label: "Акції" },
-      { href: "/admin/promo-codes", label: "Промокоди" },
-      { href: "/admin/hero-bg", label: "Фон головної" },
-      { href: "/admin/tiktok", label: "TikTok" },
-    ],
-  },
-  {
     group: "Замовлення",
     items: [
       { href: "/admin/orders/board", label: "Дошка замовлень" },
       { href: "/admin/reviews", label: "Відгуки" },
-    ],
-  },
-  {
-    group: "Клієнти",
-    items: [
-      { href: "/admin/customers", label: "Клієнти" },
-      { href: "/admin/stats", label: "Статистика" },
     ],
   },
   {
@@ -61,6 +58,15 @@ const NAV: { group: string; items: { href: string; label: string }[] }[] = [
       { href: "/admin/staff", label: "Співробітники" },
     ],
   },
+  {
+    group: "Маркетинг",
+    items: [
+      { href: "/admin/promos", label: "Акції" },
+      { href: "/admin/promo-codes", label: "Промокоди" },
+      { href: "/admin/hero-bg", label: "Фон головної" },
+      { href: "/admin/tiktok", label: "TikTok" },
+    ],
+  },
 ];
 
 export default function AdminShell({ children }: { children: React.ReactNode }) {
@@ -68,6 +74,7 @@ export default function AdminShell({ children }: { children: React.ReactNode }) 
   const pathname = usePathname();
   const router = useRouter();
   const [navOpen, setNavOpen] = useState(false);
+  const [helpOpen, setHelpOpen] = useState(false);
   // куди йде перехід — для миттєвого візуального відгуку (спінер + підсвітка),
   // щоб не складалося враження зависання й не тиснули кілька разів
   const [pendingHref, setPendingHref] = useState<string | null>(null);
@@ -81,7 +88,7 @@ export default function AdminShell({ children }: { children: React.ReactNode }) 
 
   /** Група поточної сторінки має бути розгорнута (щоб було видно, де ви). */
   const withActiveOpen = useCallback((list: string[]) => {
-    const active = NAV.find((g) => g.items.some((it) => it.href === pathname))?.group;
+    const active = NAV.find((g) => g.items.some((it) => it.href === navHref(pathname)))?.group;
     return active && list.includes(active) ? list.filter((g) => g !== active) : list;
   }, [pathname]);
 
@@ -110,7 +117,8 @@ export default function AdminShell({ children }: { children: React.ReactNode }) 
 
   // ---- свайп вліво/вправо (телефон) — сусідній розділ меню, наскрізь через групи ----
   const touch = useRef<{ x: number; y: number; t: number; skip: boolean } | null>(null);
-  const flat = NAV.flatMap((g) => g.items);
+  // свайп іде і по табах огляду: Огляд → Клієнти → Статистика → Категорії…
+  const flat = NAV.flatMap((g) => g.items).flatMap((it) => (it.href === "/admin" ? OVERVIEW_TABS : [it]));
   const onTouchStart = (e: React.TouchEvent) => {
     const t = e.touches[0];
     touch.current = { x: t.clientX, y: t.clientY, t: Date.now(), skip: e.touches.length > 1 || !swipeAllowed(e.target as HTMLElement) };
@@ -134,7 +142,7 @@ export default function AdminShell({ children }: { children: React.ReactNode }) 
   const isLogin = pathname === "/admin/login";
 
   // перехід завершено (маршрут змінився) — прибираємо індикатор
-  useEffect(() => { setNavOpen(false); setPendingHref(null); }, [pathname]);
+  useEffect(() => { setNavOpen(false); setPendingHref(null); setHelpOpen(false); }, [pathname]);
 
   // перейшли на сторінку зі згорнутої групи — розгортаємо її (далі користувач може знову згорнути)
   useEffect(() => {
@@ -179,7 +187,7 @@ export default function AdminShell({ children }: { children: React.ReactNode }) 
   if (!user) return null;
 
   const title =
-    [...NAV.flatMap((g) => g.items), TRASH].find((i) => i.href === pathname)?.label ?? "Адмінка";
+    [...NAV.flatMap((g) => g.items), ...OVERVIEW_TABS, TRASH].find((i) => i.href === pathname)?.label ?? "Адмінка";
 
   return (
     <div className={s.frame}>
@@ -194,6 +202,7 @@ export default function AdminShell({ children }: { children: React.ReactNode }) 
         </div>
 
         <div className={s.userBox}>
+          <SushiLoader navigating={!!pendingHref} />
           <RefreshButton action={refreshAdminAction} />
           <Link
             href={TRASH.href}
@@ -234,7 +243,7 @@ export default function AdminShell({ children }: { children: React.ReactNode }) 
               </svg>
             </button>
             {open && g.items.map((it) => {
-              const active = pathname === it.href;
+              const active = navHref(pathname) === it.href;
               const pending = pendingHref === it.href;
               return (
                 <Link
@@ -261,7 +270,30 @@ export default function AdminShell({ children }: { children: React.ReactNode }) 
       </aside>
 
       <div className={s.main} onTouchStart={onTouchStart} onTouchEnd={onTouchEnd}>
-        <h1 className={s.pageTitle}>{title}</h1>
+        <div className={s.pageTitleRow}>
+          <h1 className={s.pageTitle}>{isOverview(pathname) ? "Огляд" : title}</h1>
+          {ADMIN_HELP[pathname] && (
+            <button type="button" className={s.helpBtn} onClick={() => setHelpOpen(true)} aria-label="Підказка до розділу" title="Підказка">?</button>
+          )}
+        </div>
+        {helpOpen && ADMIN_HELP[pathname] && (
+          <Modal title={`Підказка · ${isOverview(pathname) ? OVERVIEW_TABS.find((t) => t.href === pathname)?.label : title}`} onClose={() => setHelpOpen(false)}>
+            <ul className={s.helpList}>
+              {ADMIN_HELP[pathname].map((t) => <li key={t}>{t}</li>)}
+            </ul>
+          </Modal>
+        )}
+        {isOverview(pathname) && (
+          <nav className={s.ovTabs} aria-label="Розділи огляду">
+            {OVERVIEW_TABS.map((t) => (
+              <Link key={t.href} href={t.href} aria-current={pathname === t.href ? "page" : undefined}
+                onClick={() => { if (pathname !== t.href) setPendingHref(t.href); }}
+                className={`${s.ovTab} ${pathname === t.href || pendingHref === t.href ? s.ovTabOn : ""}`}>
+                {t.label}
+              </Link>
+            ))}
+          </nav>
+        )}
         <div className={s.content}>{children}</div>
       </div>
     </div>

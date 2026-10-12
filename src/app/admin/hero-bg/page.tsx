@@ -116,12 +116,6 @@ export default function HeroBgPage() {
 
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 20 }}>
-      <p className={s.hint}>
-        Фонові фото головного екрана — під заголовком «Sushi Syndicate». Для кожного фото налаштуйте розмиття
-        й затемнення так, щоб текст добре читався. Фото можна додавати скільки завгодно: активні по черзі
-        змінюють одне одне (за замовчуванням — раз на 5 хвилин), і всі відвідувачі бачать те саме фото.
-        Без фото головна виглядає як зараз.
-      </p>
 
       <div className={s.card} style={{ borderColor: "rgba(201,168,76,0.45)" }}>
         <div className={s.cardBody} style={{ fontSize: 14, lineHeight: 1.6, color: "var(--text-primary)" }}>
@@ -171,9 +165,6 @@ export default function HeroBgPage() {
 
           {draft.photos.length === 0 && (
             <p className={s.hint}>Фото ще немає. Натисніть «Завантажити фото» — можна обрати кілька одразу.</p>
-          )}
-          {draft.photos.some((p) => !p.active) && (
-            <p className={s.hint}>Нові фото завантажуються вимкненими: налаштуйте повзунки, увімкніть «Показувати на сайті» і натисніть «Зберегти зміни».</p>
           )}
 
           <div className={s.heroGrid}>

@@ -62,10 +62,6 @@ export default function PromosPage() {
 
       {tab === "banners" ? <BannersPanel /> : (
       <>
-      <p className={s.hint}>
-        Акції — спецціна на товар (перерахунок на сервері). Банер головної — у вкладці «Баннери»
-        (клієнт завантажує готову картинку, сайт конвертує у WebP).
-      </p>
 
       <div className={s.card}>
         <div className={s.cardHead}>

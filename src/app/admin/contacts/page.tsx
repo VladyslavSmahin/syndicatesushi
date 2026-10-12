@@ -48,11 +48,6 @@ export default function ContactsPage() {
 
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 20 }}>
-      <p className={s.hint}>
-        Контакти показуються на сайті (шапка, футер, мобільне меню, блок з картою) і в юридичних
-        сторінках — «Оферта» та «Політика конфіденційності». Посилання на соцмережі: порожнє поле —
-        іконка не показується.
-      </p>
 
       {loading ? (
         <div className={s.card}><div className={s.placeholder}><p className={s.hint}>Завантаження…</p></div></div>

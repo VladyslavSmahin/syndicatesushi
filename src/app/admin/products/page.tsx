@@ -278,16 +278,6 @@ export default function ProductsPage() {
 
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 20 }}>
-      <div style={{ display: "flex", alignItems: "flex-start", gap: 12 }}>
-        <p className={s.hint} style={{ flex: 1, margin: 0 }}>
-          Товари згруповані за категоріями. Для сетів (категорія «Сети») склад задається ролами,
-          для решти — інгредієнтами (за ними працює фільтр на сайті).
-          Порядок товарів у категорії — перетягніть рядок за ⠿ або стрілками ▲▼; так само вони
-          показуються на сайті.
-        </p>
-        <button className={`${s.btn} ${s.btnGhost} ${s.btnSmall}`} style={{ flexShrink: 0 }} onClick={() => setShowCatalog(true)} disabled={!products.length}>↓ Каталог PDF</button>
-      </div>
-
       <BulkPriceTool products={active} ingredients={ingredients} categories={categories} subcategories={subcategories} onApplied={refetch} />
 
       {/* фільтр за категорією — на телефоні слайдер в один рядок */}
@@ -333,10 +323,20 @@ export default function ProductsPage() {
       )}
 
       <div className={s.card}>
-        <div className={s.cardHead}>
-          <div className={s.cardTitle}>Товари ({filtered.length})</div>
-          <div style={{ display: "flex", alignItems: "center", gap: 10, flex: 1, justifyContent: "flex-end", flexWrap: "wrap" }}>
-            <div style={{ position: "relative", flex: "0 1 280px" }}>
+        {/* шапка: телефон — 2 компактні рядки (назва + кнопки / пошук + бейдж), ПК — один рядок */}
+        <div className={`${s.cardHead} ${s.prodHead}`}>
+          <div className={s.cardTitle} style={{ gridArea: "title" }}>Товари ({filtered.length})</div>
+          <div className={s.prodHeadActions}>
+            <button className={`${s.btn} ${s.btnGhost} ${s.btnSmall}`} onClick={() => setShowCatalog(true)} disabled={!products.length}
+              title="Завантажити каталог у PDF" aria-label="Каталог PDF">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden style={{ marginRight: 4, verticalAlign: "-2px" }}>
+                <path d="M12 3v12M7 10l5 5 5-5M5 21h14" />
+              </svg>PDF
+            </button>
+            <button className={`${s.btn} ${s.btnSmall}`} onClick={openNew} disabled={!categories.length}>+ Товар</button>
+          </div>
+          <div className={s.prodHeadFilters}>
+            <div style={{ position: "relative", flex: 1, minWidth: 0 }}>
               <input className={s.input} placeholder="Пошук за назвою / складом…" value={query}
                 onChange={(e) => setQuery(e.target.value)} style={{ width: "100%", paddingRight: query ? 30 : undefined }} />
               {query && (
@@ -344,7 +344,7 @@ export default function ProductsPage() {
                   style={{ position: "absolute", right: 8, top: "50%", transform: "translateY(-50%)", background: "transparent", border: "none", color: "var(--text-secondary)", cursor: "pointer", fontSize: 16, lineHeight: 1 }}>×</button>
               )}
             </div>
-            <div style={{ flex: "0 1 170px", minWidth: 140 }}>
+            <div style={{ flex: "0 0 136px" }}>
               <AdminSelect
                 value={badgeFilter}
                 onChange={setBadgeFilter}
@@ -356,7 +356,6 @@ export default function ProductsPage() {
                 ]}
               />
             </div>
-            <button className={`${s.btn} ${s.btnSmall}`} onClick={openNew} disabled={!categories.length}>+ Товар</button>
           </div>
         </div>
         <div className={s.tableWrap}>
@@ -463,9 +462,6 @@ export default function ProductsPage() {
                   )}
                 </div>
               </div>
-              <p className={s.hint} style={{ fontSize: 11, marginTop: 8 }}>
-                Фото автоматично конвертується у WebP і зберігається у хмарному сховищі (R2). До 8 МБ.
-              </p>
             </Field>
 
             <Field label="Назва">
@@ -613,9 +609,6 @@ export default function ProductsPage() {
                 Підтягується автоматично з обраних {isSetDraft ? "ролів" : "інгредієнтів"}.
               </span>
             </Field>
-            <p className={s.hint} style={{ fontSize: 11 }}>
-              Щоб товар зʼявився у блоці «Хіти меню» на сайті — встановіть бейдж «ХІТ».
-            </p>
           </div>
         </Modal>
       )}

@@ -28,10 +28,7 @@ export default function ReviewsPage() {
 
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 20 }}>
-      <p className={s.hint}>
-        Модерація відгуків із сайту. Схвалені показуються в блоці відгуків на сайті.
-        Нових на модерації: <b>{pendingCount}</b>.
-      </p>
+      <p className={s.hint}>Нових на модерації: <b>{pendingCount}</b></p>
 
       <div className={s.presetRow}>
         {FILTERS.map((f) => (

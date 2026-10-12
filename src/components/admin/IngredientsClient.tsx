@@ -71,10 +71,6 @@ export default function IngredientsClient({
 
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 20 }}>
-      <p className={s.hint}>
-        Інгредієнти — окрема сутність для фільтрації каталогу. КБЖУ вказується <b>на 100 г</b>
-        (редагується прямо в таблиці, зберігається при розфокусі). Пошук і сторінки працюють через базу.
-      </p>
 
       <form className={s.card} onSubmit={add}>
         <div className={s.cardHead}><div className={s.cardTitle}>Новий інгредієнт</div></div>

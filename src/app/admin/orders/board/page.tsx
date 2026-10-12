@@ -64,10 +64,6 @@ export default function OrdersBoardPage() {
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 16, height: "100%" }}>
       <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12, flexWrap: "wrap" }}>
-        <p className={s.hint} style={{ margin: 0 }}>
-          Перетягуйте картки між колонками, щоб змінити статус. Або стрілками ‹ › на картці.
-          Зміни одразу зберігаються в БД.
-        </p>
         <div style={{ display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap" }}>
           <input type="date" className={s.input} value={dateFilter} onChange={(e) => setDateFilter(e.target.value)}
             style={{ width: "auto", padding: "7px 10px", fontSize: 12 }} title="Фільтр за датою замовлення" />

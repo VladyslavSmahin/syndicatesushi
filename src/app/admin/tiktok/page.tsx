@@ -70,10 +70,6 @@ export default function TikTokAdminPage() {
 
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 20 }}>
-      <p className={s.hint}>
-        Блок «Ми в TikTok» на головній під відгуками. Досить вказати акаунт — у режимі «Автоматично» нові ролики
-        зʼявляються на сайті самі, вручну нічого додавати не треба.
-      </p>
 
       <div className={s.card}>
         <div className={s.cardHead}><div className={s.cardTitle}>Налаштування</div></div>

@@ -32,7 +32,7 @@ export default function DashboardPage() {
     { num: products.length, label: "Товари", href: "/admin/products" },
     { num: products.filter((m) => m.badge === "ХІТ").length, label: "Хіти", href: "/admin/products" },
     { num: promos.length, label: "Акції", href: "/admin/promos" },
-    { num: staffCount ?? "—", label: "Співробітники", href: "/admin/staff" },
+    { num: staffCount ?? "—", label: "Команда", href: "/admin/staff" },
   ];
 
   return (
@@ -49,7 +49,8 @@ export default function DashboardPage() {
         </p>
       </div>
 
-      <div className={s.statGridCompact}>
+      {/* один ряд компактних плиток — на будь-якій ширині */}
+      <div className={`${s.statGridCompact} ${s.statRow}`} style={{ gridTemplateColumns: `repeat(${stats.length}, minmax(0, 1fr))` }}>
         {stats.map((st) => (
           <Link key={st.label} href={st.href} className={s.card} style={{ textDecoration: "none" }}>
             <div className={s.stat}>
@@ -103,11 +104,6 @@ function NavMenuPanel() {
       </div>
 
       <div style={{ padding: 22, display: "flex", flexDirection: "column", gap: 10 }}>
-        <p className={s.hint} style={{ margin: 0 }}>
-          Порядок пунктів у шапці сайту та в бургер-меню. Перетягніть за ⠿ або скористайтесь ▲▼ —
-          у цьому ж порядку йдуть товари в «Повному меню» (напр. «Додатково» варто тримати останнім).
-          «Новинки» та «Акції» — закріплені пункти, вони завжди перед категоріями.
-        </p>
 
         {specials.length > 0 && (
           <div style={{ display: "flex", flexDirection: "column", gap: 8, marginTop: 4 }}>

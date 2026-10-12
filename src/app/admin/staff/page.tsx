@@ -115,13 +115,6 @@ export default function StaffPage() {
 
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 20 }}>
-      <p className={s.hint}>
-        Білий список — email співробітників, які можуть увійти через Google або за паролем.
-        Пароль необов’язковий: задайте його тут, щоб дозволити вхід без Google. Видалення зі списку
-        одразу забирає доступ до адмінки, зміна ролі — одразу змінює права (повторний вхід не потрібен).
-        <br />
-        <b>editor</b> — може все, крім видалення. <b>admin</b> — повний доступ.
-      </p>
 
       {/* Add form */}
       <form className={s.card} onSubmit={handleAdd}>

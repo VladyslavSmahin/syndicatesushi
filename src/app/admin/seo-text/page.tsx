@@ -48,11 +48,6 @@ export default function SeoTextPage() {
 
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 20 }}>
-      <p className={s.hint}>
-        Текстовий блок унизу головної сторінки. Потрібен для пошуку: Google читає цей текст і питання-відповіді,
-        щоб зрозуміти, що ми доставляємо суші саме в Тульчині. Пишіть звичайною мовою, як пояснювали б клієнту —
-        перелік ключових слів без сенсу шкодить, а не допомагає. Абзаци розділяються порожнім рядком.
-      </p>
 
       <OgImageCard />
 
@@ -91,10 +86,6 @@ export default function SeoTextPage() {
               <button className={`${s.btn} ${s.btnGhost}`} onClick={addFaq}>+ Питання</button>
             </div>
             <div style={{ padding: 22, display: "flex", flexDirection: "column", gap: 18 }}>
-              <p className={s.hint} style={{ margin: 0 }}>
-                Ці питання Google може показати прямо у видачі. Відповідайте конкретно (час, ціна, умови) —
-                загальні фрази пошук ігнорує.
-              </p>
 
               {draft.faq.length === 0 && <p className={s.hint}>Питань немає. Додайте перше кнопкою вище.</p>}
 

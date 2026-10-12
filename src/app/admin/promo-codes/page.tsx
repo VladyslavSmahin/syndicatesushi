@@ -34,10 +34,6 @@ export default function PromoCodesPage() {
 
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 20 }}>
-      <p className={s.hint}>
-        Промокоди застосовуються під час оформлення замовлення. Тип знижки — відсоток або
-        фіксована сума. Валідація (термін, ліміт) виконуватиметься на сервері.
-      </p>
 
       <form className={s.card} onSubmit={add}>
         <div className={s.cardHead}><div className={s.cardTitle}>Новий промокод</div></div>

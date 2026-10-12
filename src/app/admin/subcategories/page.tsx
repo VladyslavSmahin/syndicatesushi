@@ -53,10 +53,6 @@ export default function SubcategoriesPage() {
 
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 20 }}>
-      <p className={s.hint}>
-        Підкатегорії — рівень нижче категорії (напр. типи ролів). На сайті зʼявляються окремою
-        навігацією над товарами, коли обрано відповідну категорію.
-      </p>
 
       <Collapsible title="Нова підкатегорія" storageKey="subcategories:new">
         <form onSubmit={add} style={{ padding: 22 }}>
@@ -134,7 +130,6 @@ export default function SubcategoriesPage() {
               /></div>
             <div className={s.field}><span className={s.fieldLabel}>Порядок</span>
               <input className={`${s.input} no-spin`} type="number" value={edit.sortOrder || ""} onChange={(e) => setEdit({ ...edit, sortOrder: e.target.value === "" ? 0 : Number(e.target.value) })} /></div>
-            <p className={s.hint} style={{ fontSize: 11 }}>Slug лишається незмінним (на нього посилаються товари).</p>
           </div>
         </Modal>
       )}

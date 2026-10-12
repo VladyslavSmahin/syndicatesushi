@@ -40,11 +40,6 @@ export default function GlossaryPage() {
 
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 20 }}>
-      <p className={s.hint}>
-        Глосарій — назви/підписи сутностей, які не редагуються в інших розділах (бейджі, заголовки блоків,
-        пункти навігації тощо). Порожнє поле = значення за замовчуванням. Категорії, підкатегорії, товари
-        та інгредієнти змінюються у своїх розділах.
-      </p>
 
       {loading ? (
         <div className={s.card}><div className={s.placeholder}><p className={s.hint}>Завантаження…</p></div></div>

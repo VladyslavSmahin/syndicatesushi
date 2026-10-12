@@ -401,14 +401,14 @@
 }
 
 /* ===== Компактний список клієнтів (mobile-first) =====
-   телефон: 2 рядки — ім'я | сума / телефон · замовлень · останнє;
-   ширше: один рядок з колонками */
+   телефон: ОДИН рядок — ім'я · номер · к-сть замовлень · сума (дата — у картці по тапу);
+   ширше: один рядок з усіма колонками */
 .clientList { border: 1px solid var(--border); border-radius: 10px; overflow: hidden; background: var(--bg-card); }
 .clientHead { display: none; }
 .clientRow {
-  display: grid; grid-template-columns: auto auto 1fr;
-  grid-template-areas: "name name sum" "phone count last";
-  gap: 3px 10px; align-items: baseline; width: 100%;
+  display: grid; grid-template-columns: minmax(0, 1fr) auto auto auto;
+  grid-template-areas: "name phone count sum";
+  gap: 8px; align-items: center; width: 100%;
   padding: 10px 12px; border: none; border-top: 1px solid var(--border);
   background: transparent; color: var(--text-primary); text-align: left; cursor: pointer; font: inherit;
 }
@@ -421,6 +421,12 @@
 .cLast { grid-area: last; justify-self: end; font-size: 12px; color: var(--text-secondary); white-space: nowrap; }
 .cReg { display: inline-block; margin-left: 6px; font-size: 11px; font-family: var(--font-body); font-weight: 400; color: #8fc98f; }
 .cRegNo { color: var(--text-secondary); opacity: 0.6; }
+@media (max-width: 899px) {
+  .cLast { display: none; }
+  .cCount { min-width: 40px; text-align: right; }
+  .cSum { font-size: 13px; }
+}
+@media (max-width: 380px) { .cPhone { font-size: 11px; } .clientRow { gap: 6px; padding: 10px; } }
 @media (min-width: 900px) {
   .clientHead, .clientRow {
     grid-template-columns: minmax(0, 2fr) 150px 90px 120px 100px;
@@ -469,3 +475,56 @@
 }
 .statLink { transition: border-color 0.2s; }
 .statLink:hover { border-color: var(--accent); }
+
+/* таби «Огляд / Клієнти / Статистика» */
+.ovTabs { display: flex; gap: 6px; padding: 14px 28px 0; overflow-x: auto; scrollbar-width: none; }
+.ovTabs::-webkit-scrollbar { display: none; }
+.ovTab {
+  flex-shrink: 0; padding: 8px 16px; border-radius: 999px; font-size: 13px; text-decoration: none; white-space: nowrap;
+  color: var(--text-secondary); border: 1px solid var(--border-light); background: transparent;
+}
+.ovTabOn { color: var(--accent); border-color: var(--accent); background: var(--bg-elevated); }
+@media (max-width: 880px) { .ovTabs { padding: 12px 18px 0; } }
+@media (max-width: 600px) { .ovTabs { padding: 10px 14px 0; } }
+
+/* плитки «Огляду» — завжди в один ряд, компактні */
+.statRow { gap: 6px !important; }
+.statRow .stat { padding: 8px 8px !important; text-align: center; }
+.statRow .statNum { font-size: 18px !important; }
+.statRow .statLabel { font-size: 9px !important; letter-spacing: 0.5px !important; margin-top: 3px !important; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+@media (min-width: 700px) {
+  .statRow { gap: 10px !important; }
+  .statRow .stat { padding: 10px 12px !important; }
+  .statRow .statNum { font-size: 22px !important; }
+  .statRow .statLabel { font-size: 10px !important; letter-spacing: 1px !important; }
+}
+
+/* шапка блоку «Товари»: телефон — назва + кнопки / пошук + бейдж; ПК — усе в один рядок */
+.prodHead {
+  display: grid !important; grid-template-columns: minmax(0, 1fr) auto;
+  grid-template-areas: "title actions" "filters filters";
+  gap: 10px 8px; align-items: center;
+}
+.prodHeadActions { grid-area: actions; display: flex; gap: 6px; }
+.prodHeadActions > * { padding: 7px 10px !important; white-space: nowrap; }
+.prodHeadFilters { grid-area: filters; display: flex; gap: 6px; align-items: center; min-width: 0; }
+.prodHeadFilters input { padding: 8px 10px; font-size: 14px; }
+@media (min-width: 900px) {
+  .prodHead { grid-template-columns: auto minmax(0, 1fr) auto; grid-template-areas: "title filters actions"; gap: 12px; }
+  .prodHeadFilters { justify-content: flex-end; }
+  .prodHeadFilters > div:first-child { flex: 0 1 300px !important; }
+}
+
+/* заголовок сторінки + «?» з підказками розділу */
+.pageTitleRow { display: flex; align-items: center; gap: 10px; padding: 22px 28px 0; }
+.pageTitleRow .pageTitle { padding: 0 !important; }
+.helpBtn {
+  flex-shrink: 0; width: 26px; height: 26px; border-radius: 50%; padding: 0; cursor: pointer;
+  display: inline-flex; align-items: center; justify-content: center;
+  font-size: 14px; font-weight: 700; font-family: var(--font-body);
+  background: transparent; border: 1px solid var(--border-light); color: var(--text-secondary);
+}
+.helpBtn:hover { color: var(--accent); border-color: var(--accent); }
+.helpList { margin: 0; padding-left: 18px; display: flex; flex-direction: column; gap: 10px; font-size: 14px; line-height: 1.55; color: var(--text-primary); }
+@media (max-width: 880px) { .pageTitleRow { padding: 16px 18px 0; } }
+@media (max-width: 600px) { .pageTitleRow { padding: 12px 14px 0; } .helpBtn { width: 24px; height: 24px; font-size: 13px; } }

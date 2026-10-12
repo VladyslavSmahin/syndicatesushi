@@ -11,10 +11,6 @@ export default function PriceHistoryPage() {
 
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 20 }}>
-      <p className={s.hint}>
-        Історія змін цін — одиночних (редагування товару) та масових (за інгредієнтом).
-        Будь-яку зміну можна відкотити: цінам повернуться попередні значення.
-      </p>
 
       {loading ? (
         <div className={s.card}><div className={s.placeholder}><p className={s.hint}>Завантаження…</p></div></div>

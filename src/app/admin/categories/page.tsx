@@ -75,12 +75,6 @@ export default function CategoriesPage() {
 
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 20 }}>
-      <p className={s.hint}>
-        Категорії одразу зʼявляються в навігації сайту (у шапці та бургер-меню).
-        Вимкніть «У навігації» або «Активна», щоб приховати без видалення.
-        Порядок — перетягніть рядок за ⠿ або стрілками ▲▼: у цьому ж порядку йдуть
-        пункти меню та товари в «Повному меню».
-      </p>
 
       <Collapsible title="Нова категорія" storageKey="categories:new">
         <form onSubmit={handleAdd} style={{ padding: 22 }}>
@@ -150,10 +144,6 @@ export default function CategoriesPage() {
       <div className={s.card}>
         <div className={s.cardHead}><div className={s.cardTitle}>Спец-пункти навігації</div></div>
         <div style={{ padding: "8px 0" }}>
-          <p className={s.hint} style={{ padding: "0 22px 8px" }}>
-            «Новинки» (товари з бейджем НОВЕ) та «Акції» — закріплені пункти меню.
-            Їх можна сховати з навігації, не видаляючи: вимкнення лише прибирає кнопку, сутність лишається.
-          </p>
           <div className={s.tableWrap}>
             <table className={s.table}>
               <thead><tr><th>Пункт</th><th style={{ textAlign: "right" }}>У навігації</th></tr></thead>
@@ -187,7 +177,6 @@ export default function CategoriesPage() {
               <input className={s.input} value={edit.name} onChange={(e) => setEdit({ ...edit, name: e.target.value, slug: slugify(e.target.value) })} /></div>
             <div className={s.field}><span className={s.fieldLabel}>Slug (авто з назви)</span>
               <input className={s.input} value={edit.slug} disabled readOnly style={{ opacity: 0.6 }} /></div>
-            <p className={s.hint} style={{ fontSize: 11 }}>Порядок задається перетягуванням у списку.</p>
             {editErr && <p className={s.error}>{editErr}</p>}
           </div>
         </Modal>

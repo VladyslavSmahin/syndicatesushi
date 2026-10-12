@@ -42,10 +42,6 @@ export default function DeliverySettingsPage() {
 
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 20 }}>
-      <p className={s.hint}>
-        Доставка за адресою. Ціна рахується від координат закладу до адреси клієнта
-        (відстань по прямій ×1.3). Координати закладу можна уточнити на Google Maps (правий клік → координати).
-      </p>
 
       {loading || !draft ? (
         <div className={s.card}><div className={s.placeholder}><p className={s.hint}>Завантаження…</p></div></div>

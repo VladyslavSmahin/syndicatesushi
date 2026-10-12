@@ -644,7 +644,8 @@ export async function dbAllClientOrders(): Promise<ClientOrder[]> {
 export interface StatsOrder {
   id: string; status: OrderStatus; deliveryType: "delivery" | "pickup"; total: number;
   createdAt: string; userId: string | null; phoneNorm: string | null;
-  items: { name: string; quantity: number; price: number }[];
+  /** category — slug категорії товару (null, якщо товар видалено з бази) */
+  items: { name: string; quantity: number; price: number; category: string | null }[];
 }
 
 /** Дата першого замовлення (ISO) — для періоду «Весь час». null — замовлень немає. */
@@ -661,7 +662,7 @@ export async function dbStatsOrders(fromIso: string, toIso: string): Promise<Sta
   for (let from = 0; ; from += 1000) {
     const { data, error } = await supabase
       .from("orders")
-      .select("id, status, delivery_type, total, created_at, user_id, phone_norm, items:order_items(product_name, quantity, price)")
+      .select("id, status, delivery_type, total, created_at, user_id, phone_norm, items:order_items(product_name, quantity, price, product:products(category:categories(slug)))")
       .gte("created_at", fromIso)
       .lt("created_at", toIso)
       .order("created_at")
@@ -671,8 +672,12 @@ export async function dbStatsOrders(fromIso: string, toIso: string): Promise<Sta
       out.push({
         id: o.id, status: o.status as OrderStatus, deliveryType: o.delivery_type as "delivery" | "pickup",
         total: Number(o.total), createdAt: o.created_at, userId: o.user_id, phoneNorm: o.phone_norm,
-        items: ((o.items ?? []) as { product_name: string; quantity: number; price: number }[])
-          .map((it) => ({ name: it.product_name, quantity: it.quantity, price: Number(it.price) })),
+        items: ((o.items ?? []) as unknown as { product_name: string; quantity: number; price: number; product: { category: { slug: string } | { slug: string }[] | null } | null }[])
+          .map((it) => {
+            const cat = it.product?.category;
+            const slug = Array.isArray(cat) ? cat[0]?.slug : cat?.slug;
+            return { name: it.product_name, quantity: it.quantity, price: Number(it.price), category: slug ?? null };
+          }),
       });
     }
     if (!data || data.length < 1000) break;

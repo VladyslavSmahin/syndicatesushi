@@ -57,11 +57,6 @@ export default function OgImageCard() {
     <div className={s.card}>
       <div className={s.cardHead}><div className={s.cardTitle}>Картинка для посилання в месенджерах</div></div>
       <div style={{ padding: "clamp(14px, 4vw, 22px)", display: "flex", flexDirection: "column", gap: 14 }}>
-        <p className={s.hint} style={{ margin: 0 }}>
-          Її показують Telegram, Viber, Facebook, Instagram, коли хтось вставляє посилання на сайт. Найкраще — горизонтальне фото;
-          воно автоматично обріжеться до 1200×630 по центру, тож важливе тримайте посередині.
-          Для сторінок страв береться фото самої страви, ця картинка — лише якщо фото немає.
-        </p>
 
         <div style={{ width: "100%", maxWidth: 520, aspectRatio: "1200 / 630", borderRadius: 8, overflow: "hidden", border: "1px solid var(--border)", background: "var(--bg-elevated)" }}>
           {!loading && (
@@ -81,9 +76,6 @@ export default function OgImageCard() {
           )}
         </div>
         {note && <p style={{ margin: 0, fontSize: 13, color: note.ok ? "#5BB85B" : "#E0726A" }}>{note.text}</p>}
-        <p className={s.hint} style={{ margin: 0, fontSize: 11 }}>
-          Месенджери запамʼятовують превʼю. Щоб Telegram оновив уже надіслане посилання — перешліть його боту @WebpageBot.
-        </p>
       </div>
     </div>
   );

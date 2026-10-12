@@ -35,10 +35,6 @@ export default function DeletedProductsPage() {
 
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 20 }}>
-      <p className={s.hint}>
-        Кошик видалених товарів. Видалені позиції зберігаються <b>{DELETED_RETENTION_DAYS} днів</b>,
-        після чого прибираються автоматично. До цього їх можна відновити. На сайті вони не показуються.
-      </p>
 
       <div className={s.card}>
         <div className={s.cardHead}>
