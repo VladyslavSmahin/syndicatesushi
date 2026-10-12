@@ -5,7 +5,7 @@ import { createClient } from "@/lib/supabase/server";
 import { rateLimit, clientIp } from "@/lib/rateLimit";
 import { parseContacts } from "@/lib/contacts";
 import { kyivNow, addDays, parseHours, toMinutes, PICKUP_DAYS_AHEAD, PICKUP_STEP_MIN } from "@/lib/kyivTime";
-import { findReferrer, referralBlock, firstName, REFERRAL_PERCENT } from "@/lib/referral.server";
+import { findReferrer, referralBlock, firstName, REFERRAL_PERCENT, REFERRAL_MIN_TOTAL, activeCertificate, claimCertificate, referrerOfUser, releaseCertificate, bindCertificate } from "@/lib/referral.server";
 
 interface IncomingItem {
   id: string;        // uuid товару з каталогу
@@ -30,6 +30,8 @@ interface OrderBody {
   cutlery?: number;
   cutleryKind?: "regular" | "training";
   promo?: string;
+  /** списати сертифікат «Приведи друга» (лише для залогіненого, не разом із промокодом) */
+  useCertificate?: boolean;
   consent?: boolean;
   items: IncomingItem[];
 }
@@ -236,25 +238,48 @@ export async function POST(req: Request) {
     }
   }
 
-  // ---- Код запрошення друга (якщо це не звичайний промокод): −10% лише на перше замовлення ----
+  // ---- Запрошення друга: −10% на перше замовлення від 1500 грн ----
+  // Код у полі промокоду (якщо це не звичайний промокод) або — без коду — клієнт, що зареєструвався за посиланням друга.
   let referrerId: string | null = null;
   let referralLine: string | null = null;
-  if (code && !promoCodeId) {
+  if (!promoCodeId && (code || userId)) {
     try {
-      const ref = await findReferrer(supabase, code);
+      const auto = !code;
+      const ref = code ? await findReferrer(supabase, code) : await referrerOfUser(supabase, userId!);
       if (ref) {
         const block = await referralBlock(supabase, ref, { userId, phone });
         const who = esc(firstName(ref.name) ?? "клієнта");
-        if (!block) {
+        const codeTxt = auto ? "реєстрація за посиланням" : `код ${esc(code!)}`;
+        if (!block && subtotal < REFERRAL_MIN_TOTAL) {
+          referralLine = `🎁 <b>Запрошення:</b> від ${who} (${codeTxt}) не застосовано — сума менше ${REFERRAL_MIN_TOTAL} грн`;
+        } else if (!block) {
           referrerId = ref.id;
           discount = Math.min(subtotal, Math.round((subtotal * REFERRAL_PERCENT) / 100));
-          referralLine = `🎁 <b>Запрошення:</b> від ${who} (код ${esc(code)}) — −${REFERRAL_PERCENT}% на перше замовлення`;
-        } else {
-          referralLine = `🎁 <b>Запрошення:</b> код ${esc(code)} від ${who} не застосовано — ${block === "self" ? "власний код" : "це не перше замовлення"}`;
+          referralLine = `🎁 <b>Запрошення:</b> від ${who} (${codeTxt}) — −${REFERRAL_PERCENT}% на перше замовлення`;
+        } else if (!auto) {
+          referralLine = `🎁 <b>Запрошення:</b> ${codeTxt} від ${who} не застосовано — ${block === "self" ? "власний код" : "це не перше замовлення"}`;
         }
       }
     } catch (e) {
       console.error("referral check failed:", (e as Error).message);
+    }
+  }
+
+  // ---- Сертифікат «Приведи друга» (100 грн на замовлення від 1000 грн) — не разом із промокодом ----
+  let certId: string | null = null;
+  let certLine: string | null = null;
+  if (body.useCertificate === true && userId && !promoCodeId && !referrerId) {
+    try {
+      const cert = await activeCertificate(supabase, userId);
+      if (cert && subtotal >= cert.minOrder && await claimCertificate(supabase, cert.id)) {
+        certId = cert.id;
+        discount = Math.min(subtotal, cert.amount);
+        certLine = `🎟 <b>Сертифікат:</b> −${discount} грн (за запрошеного друга)`;
+      } else if (cert) {
+        certLine = `🎟 <b>Сертифікат:</b> не застосовано — сума менше ${cert.minOrder} грн`;
+      }
+    } catch (e) {
+      console.error("certificate failed:", (e as Error).message);
     }
   }
 
@@ -285,6 +310,7 @@ export async function POST(req: Request) {
         subtotal,
         promo_code_id: promoCodeId,
         ...(referrerId ? { referrer_id: referrerId } : {}),
+        ...(certId ? { certificate_id: certId } : {}),
         discount,
         delivery_cost: deliveryCost,
         total,
@@ -304,6 +330,11 @@ export async function POST(req: Request) {
     dbSaved = true;
   } catch (e) {
     console.error("order insert failed:", (e as Error).message);
+  }
+  // сертифікат: привʼязуємо до замовлення, а якщо замовлення не збереглося — повертаємо клієнту
+  if (certId) {
+    try { if (orderId) await bindCertificate(supabase, certId, orderId); else await releaseCertificate(supabase, certId); }
+    catch (e) { console.error("certificate bind failed:", (e as Error).message); }
   }
 
   // перше замовлення з акаунта: підставляємо ім'я/номер у порожній профіль (номер — непідтверджений)
@@ -371,6 +402,7 @@ export async function POST(req: Request) {
     delivery === "delivery" && address ? `📍 <b>Адреса:</b> ${esc(address)}` : null,
     `🕒 <b>${delivery === "delivery" ? "Доставити" : "Забрати"}:</b> ${esc(schedule || "якнайшвидше")}`,
     cutleryQty > 0 ? `🥢 <b>Прибори:</b> ${cutleryQty} шт${cutleryNote}` : null,
+    certLine,
     referralLine ?? (code ? `🎟 <b>Промокод:</b> ${esc(code)}${discount ? ` (−${discount} грн)` : " (не застосовано)"}` : null),
     commentHtml ? `💬 <b>Коментар:</b> ${commentHtml}` : null,
     "",

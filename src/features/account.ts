@@ -24,6 +24,8 @@ export interface CustomerProfile {
   googleAvatar: string | null;
   /** фон кабінету (тема або своє фото + кадр для телефона/ПК); null — без фону */
   profileBg: ProfileBg | null;
+  /** бонусні бали (+10 за кожного запрошеного друга); null — колонки ще немає в БД */
+  bonusPoints: number | null;
 }
 
 export type AccountOrderStatus = "new" | "confirmed" | "done" | "canceled";
@@ -112,7 +114,8 @@ async function queryProfile(
   const base = "id, email, name, phone, phone_norm, phone_verified_at";
   // нові колонки можуть ще не бути в БД (міграції 20261008210000 / 20261008230000) — тоді без них, а не зламаний кабінет
   const select = async () => {
-    let r = await supabase.from("customers").select(`${base}, avatar_url, profile_bg`).eq("id", session.user.id).maybeSingle();
+    let r = await supabase.from("customers").select(`${base}, avatar_url, profile_bg, bonus_points`).eq("id", session.user.id).maybeSingle();
+    if (r.error) r = await supabase.from("customers").select(`${base}, avatar_url, profile_bg`).eq("id", session.user.id).maybeSingle() as typeof r;
     if (r.error) r = await supabase.from("customers").select(`${base}, avatar_url`).eq("id", session.user.id).maybeSingle() as typeof r;
     if (r.error) r = await supabase.from("customers").select(base).eq("id", session.user.id).maybeSingle() as typeof r;
     return r;
@@ -123,7 +126,7 @@ async function queryProfile(
     await supabase.rpc("customer_ensure");
     res = await select();
   }
-  const data = res.data as ({ id: string; email: string | null; name: string | null; phone: string | null; phone_norm: string | null; phone_verified_at: string | null; avatar_url?: string | null; profile_bg?: unknown }) | null;
+  const data = res.data as ({ id: string; email: string | null; name: string | null; phone: string | null; phone_norm: string | null; phone_verified_at: string | null; avatar_url?: string | null; profile_bg?: unknown; bonus_points?: number | null }) | null;
   if (!data) return null;
   const meta = session.user.user_metadata ?? {};
   const google = typeof meta.avatar_url === "string" ? meta.avatar_url : typeof meta.picture === "string" ? meta.picture : null;
@@ -131,6 +134,7 @@ async function queryProfile(
     id: data.id, email: data.email ?? session.user.email ?? "", name: data.name, phone: data.phone, phoneNorm: data.phone_norm,
     phoneVerifiedAt: data.phone_verified_at, emailConfirmed: !!session.user.email_confirmed_at,
     avatarUrl: data.avatar_url ?? null, googleAvatar: google, profileBg: parseProfileBg(data.profile_bg),
+    bonusPoints: typeof data.bonus_points === "number" ? data.bonus_points : null,
   };
 }
 
@@ -184,16 +188,42 @@ export async function suggestTheme(text: string): Promise<string | null> {
   return res.ok && j.ok ? null : (j.error || `HTTP ${res.status}`);
 }
 
-export interface MyReferral { code: string; friends: number; rewarded: number; points: number }
+export type FriendStatus = "registered" | "ordered" | "confirmed";
+export interface ReferralFriend { name: string; status: FriendStatus; since: string | null }
+export interface MyCertificate { id: string; amount: number; minOrder: number; status: "active" | "used" | "revoked"; createdAt: string }
+export interface MyReferral { code: string; friends: ReferralFriend[]; certificates: MyCertificate[] }
 
-/** «Запроси друга»: свій код (створюється при першому зверненні) + скільки друзів замовили й бали.
+/** «Приведи друга»: свій код (створюється при першому зверненні), запрошені зі статусами й сертифікати.
  *  null — міграції ще немає або не вдалося. */
 export async function fetchMyReferral(): Promise<MyReferral | null> {
   const supabase = createClient();
-  const [code, stats] = await Promise.all([supabase.rpc("customer_ref_code"), supabase.rpc("my_referrals")]);
+  const [code, friends, certs] = await Promise.all([
+    supabase.rpc("customer_ref_code"),
+    supabase.rpc("my_referrals"),
+    supabase.from("customer_certificates").select("id, amount, min_order, status, created_at").order("created_at", { ascending: false }),
+  ]);
   if (code.error || !code.data) return null;
-  const row = (Array.isArray(stats.data) ? stats.data[0] : stats.data) as { friends?: number; rewarded?: number; points?: number } | null;
-  return { code: String(code.data), friends: Number(row?.friends ?? 0), rewarded: Number(row?.rewarded ?? 0), points: Number(row?.points ?? 0) };
+  const rows = (Array.isArray(friends.data) ? friends.data : []) as { name?: string; status?: string; since?: string | null }[];
+  return {
+    code: String(code.data),
+    // стара версія my_referrals (до міграції сертифікатів) повертала лічильники, а не список — тоді просто порожньо
+    friends: rows.filter((r) => typeof r.status === "string").map((r) => ({
+      name: r.name?.trim() || "Друг",
+      status: (r.status === "confirmed" || r.status === "ordered" ? r.status : "registered") as FriendStatus,
+      since: r.since ?? null,
+    })),
+    certificates: (certs.data ?? []).map((c) => ({
+      id: c.id, amount: Number(c.amount), minOrder: Number(c.min_order), status: c.status as MyCertificate["status"], createdAt: c.created_at,
+    })),
+  };
+}
+
+/** Активні сертифікати клієнта (для кошика). Порожньо — немає або таблиці ще немає. */
+export async function fetchActiveCertificates(): Promise<MyCertificate[]> {
+  const { data, error } = await createClient().from("customer_certificates")
+    .select("id, amount, min_order, status, created_at").eq("status", "active").order("created_at");
+  if (error || !data) return [];
+  return data.map((c) => ({ id: c.id, amount: Number(c.amount), minOrder: Number(c.min_order), status: "active" as const, createdAt: c.created_at }));
 }
 
 /** Профіль поточного клієнта або null (не залогінений / не вдалося завантажити). */

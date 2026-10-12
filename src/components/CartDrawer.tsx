@@ -12,7 +12,7 @@ import type { Product, CartItem } from "@/lib/types";
 import { useScrollLock } from "@/lib/scrollLock";
 import ThumbImg from "./ThumbImg";
 import { formatPhone, isPhoneValid, phoneDigits } from "@/lib/phone";
-import { useCustomerProfile, updateCustomerPhone, useIsSignedIn } from "@/features/account";
+import { useCustomerProfile, updateCustomerPhone, useIsSignedIn, fetchActiveCertificates, type MyCertificate } from "@/features/account";
 import { readRef, clearRef } from "@/lib/referral";
 
 const EXTRAS_CATEGORY = "додатково";
@@ -118,7 +118,11 @@ export default function CartDrawer({ isOpen, onClose }: { isOpen: boolean; onClo
   const [promo, setPromo] = useState("");
   // застосований промокод (підтверджений сервером) + повідомлення/стан перевірки
   // referral — код запрошення друга (імʼя того, хто запросив), а не звичайний промокод
-  const [promoInfo, setPromoInfo] = useState<{ code: string; discountType: "percent" | "fixed"; value: number; referral?: string | null } | null>(null);
+  // minTotal — знижка діє лише від цієї суми (код друга: від 1500 грн)
+  const [promoInfo, setPromoInfo] = useState<{ code: string; discountType: "percent" | "fixed"; value: number; referral?: string | null; minTotal?: number } | null>(null);
+  // сертифікат «Приведи друга» залогіненого клієнта (100 грн на замовлення від 1000 грн): є — пропонуємо увімкнути
+  const [cert, setCert] = useState<MyCertificate | null>(null);
+  const [useCert, setUseCert] = useState(false);
   const [promoMsg, setPromoMsg] = useState<{ ok: boolean; text: string } | null>(null);
   const [promoChecking, setPromoChecking] = useState(false);
   const [promoOpen, setPromoOpen] = useState(false); // поле промокоду згорнуте за замовчуванням
@@ -160,18 +164,28 @@ export default function CartDrawer({ isOpen, onClose }: { isOpen: boolean; onClo
     if (!isOpen || step !== "checkout" || promo.trim() || promoInfo) return;
     const ref = readRef();
     if (!ref) return;
-    setPromo(ref); setPromoOpen(true);
+    setPromo(ref); // поле не розгортаємо: застосований код видно в заголовку «🎁 Код друга»
     applyPromoRef.current?.(ref);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [step, isOpen]);
   const applyPromoRef = useRef<((code?: string) => Promise<void>) | null>(null);
 
+  // на оформленні — підтягуємо активний сертифікат (лише для залогіненого)
+  useEffect(() => {
+    if (!isOpen || step !== "checkout" || !signedIn) return;
+    let alive = true;
+    fetchActiveCertificates().then((c) => { if (alive) setCert(c[0] ?? null); }).catch(() => {});
+    return () => { alive = false; };
+  }, [isOpen, step, signedIn]);
+
   if (!isOpen) return null;
 
   // знижка рахується наживо з поточної суми (працює при зміні кількості)
+  const promoBelowMin = !!promoInfo?.minTotal && total < promoInfo.minTotal;
+  const certOk = !!cert && !promoInfo && total >= cert.minOrder;
   const discount = promoInfo
-    ? Math.min(total, promoInfo.discountType === "percent" ? Math.round((total * promoInfo.value) / 100) : promoInfo.value)
-    : 0;
+    ? (promoBelowMin ? 0 : Math.min(total, promoInfo.discountType === "percent" ? Math.round((total * promoInfo.value) / 100) : promoInfo.value))
+    : useCert && certOk ? Math.min(total, cert!.amount) : 0;
   // вартість доставки рахується менеджером окремо (від 100 грн, залежно від відстані)
   const payable = Math.max(0, total - discount);
 
@@ -197,8 +211,12 @@ export default function CartDrawer({ isOpen, onClose }: { isOpen: boolean; onClo
       if (res.status === 429) { setPromoMsg({ ok: false, text: "Забагато спроб, зачекайте хвилину." }); return; }
       if (j.valid) {
         const referral = j.referral ? (j.referral.name ?? "друга") : null;
-        setPromoInfo({ code, discountType: j.discountType, value: j.value, referral });
-        setPromoMsg({ ok: true, text: referral ? `Запрошення від ${referral}: −${j.value}% на перше замовлення (−${j.discount} грн)` : `Промокод застосовано: −${j.discount} грн` });
+        const minTotal = typeof j.minTotal === "number" ? j.minTotal : undefined;
+        setPromoInfo({ code, discountType: j.discountType, value: j.value, referral, minTotal });
+        setUseCert(false); // промокод і сертифікат разом не діють
+        setPromoMsg({ ok: true, text: referral
+          ? `Код друга (${referral}): −${j.value}% на перше замовлення від ${minTotal ?? 0} грн`
+          : `Промокод застосовано: −${j.discount} грн` });
       } else {
         setPromoInfo(null);
         setPromoMsg({ ok: false, text: j.reason === "not_first" ? "Код друга діє лише на перше замовлення." : j.reason === "self" ? "Це ваш власний код — поділіться ним із друзями." : "Промокод неактуальний." });
@@ -255,7 +273,7 @@ export default function CartDrawer({ isOpen, onClose }: { isOpen: boolean; onClo
           scheduleTime: pickupTime,
           cutlery: needsCutlery ? cutleryQty : 0,
           cutleryKind: needsCutlery ? cutleryKind : undefined,
-          promo: promoInfo?.code ?? "", consent, items,
+          promo: promoInfo?.code ?? "", useCertificate: useCert && certOk, consent, items,
         }),
       });
       const j = (await res.json().catch(() => ({}))) as { ok?: boolean; error?: string; badIds?: unknown; total?: unknown };
@@ -283,6 +301,7 @@ export default function CartDrawer({ isOpen, onClose }: { isOpen: boolean; onClo
       phoneFromProfile.current = null;
       clear();
       if (promoInfo?.referral) clearRef();
+      setUseCert(false); setCert(null);
       setPromo(""); setPromoInfo(null); setPromoMsg(null); setPromoOpen(false); setCutlery(null);
       setPickupMsg(""); setPickupChosen(false);
     } catch {
@@ -481,7 +500,7 @@ export default function CartDrawer({ isOpen, onClose }: { isOpen: boolean; onClo
                     color: promoInfo ? "var(--accent)" : "var(--text-secondary)",
                   }}
                 >
-                  {promoInfo ? `${promoInfo.referral ? `🎁 Запрошення від ${promoInfo.referral}` : `Промокод ${promoInfo.code}`} · −${discount} грн` : "У мене є промокод"}
+                  {promoInfo ? `${promoInfo.referral ? "🎁 Код друга" : `Промокод ${promoInfo.code}`} · ${promoBelowMin ? `від ${promoInfo.minTotal} грн` : `−${discount} грн`}` : "У мене є промокод"}
                   <span aria-hidden style={{ fontSize: 11, transition: "transform 0.2s", transform: promoOpen ? "rotate(180deg)" : "none" }}>▾</span>
                 </button>
                 <button type="button" onClick={() => setCommentOpen((v) => !v)}
@@ -526,9 +545,23 @@ export default function CartDrawer({ isOpen, onClose }: { isOpen: boolean; onClo
                 {promoMsg && (
                   <p style={{ fontSize: 11, marginTop: 6, lineHeight: 1.4, color: promoMsg.ok ? "var(--accent)" : "#E0726A" }}>{promoMsg.text}</p>
                 )}
+                {promoBelowMin && (
+                  <p style={{ fontSize: 11, marginTop: 4, lineHeight: 1.4, color: "var(--gold)" }}>Додайте ще на {promoInfo!.minTotal! - total} грн, щоб знижка спрацювала.</p>
+                )}
                 </div>
                 )}
               </div>
+              {cert && !promoInfo && (
+                <button type="button" className={`co-cert${useCert && certOk ? " on" : ""}`} disabled={!certOk}
+                  onClick={() => setUseCert((v) => !v)} aria-pressed={useCert && certOk}>
+                  <span className="co-cert-ico" aria-hidden>🎟</span>
+                  <span className="co-cert-txt">
+                    <b>Сертифікат −{cert.amount} грн</b>
+                    <small>{certOk ? (useCert ? "Застосовано до цього замовлення" : "Натисніть, щоб застосувати") : `Діє на замовлення від ${cert.minOrder} грн (бракує ${cert.minOrder - total} грн)`}</small>
+                  </span>
+                  <span className="co-cert-check" aria-hidden>{useCert && certOk ? "✓" : ""}</span>
+                </button>
+              )}
               {commentOpen && (
                 <textarea className="form-input" placeholder="Коментар до замовлення" value={comment} onChange={(e) => setComment(e.target.value)} maxLength={MAX_COMMENT} rows={2} autoFocus style={{ minHeight: 0 }} />
               )}
@@ -539,7 +572,7 @@ export default function CartDrawer({ isOpen, onClose }: { isOpen: boolean; onClo
 
               {discount > 0 && (
                 <div style={{ display: "flex", justifyContent: "space-between", fontSize: 12, color: "var(--accent)", marginBottom: 6 }}>
-                  <span>Знижка{promoInfo ? ` (${promoInfo.code})` : ""}</span>
+                  <span>Знижка{promoInfo ? ` (${promoInfo.code})` : useCert ? " (сертифікат)" : ""}</span>
                   <span>−{discount} грн</span>
                 </div>
               )}

@@ -122,10 +122,31 @@ export default function ProfileHero({ profile, ordersCount, onChanged }: {
         </div>
         {err && <div style={{ fontSize: 12, color: "#E0726A", marginTop: 4 }}>{err}</div>}
       </div>
+      {/* бали + анонс рівнів — окремим рядком на всю ширину шапки */}
+      {profile.bonusPoints !== null && (
+        <div className="ph-points">
+          <div className="ph-points-num" title="Бонусні бали">
+            <span aria-hidden>★</span> <b>{profile.bonusPoints}</b> {pointsWord(profile.bonusPoints)}
+          </div>
+          <div className="ph-points-soon">
+            <span className="ph-soon-tag">Скоро</span>
+            Велике оновлення: <b>рівні Syndicate</b> — бали відкриватимуть бонуси й подарунки. Збирайте вже зараз!
+          </div>
+        </div>
+      )}
       {editing && <AvatarEditor file={editing} onCancel={() => setEditing(null)} onDone={uploadEdited} />}
       {bgOpen && (
         <ProfileBgEditor current={profile.profileBg} name={profile.name?.trim() ?? ""} onClose={() => setBgOpen(false)} onSaved={onChanged} />
       )}
     </div>
   );
+}
+
+/** «бал» / «бали» / «балів» */
+function pointsWord(n: number) {
+  const a = Math.abs(n) % 100, b = a % 10;
+  if (a > 10 && a < 20) return "балів";
+  if (b === 1) return "бал";
+  if (b >= 2 && b <= 4) return "бали";
+  return "балів";
 }

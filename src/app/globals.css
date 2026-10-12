@@ -620,7 +620,20 @@ textarea.form-input { resize: vertical; min-height: 120px; font-family: var(--fo
   background: var(--gold); color: #1A1208; font-size: 10px; font-weight: 600; display: flex; align-items: center; justify-content: center;
 }
 /* шапка кабінету: фото в кільці заповненості */
-.profile-hero { display: flex; align-items: center; gap: 16px; }
+.profile-hero { display: flex; align-items: center; gap: 16px; flex-wrap: wrap; }
+/* бали й анонс рівнів — рядок на всю ширину під фото та ім'ям */
+.ph-points {
+  flex-basis: 100%; display: flex; align-items: center; gap: 12px; padding: 10px 12px; border-radius: 12px;
+  background: linear-gradient(135deg, rgba(201,168,76,0.16), rgba(201,168,76,0.04)), var(--glass-soft);
+  border: 1px solid rgba(201,168,76,0.45); backdrop-filter: blur(6px); -webkit-backdrop-filter: blur(6px);
+}
+.ph-points-num { flex-shrink: 0; white-space: nowrap; font-size: 13px; color: var(--text-primary); padding-right: 12px; border-right: 1px solid rgba(201,168,76,0.35); }
+.ph-points-num span { color: var(--gold); }
+.ph-points-num b { font-family: var(--font-display); font-size: 26px; font-weight: 700; color: var(--gold); line-height: 1; }
+.ph-points-soon { font-size: 12px; line-height: 1.45; color: var(--text-secondary); }
+.ph-points-soon b { color: var(--text-primary); font-weight: 500; }
+.ph-soon-tag { display: inline-block; margin-right: 6px; padding: 1px 7px; border-radius: 999px; background: var(--gold); color: #1A1208; font-size: 9px; font-weight: 600; letter-spacing: 1.5px; text-transform: uppercase; vertical-align: 1px; }
+@media (max-width: 380px) { .ph-points { flex-direction: column; align-items: flex-start; gap: 6px; } .ph-points-num { border-right: none; padding-right: 0; } }
 .ph-avatar { position: relative; width: 88px; height: 88px; flex-shrink: 0; padding: 0; border: none; background: transparent; cursor: pointer; border-radius: 50%; }
 .ph-ring { position: absolute; inset: 0; width: 100%; height: 100%; transform: rotate(-90deg); }
 .ph-ring-bg { fill: none; stroke: var(--border-light); stroke-width: 4; }
@@ -663,6 +676,7 @@ textarea.form-input { resize: vertical; min-height: 120px; font-family: var(--fo
   background: var(--glass-soft) !important; backdrop-filter: blur(6px); -webkit-backdrop-filter: blur(6px);
 }
 .ph-name, .ph-pct, .ph-link { text-shadow: 0 1px 6px rgba(0,0,0,0.85); }
+:root[data-theme="light"] .ph-name, :root[data-theme="light"] .ph-pct, :root[data-theme="light"] .ph-link { text-shadow: 0 1px 4px rgba(255,255,255,0.9); }
 /* фон кабінету: під усім вмістом сторінки (портал у body, z-index -1) */
 .profile-bg { position: fixed; inset: 0; z-index: -1; pointer-events: none; }
 .profile-bg .mobile-only, .profile-bg .desktop-only { display: block; }
@@ -890,3 +904,50 @@ textarea.form-input { resize: vertical; min-height: 120px; font-family: var(--fo
 /* плавна зміна кольорів при перемиканні (лише на час перемикання — див. ThemeToggle) */
 html.theme-anim, html.theme-anim *, html.theme-anim *::before, html.theme-anim *::after { transition: background-color 0.35s, color 0.35s, border-color 0.35s, fill 0.35s !important; }
 @media (prefers-reduced-motion: reduce) { .theme-ico { animation: none; } }
+
+/* «Запросити друга»: «?» з поясненням про бали */
+.inv-help {
+  width: 24px; height: 24px; flex-shrink: 0; border-radius: 50%; padding: 0; cursor: pointer;
+  border: 1px solid var(--border-light); background: transparent; color: var(--text-secondary);
+  font-family: var(--font-body); font-size: 13px; font-weight: 600; line-height: 1; transition: all 0.2s;
+}
+.inv-help[aria-expanded="true"], .inv-help:hover { border-color: var(--gold); color: var(--gold); }
+.inv-help-text {
+  margin: -4px 0 0; color: var(--text-secondary); padding: 10px 12px; border-radius: 10px; font-size: 12px; line-height: 1.5; color: var(--text-secondary);
+  background: rgba(201,168,76,0.08); border: 1px dashed rgba(201,168,76,0.45);
+}
+.inv-help-text b { color: var(--text-primary); font-weight: 500; }
+.inv-help-text li { margin-top: 3px; }
+/* сертифікати клієнта */
+.inv-certs { display: flex; flex-direction: column; gap: 8px; }
+.inv-cert {
+  display: flex; align-items: center; gap: 12px; padding: 10px 12px; border-radius: 10px;
+  background: linear-gradient(135deg, rgba(201,168,76,0.18), rgba(201,168,76,0.05)); border: 1px solid rgba(201,168,76,0.5);
+}
+.inv-cert-amt { font-family: var(--font-display); font-size: 26px; font-weight: 700; color: var(--gold); white-space: nowrap; }
+.inv-cert-txt { font-size: 12px; line-height: 1.4; color: var(--text-primary); }
+.inv-cert-txt small { color: var(--text-secondary); font-size: 11px; }
+/* запрошені: імʼя · 3 кроки · статус */
+.inv-friends { display: flex; flex-direction: column; border: 1px solid var(--border-light); border-radius: 10px; overflow: hidden; }
+.inv-friend { display: flex; align-items: center; gap: 10px; padding: 9px 12px; font-size: 13px; }
+.inv-friend + .inv-friend { border-top: 1px solid var(--border); }
+.inv-friend-name { flex: 1; min-width: 0; color: var(--text-primary); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.inv-steps { display: flex; gap: 3px; flex-shrink: 0; }
+.inv-steps i { width: 14px; height: 4px; border-radius: 2px; background: var(--border-light); }
+.inv-steps i.on { background: var(--gold); }
+.inv-status { flex-shrink: 0; font-size: 11px; white-space: nowrap; color: var(--text-secondary); }
+.inv-status.s3 { color: #5BB85B; }
+@media (max-width: 380px) { .inv-friend { flex-wrap: wrap; } .inv-status { flex-basis: 100%; } }
+/* кошик: сертифікат «Приведи друга» */
+.co-cert {
+  display: flex; align-items: center; gap: 10px; width: 100%; padding: 9px 12px; border-radius: 10px; cursor: pointer; text-align: left;
+  background: rgba(201,168,76,0.06); border: 1px dashed rgba(201,168,76,0.5); color: var(--text-primary); font-family: var(--font-body);
+}
+.co-cert.on { background: rgba(201,168,76,0.16); border-style: solid; }
+.co-cert:disabled { cursor: default; opacity: 0.75; }
+.co-cert-ico { font-size: 20px; }
+.co-cert-txt { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 2px; }
+.co-cert-txt b { font-size: 13px; font-weight: 500; color: var(--gold); }
+.co-cert-txt small { font-size: 11px; color: var(--text-secondary); }
+.co-cert-check { width: 20px; height: 20px; flex-shrink: 0; border-radius: 50%; border: 1px solid rgba(201,168,76,0.6); display: flex; align-items: center; justify-content: center; font-size: 12px; color: #1A1208; }
+.co-cert.on .co-cert-check { background: var(--gold); border-color: var(--gold); }

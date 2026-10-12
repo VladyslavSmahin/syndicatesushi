@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { createClient } from "@/lib/supabase/server";
 import { rateLimit, clientIp } from "@/lib/rateLimit";
-import { findReferrer, referralBlock, firstName, REFERRAL_PERCENT } from "@/lib/referral.server";
+import { findReferrer, referralBlock, firstName, REFERRAL_PERCENT, REFERRAL_MIN_TOTAL } from "@/lib/referral.server";
 
 // екранує спецсимволи LIKE (%, _, \), щоб ввід не змінював семантику пошуку
 const escapeLike = (s: string) => s.replace(/[\\%_]/g, (m) => "\\" + m);
@@ -45,8 +45,9 @@ export async function POST(req: Request) {
       const phone = typeof body.phone === "string" ? body.phone.slice(0, 30) : null;
       const block = await referralBlock(supabase, ref, { userId, phone });
       if (block) return NextResponse.json({ ok: true, valid: false, reason: block });
-      const discount = Math.min(subtotal, Math.round((subtotal * REFERRAL_PERCENT) / 100));
-      return NextResponse.json({ ok: true, valid: true, discountType: "percent", value: REFERRAL_PERCENT, discount, referral: { name: firstName(ref.name) } });
+      // код дійсний, але знижка — лише від 1500 грн: кошик покаже, скільки бракує, і порахує сам, коли сума дорівняється
+      const discount = subtotal >= REFERRAL_MIN_TOTAL ? Math.min(subtotal, Math.round((subtotal * REFERRAL_PERCENT) / 100)) : 0;
+      return NextResponse.json({ ok: true, valid: true, discountType: "percent", value: REFERRAL_PERCENT, discount, minTotal: REFERRAL_MIN_TOTAL, referral: { name: firstName(ref.name) } });
     }
   }
   if (!valid) return NextResponse.json({ ok: true, valid: false });

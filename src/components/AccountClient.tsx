@@ -1,8 +1,8 @@
 "use client";
 
 import { useEffect, useState, type CSSProperties, type ReactNode } from "react";
-import { useAccount, signOutCustomer, updatePassword, fetchMyReferral, type AccountOrder, type MyReferral } from "@/features/account";
-import { refLink, REF_PERCENT, REF_POINTS } from "@/lib/referral";
+import { useAccount, signOutCustomer, updatePassword, fetchMyReferral, type AccountOrder, type MyReferral, type FriendStatus } from "@/features/account";
+import { refLink, REF_PERCENT, REF_MIN_TOTAL, CERT_AMOUNT, CERT_MIN_ORDER } from "@/lib/referral";
 import { MIN_PASSWORD } from "./AuthForm";
 import { useRouter } from "next/navigation";
 import { formatPhone, isPhoneValid } from "@/lib/phone";
@@ -136,32 +136,58 @@ function InviteSection({ uid }: { uid: string }) {
   useEffect(() => { fetchMyReferral().then(setRef).catch(() => setRef(null)); }, []);
   if (ref === null) return null;
   return (
-    <Section title="Запросити друга" storageKey={`acc-collapse:${uid}:invite`}>
+    <Section title="Приведи друга" storageKey={`acc-collapse:${uid}:invite`}>
       {ref === undefined ? <span className="skel" style={{ height: 120, borderRadius: 10, display: "block" }} /> : <InviteCard ref_={ref} />}
     </Section>
   );
 }
 
-/** «Запросити друга»: особистий код і посилання. Другу — −10% на перше замовлення,
- *  вам — +10 балів, коли його замовлення виконано. */
+const FRIEND_STATUS: Record<FriendStatus, { label: string; cls: string }> = {
+  registered: { label: "Зареєструвався", cls: "s1" },
+  ordered: { label: "Зробив замовлення", cls: "s2" },
+  confirmed: { label: "Замовлення підтверджено", cls: "s3" },
+};
+
+/** «Приведи друга»: особистий код і посилання, запрошені зі статусами, мої сертифікати.
+ *  Другу −10% на перше замовлення від 1500 грн; вам сертифікат 100 грн на замовлення від 1000 грн,
+ *  коли замовлення друга підтверджено. «?» — умови. */
 function InviteCard({ ref_: ref }: { ref_: MyReferral }) {
   const [copied, setCopied] = useState<"link" | "code" | null>(null);
+  const [help, setHelp] = useState(false); // «?» — умови
 
   const link = refLink(ref.code);
   const copy = async (what: "link" | "code") => {
     try { await navigator.clipboard.writeText(what === "link" ? link : ref.code); setCopied(what); setTimeout(() => setCopied(null), 1800); } catch { /* ignore */ }
   };
   const share = async () => {
-    const text = `Тримай −${REF_PERCENT}% на перше замовлення в Sushi Syndicate 🍣`;
+    const text = `Тримай −${REF_PERCENT}% на перше замовлення від ${REF_MIN_TOTAL} грн у Sushi Syndicate 🍣`;
     if (navigator.share) { try { await navigator.share({ title: "Sushi Syndicate", text, url: link }); return; } catch { return; } }
     copy("link");
   };
+  const active = ref.certificates.filter((c) => c.status === "active");
+  const used = ref.certificates.filter((c) => c.status === "used").length;
+  const acc = { color: "var(--accent)" };
 
   return (
     <div style={{ ...card, display: "flex", flexDirection: "column", gap: 12 }}>
-      <p style={{ margin: 0, fontSize: 13, lineHeight: 1.5, color: "var(--text-secondary)" }}>
-        Другу — <b style={{ color: "var(--accent)" }}>−{REF_PERCENT}%</b> на перше замовлення, вам — <b style={{ color: "var(--accent)" }}>+{REF_POINTS} балів</b>, коли його замовлення виконано.
-      </p>
+      <div style={{ display: "flex", alignItems: "flex-start", gap: 10 }}>
+        <p style={{ margin: 0, flex: 1, fontSize: 13, lineHeight: 1.5, color: "var(--text-secondary)" }}>
+          Приведіть друга, який зробить замовлення від <b style={acc}>{REF_MIN_TOTAL} грн</b>, і отримайте <b style={acc}>сертифікат {CERT_AMOUNT} грн</b> на замовлення від {CERT_MIN_ORDER} грн. Другу <b style={acc}>−{REF_PERCENT}%</b> на перше замовлення.
+        </p>
+        <button type="button" className="inv-help" aria-expanded={help} aria-label="Умови" title="Умови"
+          onClick={() => setHelp((v) => !v)}>?</button>
+      </div>
+      {help && (
+        <div className="inv-help-text">
+          <b>Як це працює:</b>
+          <ol style={{ margin: "6px 0 0", paddingLeft: 18 }}>
+            <li>Друг переходить за вашим посиланням або вводить ваш код у полі промокоду.</li>
+            <li>Його перше замовлення від {REF_MIN_TOTAL} грн отримує знижку {REF_PERCENT}%.</li>
+            <li>Щойно ми підтвердимо його замовлення, вам зʼявиться сертифікат {CERT_AMOUNT} грн. Він знімається в кошику на замовлення від {CERT_MIN_ORDER} грн.</li>
+          </ol>
+          <p style={{ margin: "6px 0 0" }}>Один сертифікат на одне замовлення, разом із промокодом не діє. Якщо замовлення друга скасують, сертифікат анулюється.</p>
+        </div>
+      )}
       <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
         <button type="button" onClick={() => copy("code")} title="Скопіювати код"
           style={{ fontFamily: "var(--font-display)", fontSize: 24, letterSpacing: 4, padding: "6px 14px", borderRadius: 8, cursor: "pointer",
@@ -176,9 +202,40 @@ function InviteCard({ ref_: ref }: { ref_: MyReferral }) {
         <button type="button" className="btn-primary" style={{ flex: 1 }} onClick={share}>Поділитися</button>
         <button type="button" className="btn-secondary" style={{ flex: 1 }} onClick={() => copy("link")}>Скопіювати посилання</button>
       </div>
-      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8 }}>
-        <Stat label="Друзів замовило" value={String(ref.friends)} />
-        <Stat label="Мої бали" value={String(ref.points)} />
+
+      {/* мої сертифікати */}
+      {active.length > 0 && (
+        <div className="inv-certs">
+          {active.map((c) => (
+            <div key={c.id} className="inv-cert">
+              <span className="inv-cert-amt">{c.amount} грн</span>
+              <span className="inv-cert-txt">Сертифікат · на замовлення від {c.minOrder} грн<br /><small>Увімкніть його в кошику під час оформлення</small></span>
+            </div>
+          ))}
+        </div>
+      )}
+      {used > 0 && <p style={{ margin: 0, fontSize: 12, color: "var(--text-secondary)" }}>Використано сертифікатів: {used}</p>}
+
+      {/* запрошені */}
+      <div>
+        <div style={{ ...label, marginBottom: 8 }}>Запрошені · {ref.friends.length}</div>
+        {ref.friends.length === 0 ? (
+          <p style={{ margin: 0, fontSize: 13, color: "var(--text-secondary)" }}>Поки нікого. Поділіться посиланням, і тут зʼявляться друзі та їхні статуси.</p>
+        ) : (
+          <div className="inv-friends">
+            {ref.friends.map((f, i) => (
+              <div key={i} className="inv-friend">
+                <span className="inv-friend-name">{f.name}</span>
+                <span className="inv-steps" aria-label={FRIEND_STATUS[f.status].label}>
+                  {(["registered", "ordered", "confirmed"] as const).map((st, k) => (
+                    <i key={st} className={k <= ["registered", "ordered", "confirmed"].indexOf(f.status) ? "on" : ""} />
+                  ))}
+                </span>
+                <span className={`inv-status ${FRIEND_STATUS[f.status].cls}`}>{FRIEND_STATUS[f.status].label}</span>
+              </div>
+            ))}
+          </div>
+        )}
       </div>
     </div>
   );
