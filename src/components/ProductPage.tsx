@@ -42,7 +42,7 @@ export default function ProductPage({ item }: { item: Product }) {
           <BackButton />
           <Link href="/" style={{ display: "flex", alignItems: "center", gap: 10, textDecoration: "none" }}>
             {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img src={ASSET_ICONS.logo} alt="Sushi Syndicate" style={{ height: 40 }} />
+            <img src={ASSET_ICONS.logo} alt="Sushi Syndicate" style={{ height: 34 }} />
             <span style={{ fontFamily: "var(--font-display)", fontWeight: 700, letterSpacing: 4, color: "var(--text-primary)" }}>SUSHI</span>
           </Link>
           </div>

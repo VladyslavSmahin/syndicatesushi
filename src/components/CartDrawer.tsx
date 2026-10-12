@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useRef, useState, type CSSProperties } from "react";
 import Link from "next/link";
 import { Icon } from "./icons";
+import { ASSET_ICONS } from "@/data/site";
 import { useCart, type PriceChange, MAX_QTY } from "@/features/cart/CartContext";
 import { usePublicCatalog, useGloss, useContacts } from "@/features/publicData";
 import PickupPicker from "./PickupPicker";
@@ -11,7 +12,7 @@ import type { Product, CartItem } from "@/lib/types";
 import { useScrollLock } from "@/lib/scrollLock";
 import ThumbImg from "./ThumbImg";
 import { formatPhone, isPhoneValid, phoneDigits } from "@/lib/phone";
-import { useCustomerProfile, updateCustomerPhone } from "@/features/account";
+import { useCustomerProfile, updateCustomerPhone, useIsSignedIn } from "@/features/account";
 
 const EXTRAS_CATEGORY = "додатково";
 // категорії, для яких потрібні набори приборів (палички, серветки)
@@ -78,9 +79,19 @@ export default function CartDrawer({ isOpen, onClose }: { isOpen: boolean; onClo
   const [phone, setPhone] = useState("");
   const [address, setAddress] = useState("");
   const [comment, setComment] = useState("");
+  const [commentOpen, setCommentOpen] = useState(true);
   // залогінений клієнт — ім'я з профілю (лише в порожнє поле), номер із профілю — завжди
   // (один раз при завантаженні профілю: він головніший за номер, що лишився в полі з минулого замовлення)
   const profile = useCustomerProfile(isOpen);
+  // гість (точно без входу, не «ще перевіряємо») — показуємо запрошення створити акаунт
+  const signedIn = useIsSignedIn();
+  const [promoToast, setPromoToast] = useState(false);
+  // підказка сама ховається — не заважає оформленню
+  useEffect(() => { if (!promoToast) return; const t = setTimeout(() => setPromoToast(false), 9000); return () => clearTimeout(t); }, [promoToast]);
+  const hidePromo = () => { setPromoToast(false); setPromoHidden(true); try { sessionStorage.setItem("ss_acc_promo_hidden", "1"); } catch { /* ignore */ } };
+  const [promoHidden, setPromoHidden] = useState(() => {
+    try { return sessionStorage.getItem("ss_acc_promo_hidden") === "1"; } catch { return false; }
+  });
   const phoneFromProfile = useRef<string | null>(null);
   useEffect(() => {
     if (!profile) return;
@@ -111,6 +122,7 @@ export default function CartDrawer({ isOpen, onClose }: { isOpen: boolean; onClo
   const [promoOpen, setPromoOpen] = useState(false); // поле промокоду згорнуте за замовчуванням
   // прибори: null = авто за сумою; число = обрано вручну
   const [cutlery, setCutlery] = useState<number | null>(null);
+  const [cutleryKind, setCutleryKind] = useState<CutleryKind>("regular");
   const [consent, setConsent] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState("");
@@ -197,10 +209,10 @@ export default function CartDrawer({ isOpen, onClose }: { isOpen: boolean; onClo
   const submitHint =
     !name.trim() ? "Вкажіть ім'я"
     : !phone.trim() ? "Вкажіть телефон"
-    : !phoneOk ? "Невірний формат номера (напр. 093 728 42 98)"
-    : phoneChoicePending ? "Оберіть, чи змінити номер у профілі"
-    : delivery === "delivery" && !address.trim() ? "Вкажіть адресу доставки"
-    : !consent ? "Підтвердіть згоду на обробку персональних даних"
+    : !phoneOk ? "Перевірте номер"
+    : phoneChoicePending ? "Номер у профілі?"
+    : delivery === "delivery" && !address.trim() ? "Вкажіть адресу"
+    : !consent ? "Поставте згоду ✓"
     : "";
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -223,6 +235,7 @@ export default function CartDrawer({ isOpen, onClose }: { isOpen: boolean; onClo
           scheduleDate: pickupDate,
           scheduleTime: pickupTime,
           cutlery: needsCutlery ? cutleryQty : 0,
+          cutleryKind: needsCutlery ? cutleryKind : undefined,
           promo: promoInfo?.code ?? "", consent, items,
         }),
       });
@@ -265,12 +278,29 @@ export default function CartDrawer({ isOpen, onClose }: { isOpen: boolean; onClo
         style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.7)", backdropFilter: "blur(4px)", zIndex: 900 }} />
       <aside className="slide-in"
         style={{ position: "fixed", top: 0, right: 0, bottom: 0, width: "min(440px, 100%)", background: "var(--bg-card)", borderLeft: "1px solid var(--border)", zIndex: 950, display: "flex", flexDirection: "column" }}>
-        <div style={{ padding: "28px 28px 22px", borderBottom: "1px solid var(--border)", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
-          <h3 style={{ fontFamily: "var(--font-display)", fontSize: 26, fontWeight: 700, color: "var(--text-primary)", letterSpacing: 1 }}>
-            {step === "checkout" ? "Оформлення" : step === "done" ? "Готово" : "Кошик"}
-          </h3>
+        {/* бонуси для гостя — спливаюча підказка поверх, не блокує форму; ховається сама */}
+        {promoToast && step === "checkout" && (
+          <div className="acc-promo acc-toast" role="status">
+            <span className="acc-promo-gift" aria-hidden>🎁</span>
+            <div style={{ flex: 1, minWidth: 0 }}>
+              <b>Бонуси й подарунки — для своїх</b>
+              <span>Скоро — бали й призи для гостей з акаунтом.</span>
+              {/* кошик лежить у браузері — після входу через Google нікуди не зникне */}
+              <a href="/?login=1" className="acc-promo-btn">Створити акаунт</a>
+            </div>
+            <button type="button" className="acc-promo-x" aria-label="Сховати" onClick={hidePromo}>×</button>
+          </div>
+        )}
+        <div className="cd-head" style={{ padding: "16px 24px", borderBottom: "1px solid var(--border)", display: "flex", alignItems: "center", justifyContent: "space-between", gap: 10 }}>
+          <div style={{ display: "flex", alignItems: "center", gap: 10, minWidth: 0 }}>
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img src={ASSET_ICONS.logo} alt="Sushi Syndicate" className="cd-logo" />
+            <h3 style={{ fontFamily: "var(--font-display)", fontSize: 24, fontWeight: 700, color: "var(--text-primary)", letterSpacing: 0.5, lineHeight: 1.15, margin: 0, minWidth: 0 }}>
+              {step === "checkout" ? <><span className="cd-emoji">🍣 </span>Майже готово — лишились деталі</> : step === "done" ? "Готово" : "Кошик"}
+            </h3>
+          </div>
           <button onClick={onClose} aria-label="Закрити"
-            style={{ width: 36, height: 36, background: "transparent", border: "1px solid var(--border-light)", color: "var(--text-primary)", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center" }}>
+            className="cd-x" style={{ width: 36, height: 36, flexShrink: 0, background: "transparent", border: "1px solid var(--border-light)", color: "var(--text-primary)", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center" }}>
             <Icon.Close width="14" height="14" />
           </button>
         </div>
@@ -348,15 +378,15 @@ export default function CartDrawer({ isOpen, onClose }: { isOpen: boolean; onClo
                 <span style={{ fontSize: 11, letterSpacing: 3, textTransform: "uppercase", color: "var(--text-secondary)" }}>Разом</span>
                 <span style={{ fontFamily: "var(--font-display)", fontSize: 30, fontWeight: 700, color: "var(--text-primary)" }}>{total} грн</span>
               </div>
-              <button className="btn-primary" style={{ width: "100%" }} onClick={() => setStep("checkout")}>Оформити замовлення</button>
+              <button className="btn-primary" style={{ width: "100%" }} onClick={() => { setStep("checkout"); if (signedIn === false && !promoHidden) setPromoToast(true); }}>Оформити замовлення</button>
             </div>
           </>
         ) : (
           <form onSubmit={handleSubmit} style={{ flex: 1, display: "flex", flexDirection: "column", overflow: "hidden" }}>
-            <div style={{ flex: 1, overflowY: "auto", padding: "20px 28px", display: "flex", flexDirection: "column", gap: 12 }}>
+            <div className="co-body" style={{ flex: 1, overflowY: "auto", padding: "20px 28px", display: "flex", flexDirection: "column", gap: 12 }}>
               <div style={{ display: "flex", gap: 8 }}>
                 {([["delivery", "Доставка"], ["pickup", "Самовивіз"]] as const).map(([val, label]) => (
-                  <button key={val} type="button" onClick={() => { setDelivery(val); revalidatePickup(); }}
+                  <button key={val} type="button" onClick={() => { setDelivery(val); revalidatePickup(); }} className="co-seg"
                     style={{ flex: 1, padding: "12px 0", cursor: "pointer", fontFamily: "var(--font-body)", fontSize: 11, letterSpacing: 2, textTransform: "uppercase",
                       background: delivery === val ? "var(--bg-elevated)" : "transparent",
                       border: `1px solid ${delivery === val ? "var(--accent)" : "var(--border-light)"}`,
@@ -411,20 +441,16 @@ export default function CartDrawer({ isOpen, onClose }: { isOpen: boolean; onClo
               />
 
               {delivery === "delivery" && (
-                <div>
-                  <input className="form-input" placeholder="Адреса доставки * (вулиця, будинок, квартира)"
-                    value={address} onChange={(e) => setAddress(e.target.value)} autoComplete="off" maxLength={MAX_ADDRESS} />
-                  <p style={{ fontSize: 11, color: "var(--text-secondary)", marginTop: 6, lineHeight: 1.5 }}>
-                    Доставка — від 100 грн, далі залежно від відстані. Точну вартість підтвердимо при дзвінку.
-                  </p>
-                </div>
+                <input className="form-input" placeholder="Адреса доставки * (вулиця, будинок, квартира)"
+                  value={address} onChange={(e) => setAddress(e.target.value)} autoComplete="off" maxLength={MAX_ADDRESS} />
               )}
 
               {needsCutlery && (
-                <CutleryRow value={cutleryQty} onChange={setCutlery} />
+                <CutleryRow value={cutleryQty} onChange={setCutlery} kind={cutleryKind} onKind={setCutleryKind} />
               )}
 
               <div>
+                <div style={{ display: "flex", gap: 18, flexWrap: "wrap" }}>
                 <button
                   type="button"
                   onClick={() => setPromoOpen((v) => !v)}
@@ -438,6 +464,16 @@ export default function CartDrawer({ isOpen, onClose }: { isOpen: boolean; onClo
                   {promoInfo ? `Промокод ${promoInfo.code} · −${discount} грн` : "У мене є промокод"}
                   <span aria-hidden style={{ fontSize: 11, transition: "transform 0.2s", transform: promoOpen ? "rotate(180deg)" : "none" }}>▾</span>
                 </button>
+                <button type="button" onClick={() => setCommentOpen((v) => !v)}
+                  style={{
+                    display: "flex", alignItems: "center", gap: 6, background: "transparent", border: "none",
+                    padding: 0, cursor: "pointer", fontFamily: "var(--font-body)", fontSize: 11, letterSpacing: 1.5, textTransform: "uppercase",
+                    color: comment.trim() ? "var(--accent)" : "var(--text-secondary)",
+                  }}>
+                  {comment.trim() ? "Коментар ✓" : "Коментар"}
+                  <span aria-hidden style={{ fontSize: 11, transition: "transform 0.2s", transform: commentOpen ? "rotate(180deg)" : "none" }}>▾</span>
+                </button>
+                </div>
 
                 {promoOpen && (
                 <div style={{ marginTop: 10 }}>
@@ -473,47 +509,45 @@ export default function CartDrawer({ isOpen, onClose }: { isOpen: boolean; onClo
                 </div>
                 )}
               </div>
-              <textarea className="form-input" placeholder="Коментар до замовлення" value={comment} onChange={(e) => setComment(e.target.value)} maxLength={MAX_COMMENT} style={{ minHeight: 80 }} />
+              {commentOpen && (
+                <textarea className="form-input" placeholder="Коментар до замовлення" value={comment} onChange={(e) => setComment(e.target.value)} maxLength={MAX_COMMENT} rows={2} autoFocus style={{ minHeight: 0 }} />
+              )}
             </div>
 
-            <div style={{ borderTop: "1px solid var(--border)", padding: "20px 28px 28px" }}>
+            <div className="co-foot" style={{ borderTop: "1px solid var(--border)", padding: "20px 28px 28px" }}>
               {error && <p style={{ fontSize: 11, color: "#E0726A", marginBottom: 14, lineHeight: 1.5 }}>{error}</p>}
 
-              {delivery === "delivery" && (
-                <div style={{ display: "flex", justifyContent: "space-between", fontSize: 12, color: "var(--text-secondary)", marginBottom: 6 }}>
-                  <span>Доставка</span>
-                  <span>від 100 грн (за відстанню)</span>
-                </div>
-              )}
               {discount > 0 && (
                 <div style={{ display: "flex", justifyContent: "space-between", fontSize: 12, color: "var(--accent)", marginBottom: 6 }}>
                   <span>Знижка{promoInfo ? ` (${promoInfo.code})` : ""}</span>
                   <span>−{discount} грн</span>
                 </div>
               )}
-              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", marginBottom: 16 }}>
-                <span style={{ fontSize: 11, letterSpacing: 3, textTransform: "uppercase", color: "var(--text-secondary)" }}>До сплати</span>
+              <div className="co-total" style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 12 }}>
+                <span style={{ fontSize: 11, letterSpacing: 3, textTransform: "uppercase", color: "var(--text-secondary)" }}>
+                  До сплати
+                  {delivery === "delivery" && (
+                    <span style={{ display: "block", fontSize: 10, letterSpacing: 0.5, textTransform: "none", marginTop: 2 }}>+ доставка від 100 грн (за відстанню)</span>
+                  )}
+                </span>
                 <span style={{ fontFamily: "var(--font-display)", fontSize: 28, fontWeight: 700, color: "var(--text-primary)" }}>{payable} грн</span>
               </div>
-              <label style={{ display: "flex", gap: 10, alignItems: "flex-start", marginBottom: 16, cursor: "pointer", fontSize: 11, lineHeight: 1.5, color: "var(--text-secondary)" }}>
+              {/* згода — в один рядок; повні тексти — за посиланнями */}
+              <label style={{ display: "flex", gap: 8, alignItems: "center", marginBottom: 12, cursor: "pointer", fontSize: 11, lineHeight: 1.3, color: "var(--text-secondary)" }}>
                 <input type="checkbox" checked={consent} onChange={(e) => setConsent(e.target.checked)}
-                  style={{ marginTop: 1, width: 16, height: 16, flexShrink: 0, accentColor: "var(--accent)", cursor: "pointer" }} />
+                  style={{ width: 16, height: 16, flexShrink: 0, accentColor: "var(--accent)", cursor: "pointer" }} />
                 <span>
-                  Я погоджуюсь на обробку моїх персональних даних згідно з{" "}
-                  <Link href="/privacy" target="_blank" style={{ color: "var(--accent)", textDecoration: "underline" }}>Політикою конфіденційності</Link>
-                  {" "}та умовами{" "}
-                  <Link href="/oferta" target="_blank" style={{ color: "var(--accent)", textDecoration: "underline" }}>публічної оферти</Link>.
+                  Погоджуюсь з{" "}
+                  <Link href="/privacy" target="_blank" style={{ color: "var(--accent)", textDecoration: "underline" }}>обробкою даних</Link>
+                  {" "}і{" "}
+                  <Link href="/oferta" target="_blank" style={{ color: "var(--accent)", textDecoration: "underline" }}>офертою</Link>
                 </span>
               </label>
-              {submitHint && !submitting && (
-                <p style={{ fontSize: 11, color: "var(--text-secondary)", marginBottom: 10, textAlign: "center" }}>
-                  {submitHint}
-                </p>
-              )}
               <div style={{ display: "flex", gap: 10 }}>
                 <button type="button" className="btn-secondary" style={{ flex: "0 0 auto" }} onClick={() => setStep("cart")} disabled={submitting}>Назад</button>
-                <button type="submit" className="btn-primary" style={{ flex: 1 }} disabled={!canSubmit || submitting}>
-                  {submitting ? "Надсилаємо…" : "Підтвердити"}
+                {/* чого бракує — пишемо прямо на неактивній кнопці (без окремого рядка) */}
+                <button type="submit" className="btn-primary" style={{ flex: 1, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }} disabled={!canSubmit || submitting}>
+                  {submitting ? "Надсилаємо…" : submitHint || "Підтвердити"}
                 </button>
               </div>
             </div>
@@ -536,59 +570,65 @@ export default function CartDrawer({ isOpen, onClose }: { isOpen: boolean; onClo
 }
 
 /** Кількість наборів приборів: за замовчуванням рахується від суми, можна змінити. */
-function CutleryRow({ value, onChange }: { value: number; onChange: (n: number) => void }) {
+type CutleryKind = "regular" | "training";
+const CUTLERY_KINDS: { value: CutleryKind; label: string }[] = [
+  { value: "regular", label: "Звичайні" },
+  { value: "training", label: "Навчальні" },
+];
+
+/** Прибори: вид паличок (звичайні / навчальні) + кількість — два компактні дропдауни в один рядок. */
+function CutleryRow({ value, onChange, kind, onKind }: { value: number; onChange: (n: number) => void; kind: CutleryKind; onKind: (k: CutleryKind) => void }) {
+  return (
+    <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+      <span style={{ fontSize: 10, letterSpacing: 2, textTransform: "uppercase", color: "var(--text-secondary)", marginRight: "auto", whiteSpace: "nowrap" }}>
+        🥢 <span className="co-cut-label">Прибори</span>
+      </span>
+      <MiniDropdown width={124} label={CUTLERY_KINDS.find((k) => k.value === kind)!.label}
+        options={CUTLERY_KINDS.map((k) => ({ key: k.value, label: k.label, on: k.value === kind, pick: () => onKind(k.value) }))} />
+      <MiniDropdown width={84} label={`${value} шт`}
+        options={Array.from({ length: CUTLERY_MAX }, (_, i) => i + 1).map((n) => ({ key: String(n), label: `${n} шт`, on: n === value, pick: () => onChange(n) }))} />
+    </div>
+  );
+}
+
+function MiniDropdown({ label, options, width }: { label: string; width: number; options: { key: string; label: string; on: boolean; pick: () => void }[] }) {
   const [open, setOpen] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
-
   useEffect(() => {
     if (!open) return;
-    const onDown = (e: MouseEvent) => { if (!ref.current?.contains(e.target as Node)) setOpen(false); };
+    const onDown = (e: MouseEvent | TouchEvent) => { if (!ref.current?.contains(e.target as Node)) setOpen(false); };
     document.addEventListener("mousedown", onDown);
-    return () => document.removeEventListener("mousedown", onDown);
+    document.addEventListener("touchstart", onDown);
+    return () => { document.removeEventListener("mousedown", onDown); document.removeEventListener("touchstart", onDown); };
   }, [open]);
-
   return (
-    <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12 }}>
-      <div>
-        <span style={{ display: "block", fontSize: 10, letterSpacing: 2, textTransform: "uppercase", color: "var(--text-secondary)" }}>
-          Прибори
-        </span>
-        <span style={{ fontSize: 11, color: "var(--text-secondary)", opacity: 0.75 }}>палички та серветки</span>
-      </div>
-
-      <div ref={ref} style={{ position: "relative", width: 108, flexShrink: 0 }}>
-        <button type="button" onClick={() => setOpen((v) => !v)} aria-haspopup="listbox" aria-expanded={open}
-          style={{
-            width: "100%", display: "flex", alignItems: "center", justifyContent: "space-between", gap: 8,
-            padding: "12px 14px", cursor: "pointer", background: "var(--bg-card)",
-            border: `1px solid ${open ? "var(--accent)" : "var(--border-light)"}`,
-            color: "var(--text-primary)", fontFamily: "var(--font-body)", fontSize: 13, fontWeight: 300,
-          }}>
-          {value} шт
-          <span aria-hidden style={{ color: "var(--text-secondary)", fontSize: 11, transition: "transform 0.2s", transform: open ? "rotate(180deg)" : "none" }}>▾</span>
-        </button>
-
-        {open && (
-          <div role="listbox"
-            style={{
-              position: "absolute", right: 0, top: "calc(100% + 6px)", width: "100%", zIndex: 10,
-              background: "var(--bg-card)", border: "1px solid var(--border-light)",
-              boxShadow: "0 12px 32px rgba(0,0,0,0.55)", padding: 4,
-            }}>
-            {Array.from({ length: CUTLERY_MAX }, (_, i) => i + 1).map((n) => (
-              <button key={n} type="button" role="option" aria-selected={n === value}
-                onClick={() => { onChange(n); setOpen(false); }}
-                style={{
-                  width: "100%", padding: "9px 10px", textAlign: "left", cursor: "pointer",
-                  background: "transparent", border: "none", fontFamily: "var(--font-body)", fontSize: 13,
-                  color: n === value ? "var(--accent)" : "var(--text-primary)",
-                }}>
-                {n} шт
-              </button>
-            ))}
-          </div>
-        )}
-      </div>
+    // ширина — «бажана», на вузькому екрані стискається (мінімум ~⅔), щоб рядок не вилазив за край
+    <div ref={ref} style={{ position: "relative", flex: `0 1 ${width}px`, minWidth: Math.round(width * 0.62) }}>
+      <button type="button" onClick={() => setOpen((v) => !v)} aria-haspopup="listbox" aria-expanded={open}
+        style={{
+          width: "100%", display: "flex", alignItems: "center", justifyContent: "space-between", gap: 6,
+          padding: "var(--co-ctl-py, 12px) 12px", cursor: "pointer", background: "var(--bg-card)",
+          border: `1px solid ${open ? "var(--accent)" : "var(--border-light)"}`,
+          color: "var(--text-primary)", fontFamily: "var(--font-body)", fontSize: 13, fontWeight: 300,
+        }}>
+        <span style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{label}</span>
+        <span aria-hidden style={{ color: "var(--text-secondary)", fontSize: 11, transition: "transform 0.2s", transform: open ? "rotate(180deg)" : "none" }}>▾</span>
+      </button>
+      {open && (
+        // відкривається вгору: рядок стоїть унизу форми, вниз місця може не бути
+        <div role="listbox" style={{
+          position: "absolute", right: 0, bottom: "calc(100% + 6px)", minWidth: "100%", zIndex: 10, maxHeight: 220, overflowY: "auto",
+          background: "var(--bg-card)", border: "1px solid var(--border-light)", boxShadow: "0 12px 32px rgba(0,0,0,0.55)", padding: 4,
+        }}>
+          {options.map((o) => (
+            <button key={o.key} type="button" role="option" aria-selected={o.on} onClick={() => { o.pick(); setOpen(false); }}
+              style={{ width: "100%", padding: "9px 10px", textAlign: "left", cursor: "pointer", background: "transparent", border: "none",
+                fontFamily: "var(--font-body)", fontSize: 13, whiteSpace: "nowrap", color: o.on ? "var(--accent)" : "var(--text-primary)" }}>
+              {o.label}
+            </button>
+          ))}
+        </div>
+      )}
     </div>
   );
 }
@@ -637,7 +677,7 @@ function PickupRow({ delivery, date, time, hours, message, onOpen }: { delivery:
   const dayLabel = dayOptions(hours).find((d) => d.value === date)?.label ?? weekdayLabel(date);
   return (
     <div>
-      <span style={{ display: "block", fontSize: 10, letterSpacing: 2, textTransform: "uppercase", color: "var(--text-secondary)", marginBottom: 8 }}>
+      <span style={{ display: "block", fontSize: 10, letterSpacing: 2, textTransform: "uppercase", color: "var(--text-secondary)", marginBottom: 6 }}>
         {delivery === "delivery" ? "Коли доставити" : "Коли забрати"}
       </span>
       <div style={{ display: "flex", gap: 8 }}>
@@ -654,7 +694,7 @@ function PickupButton({ label, onClick, accent = false }: { label: string; onCli
     <button type="button" onClick={onClick}
       style={{
         flex: 1, display: "flex", alignItems: "center", justifyContent: "space-between", gap: 8,
-        padding: "14px 14px", cursor: "pointer", textAlign: "left",
+        padding: "var(--co-ctl-py, 14px) 14px", cursor: "pointer", textAlign: "left",
         background: "var(--bg-card)", border: "1px solid var(--border-light)",
         color: accent ? "var(--accent)" : "var(--text-primary)",
         fontFamily: "var(--font-body)", fontSize: 13, fontWeight: 300,
@@ -666,38 +706,30 @@ function PickupButton({ label, onClick, accent = false }: { label: string; onCli
 }
 
 function ExtrasBlock({ extras, items, add }: { extras: Product[]; items: CartItem[]; add: (p: Product) => void }) {
-  const [open, setOpen] = useState(false);
+  const [open, setOpen] = useState(true); // відкрито одразу — допи часто додають «по дорозі»
   const title = useGloss("cart_extras");
   if (!extras.length) return null;
   const qtyOf = (id: string) => items.find((i) => i.id === id)?.qty ?? 0;
   const inCart = extras.reduce((n, p) => n + qtyOf(p.id), 0);
   return (
-    <div style={{ borderTop: "1px solid var(--border)", marginTop: 6, paddingTop: 16 }}>
+    <div style={{ borderTop: "1px solid var(--border)", marginTop: 6, paddingTop: 14 }}>
       <button type="button" onClick={() => setOpen((o) => !o)}
-        style={{ width: "100%", display: "flex", alignItems: "center", gap: 8, background: "transparent", border: "none", cursor: "pointer", padding: 0, marginBottom: open ? 12 : 0 }}>
+        style={{ width: "100%", display: "flex", alignItems: "center", gap: 8, background: "transparent", border: "none", cursor: "pointer", padding: 0, marginBottom: open ? 10 : 0 }}>
         <span style={{ fontSize: 11, letterSpacing: 3, textTransform: "uppercase", color: "var(--text-secondary)" }}>{title}</span>
         {inCart > 0 && <span style={{ fontSize: 11, color: "var(--accent)", fontWeight: 700 }}>· {inCart}</span>}
         <span style={{ marginLeft: "auto", color: "var(--text-secondary)", fontSize: 13, transition: "transform 0.2s", transform: open ? "rotate(180deg)" : "none" }}>▾</span>
       </button>
       {open && (
-      <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(104px, 1fr))", gap: 8 }}>
+      // компактно: 2 колонки коротких рядків «назва · ціна  +»
+      <div className="extras-grid">
         {extras.map((p) => {
           const q = qtyOf(p.id);
           return (
-            <button key={p.id} onClick={() => add(p)} aria-label={`Додати ${p.name}`}
-              style={{
-                position: "relative", textAlign: "left", cursor: "pointer",
-                border: "1px solid var(--border-light)", background: q > 0 ? "var(--bg-elevated)" : "transparent",
-                borderRadius: 8, padding: "10px 10px 8px", display: "flex", flexDirection: "column", gap: 4, minHeight: 64,
-                color: "var(--text-primary)",
-              }}>
-              {/* плюсик у кутку */}
-              <span style={{ position: "absolute", top: 6, right: 6, width: 18, height: 18, borderRadius: 5, background: "var(--accent)", color: "#0A0908", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 13, lineHeight: 1, fontWeight: 700 }}>+</span>
-              {q > 0 && <span style={{ position: "absolute", top: 6, left: 8, fontSize: 11, color: "var(--accent)", fontWeight: 700 }}>×{q}</span>}
-              <span style={{ fontSize: 12, fontWeight: 600, lineHeight: 1.2, paddingRight: 20, marginTop: q > 0 ? 14 : 0 }}>{p.name}</span>
-              <span style={{ fontSize: 10, color: "var(--text-secondary)", letterSpacing: 0.5 }}>
-                {p.weight ? `${p.weight} · ` : ""}{p.price} грн
-              </span>
+            <button key={p.id} type="button" onClick={() => add(p)} aria-label={`Додати ${p.name}`} className={`extra-chip${q > 0 ? " on" : ""}`}
+              title={p.weight ? `${p.name} · ${p.weight}` : p.name}>
+              <span className="extra-name">{q > 0 && <b>×{q} </b>}{p.name}</span>
+              <span className="extra-price">{p.price} ₴</span>
+              <span className="extra-plus" aria-hidden>+</span>
             </button>
           );
         })}

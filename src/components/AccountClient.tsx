@@ -75,7 +75,7 @@ export default function AccountClient() {
         <p style={{ margin: 0, fontSize: 14, color: "#5BB85B" }}>✓ Пошту підтверджено — реєстрацію завершено.</p>
       )}
       <ProfileBgLayer bg={profile.profileBg} />
-      <ProfileHero profile={profile} ordersCount={orders.filter((o) => o.status !== "canceled").length} onChanged={refetch} />
+      <ProfileHero profile={profile} ordersCount={orders.filter((o) => o.status !== "canceled").length} onChanged={() => refetch(true)} />
       <div role="tablist" className="acc-tabs">
         {([["profile", "Профіль"], ["orders", `Замовлення${orders.length ? ` · ${orders.length}` : ""}`], ["favorites", `Обране${favIds.length ? ` · ${favIds.length}` : ""}`]] as const).map(([t, l]) => (
           <button key={t} type="button" role="tab" aria-selected={tab === t} onClick={() => setTab(t)}

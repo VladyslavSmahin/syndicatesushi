@@ -16,7 +16,7 @@ import ProductModal from "./ProductModal";
 import MobileMenu from "./MobileMenu";
 import TikTokSection from "./TikTokSection";
 import AuthModal from "./AuthModal";
-import { useIsSignedIn, fetchCustomerProfile } from "@/features/account";
+import { useIsSignedIn } from "@/features/account";
 import type { AuthErrorCode } from "./AuthForm";
 import MobileCategoryBar from "./MobileCategoryBar";
 import { useCart } from "@/features/cart/CartContext";
@@ -45,13 +45,14 @@ export default function HomeClient() {
   const signedIn = useIsSignedIn();
   const router = useRouter();
   const [authError, setAuthError] = useState<AuthErrorCode>(null);
-  // залогінений, але профіль не вантажиться — показуємо помилку в модалці, а не окремою сторінкою
-  const openAccount = async () => {
+  // кабінет — одразу переходом, без запиту в базу (профіль кабінет вантажить сам, з кешу;
+  // якщо профіль не завантажиться — кабінет поверне сюди з ?login=1&error=profile)
+  const openAccount = () => {
     if (!signedIn) { setAuthOpen(true); return; }
-    const p = await fetchCustomerProfile().catch(() => null);
-    if (p) router.push("/account");
-    else { setAuthError("profile"); setAuthOpen(true); }
+    router.push("/account");
   };
+  // залогіненому — сторінку кабінету підвантажуємо заздалегідь, щоб перехід був миттєвим
+  useEffect(() => { if (signedIn) router.prefetch("/account"); }, [signedIn, router]);
   // ?login=1 — сюди веде /account без входу (і невдалий callback): відкриваємо модалку й чистимо URL
   useEffect(() => {
     const q = new URLSearchParams(window.location.search);

@@ -1,5 +1,6 @@
 "use client";
 
+import { ASSET_ICONS } from "@/data/site";
 import PasswordInput from "@/components/PasswordInput";
 import { useEffect, useState } from "react";
 import { createClient } from "@/lib/supabase/client";
@@ -59,7 +60,7 @@ export default function LoginPage() {
     <div className={s.login}>
       <div className={s.loginCard}>
         {/* eslint-disable-next-line @next/next/no-img-element */}
-        <img src="/assets/logo-fish.png" alt="" style={{ height: 56, marginBottom: 18 }} />
+        <img src={ASSET_ICONS.logo} alt="" style={{ height: 48, marginBottom: 18 }} />
         <div style={{ fontFamily: "var(--font-display)", fontSize: 26, fontWeight: 700, letterSpacing: 3, color: "var(--text-primary)" }}>
           SUSHI SYNDICATE
         </div>

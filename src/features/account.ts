@@ -85,17 +85,44 @@ export async function signOutCustomer() {
   await createClient().auth.signOut();
 }
 
-/** Профіль поточного клієнта (створюється при першому зверненні). null — не залогінений / ще вантажиться. */
-async function loadProfile(): Promise<CustomerProfile | null> {
+// Один профіль на вкладку: кабінет, «Обране», кошик, вікно телефону й кнопка профілю беруть його звідси,
+// а не ходять у базу кожен сам (раніше — 2–3 однакові ланцюжки запитів на кожен перехід).
+let profileCache: { uid: string; at: number; p: Promise<CustomerProfile | null> } | null = null;
+const PROFILE_TTL = 60_000;
+
+/** Скинути кеш профілю — після змін (імʼя/номер, фото, фон), щоб наступне читання взяло свіже з бази. */
+export function invalidateProfile() { profileCache = null; }
+
+/** Профіль поточного клієнта (створюється при першому зверненні). null — не залогінений. force — повз кеш. */
+async function loadProfile(force = false): Promise<CustomerProfile | null> {
   const supabase = createClient();
-  const { data: { session } } = await supabase.auth.getSession();
-  if (!session?.user) return null;
-  await supabase.rpc("customer_ensure");
+  const { data: { session } } = await supabase.auth.getSession(); // локально, без запиту в мережу
+  if (!session?.user) { profileCache = null; return null; }
+  const uid = session.user.id;
+  if (!force && profileCache && profileCache.uid === uid && Date.now() - profileCache.at < PROFILE_TTL) return profileCache.p;
+  const p = queryProfile(supabase, session).catch((e) => { profileCache = null; throw e; });
+  profileCache = { uid, at: Date.now(), p };
+  return p;
+}
+
+async function queryProfile(
+  supabase: ReturnType<typeof createClient>,
+  session: NonNullable<Awaited<ReturnType<ReturnType<typeof createClient>["auth"]["getSession"]>>["data"]["session"]>,
+): Promise<CustomerProfile | null> {
   const base = "id, email, name, phone, phone_norm, phone_verified_at";
   // нові колонки можуть ще не бути в БД (міграції 20261008210000 / 20261008230000) — тоді без них, а не зламаний кабінет
-  let res = await supabase.from("customers").select(`${base}, avatar_url, profile_bg`).eq("id", session.user.id).maybeSingle();
-  if (res.error) res = await supabase.from("customers").select(`${base}, avatar_url`).eq("id", session.user.id).maybeSingle() as typeof res;
-  if (res.error) res = await supabase.from("customers").select(base).eq("id", session.user.id).maybeSingle() as typeof res;
+  const select = async () => {
+    let r = await supabase.from("customers").select(`${base}, avatar_url, profile_bg`).eq("id", session.user.id).maybeSingle();
+    if (r.error) r = await supabase.from("customers").select(`${base}, avatar_url`).eq("id", session.user.id).maybeSingle() as typeof r;
+    if (r.error) r = await supabase.from("customers").select(base).eq("id", session.user.id).maybeSingle() as typeof r;
+    return r;
+  };
+  let res = await select();
+  // рядка клієнта ще немає (перший вхід) — створюємо й читаємо ще раз; далі цей зайвий запит не робимо
+  if (!res.error && !res.data) {
+    await supabase.rpc("customer_ensure");
+    res = await select();
+  }
   const data = res.data as ({ id: string; email: string | null; name: string | null; phone: string | null; phone_norm: string | null; phone_verified_at: string | null; avatar_url?: string | null; profile_bg?: unknown }) | null;
   if (!data) return null;
   const meta = session.user.user_metadata ?? {};
@@ -110,11 +137,13 @@ async function loadProfile(): Promise<CustomerProfile | null> {
 /** Оновити номер у профілі (з кошика, за згодою клієнта). Зміна номера скидає його підтвердження (тригер у БД). */
 export async function updateCustomerPhone(id: string, phone: string): Promise<boolean> {
   const { error } = await createClient().from("customers").update({ phone }).eq("id", id);
+  invalidateProfile();
   return !error;
 }
 
 /** Завантажити/замінити фото профілю (сервер обріже до 320×320). Повертає код помилки або null. */
 export async function uploadCustomerAvatar(file: File): Promise<string | null> {
+  invalidateProfile();
   const fd = new FormData();
   fd.append("file", file);
   const res = await fetch("/api/avatar", { method: "POST", body: fd });
@@ -123,12 +152,14 @@ export async function uploadCustomerAvatar(file: File): Promise<string | null> {
 }
 
 export async function removeCustomerAvatar(): Promise<boolean> {
+  invalidateProfile();
   const res = await fetch("/api/avatar", { method: "DELETE" }).catch(() => null);
   return !!res?.ok;
 }
 
 /** Фон кабінету: своє фото (сервер стисне й збереже з поточним кадром). Повертає код помилки або null. */
 export async function uploadProfileBg(file: File): Promise<string | null> {
+  invalidateProfile();
   const fd = new FormData();
   fd.append("file", file);
   const res = await fetch("/api/profile-bg", { method: "POST", body: fd });
@@ -138,6 +169,7 @@ export async function uploadProfileBg(file: File): Promise<string | null> {
 
 /** Зберегти тему/кадр фону; null — прибрати фон. */
 export async function saveProfileBg(bg: ProfileBg | null): Promise<string | null> {
+  invalidateProfile();
   const res = await fetch("/api/profile-bg", bg
     ? { method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify(bg) }
     : { method: "DELETE" });
@@ -183,8 +215,9 @@ export function useAccount() {
   const [signedIn, setSignedIn] = useState(false);
   const [orders, setOrders] = useState<AccountOrder[]>([]);
 
-  const refetch = useCallback(async () => {
-    const p = await loadProfile().catch(() => null);
+  // force — коли кабінет сам щось змінив (збереження, фото, фон): беремо свіже з бази
+  const refetch = useCallback(async (force = false) => {
+    const p = await loadProfile(force).catch(() => null);
     setProfile(p);
     setSignedIn(!!p || !!(await supabase.auth.getSession()).data.session);
     if (p) {
@@ -223,7 +256,7 @@ export function useAccount() {
     if (!profile) return "no_session";
     const { error } = await supabase.from("customers").update({ name: patch.name || null, phone: patch.phone || null }).eq("id", profile.id);
     if (error) return error.message;
-    await refetch();
+    await refetch(true);
     return null;
   }, [supabase, profile, refetch]);
 
@@ -244,6 +277,8 @@ export function useIsSignedIn(): boolean | undefined {
 
 /** Роль співробітника поточного користувача (admin/editor) — для кнопки «Адмінка»; null — не співробітник.
  *  Рядок у profiles є лише для email із білого списку (RLS: кожен бачить свій). */
+let staffCache: { uid: string; p: Promise<"admin" | "editor" | null> } | null = null;
+
 export function useStaffRole(): "admin" | "editor" | null {
   const [role, setRole] = useState<"admin" | "editor" | null>(null);
   useEffect(() => {
@@ -251,12 +286,20 @@ export function useStaffRole(): "admin" | "editor" | null {
     let active = true;
     const check = async () => {
       const { data: { session } } = await supabase.auth.getSession();
-      if (!session?.user) { if (active) setRole(null); return; }
-      const { data } = await supabase.from("profiles").select("role").eq("id", session.user.id).maybeSingle();
-      if (active) setRole(data?.role === "admin" || data?.role === "editor" ? data.role : null);
+      if (!session?.user) { staffCache = null; if (active) setRole(null); return; }
+      // роль на вкладку питаємо в базі один раз (шапка, бургер і т.д. — з кешу)
+      if (!staffCache || staffCache.uid !== session.user.id) {
+        staffCache = {
+          uid: session.user.id,
+          p: Promise.resolve(supabase.from("profiles").select("role").eq("id", session.user.id).maybeSingle())
+            .then(({ data }) => (data?.role === "admin" || data?.role === "editor" ? data.role : null)),
+        };
+      }
+      const r = await staffCache.p.catch(() => null);
+      if (active) setRole(r);
     };
     check();
-    const { data: sub } = supabase.auth.onAuthStateChange((e) => { if (e === "SIGNED_IN" || e === "SIGNED_OUT") check(); });
+    const { data: sub } = supabase.auth.onAuthStateChange((e) => { if (e === "SIGNED_IN" || e === "SIGNED_OUT") { staffCache = null; profileCache = null; check(); } });
     return () => { active = false; sub.subscription.unsubscribe(); };
   }, []);
   return role;

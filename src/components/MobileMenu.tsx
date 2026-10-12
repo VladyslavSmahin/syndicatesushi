@@ -47,7 +47,7 @@ export default function MobileMenu({
         <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "0 20px", height: "var(--header-h)", borderBottom: "1px solid var(--border)", flexShrink: 0 }}>
           <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
             {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img src={ASSET_ICONS.logo} alt="" style={{ height: 40 }} />
+            <img src={ASSET_ICONS.logo} alt="" style={{ height: 34 }} />
             <div style={{ fontFamily: "var(--font-display)", fontWeight: 700, letterSpacing: 4, color: "var(--text-primary)" }}>SUSHI</div>
           </div>
           <button

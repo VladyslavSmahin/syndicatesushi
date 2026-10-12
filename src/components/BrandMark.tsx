@@ -10,7 +10,8 @@ export default function BrandMark({ href = "/", onClick, title }: { href?: strin
       <img
         src={ASSET_ICONS.logo}
         alt="Sushi Syndicate"
-        style={{ height: "var(--logo-h)", width: "auto", display: "block", filter: "drop-shadow(0 2px 8px rgba(0,0,0,0.4))" }}
+        // лого обрізане по рибках (без полів) — трохи нижче, щоб рибки були того ж розміру, що й раніше
+        style={{ height: "calc(var(--logo-h) * 0.86)", width: "auto", display: "block", filter: "drop-shadow(0 2px 8px rgba(0,0,0,0.4))" }}
       />
       <span className="brand-text" style={{ lineHeight: 0.95, display: "block" }}>
         <span style={{ display: "block", fontFamily: "var(--font-display)", fontSize: 18, fontWeight: 700, letterSpacing: "var(--brand-ls, 5px)", color: "var(--text-primary)" }}>SUSHI</span>

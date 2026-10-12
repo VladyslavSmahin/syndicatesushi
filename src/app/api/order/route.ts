@@ -27,6 +27,7 @@ interface OrderBody {
   pickupTime?: string;
   /** кількість наборів приборів (0 = не потрібні) */
   cutlery?: number;
+  cutleryKind?: "regular" | "training";
   promo?: string;
   consent?: boolean;
   items: IncomingItem[];
@@ -76,7 +77,7 @@ export async function POST(req: Request) {
   if (!body || typeof body !== "object") {
     return NextResponse.json({ ok: false, error: "bad_json" }, { status: 400 });
   }
-  const { delivery, name, phone, address, comment, cutlery, promo, consent, items } = body;
+  const { delivery, name, phone, address, comment, cutlery, cutleryKind, promo, consent, items } = body;
   const scheduleDate = body.scheduleDate ?? body.pickupDate;
   const scheduleTime = body.scheduleTime ?? body.pickupTime;
 
@@ -110,6 +111,8 @@ export async function POST(req: Request) {
 
   // прибори: ціле число в межах 0…MAX_CUTLERY, решту ігноруємо
   const cutleryQty = Math.min(MAX_CUTLERY, Math.max(0, Math.floor(Number(cutlery) || 0)));
+  // вид паличок — лише з білого списку (у коментар/бот іде готовий текст, не вільний рядок клієнта)
+  const cutleryNote = cutleryKind === "training" ? " (навчальні)" : "";
 
   const supabase = createAdminClient();
 
@@ -252,7 +255,7 @@ export async function POST(req: Request) {
         phone: phone.trim(),
         delivery_type: delivery,
         address: delivery === "delivery" ? address?.trim() ?? null : null,
-        comment: [cutleryQty > 0 && `Прибори: ${cutleryQty} шт`, comment?.trim()].filter(Boolean).join("\n") || null,
+        comment: [cutleryQty > 0 && `Прибори: ${cutleryQty} шт${cutleryNote}`, comment?.trim()].filter(Boolean).join("\n") || null,
         scheduled_date: schedule ? date : null,
         scheduled_time: schedule && time ? time : null,
         user_id: userId,
@@ -343,7 +346,7 @@ export async function POST(req: Request) {
     `🚚 <b>Спосіб:</b> ${delivery === "delivery" ? "Доставка" : "Самовивіз"}`,
     delivery === "delivery" && address ? `📍 <b>Адреса:</b> ${esc(address)}` : null,
     `🕒 <b>${delivery === "delivery" ? "Доставити" : "Забрати"}:</b> ${esc(schedule || "якнайшвидше")}`,
-    cutleryQty > 0 ? `🥢 <b>Прибори:</b> ${cutleryQty} шт` : null,
+    cutleryQty > 0 ? `🥢 <b>Прибори:</b> ${cutleryQty} шт${cutleryNote}` : null,
     code ? `🎟 <b>Промокод:</b> ${esc(code)}${discount ? ` (−${discount} грн)` : " (не застосовано)"}` : null,
     commentHtml ? `💬 <b>Коментар:</b> ${commentHtml}` : null,
     "",
