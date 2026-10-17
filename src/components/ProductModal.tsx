@@ -1,7 +1,6 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import Link from "next/link";
 import FavoriteStar from "./FavoriteStar";
 import { Icon, PhotoSlot } from "./icons";
 import type { Product } from "@/lib/types";
@@ -225,7 +224,7 @@ export default function ProductModal({
             </span>
           </div>
 
-          <div>
+          <div className="pm-info">
             <div className="eyebrow" style={{ marginBottom: 8, fontSize: 11 }}>Склад</div>
             <p style={{ fontSize: 15, fontWeight: 300, color: "var(--text-primary)", lineHeight: 1.6, opacity: 0.9 }}>
               {item.composition.toLowerCase()}
@@ -233,21 +232,15 @@ export default function ProductModal({
           </div>
 
           {item.portion && item.portion.weight > 0 && (
-            <div style={{ marginTop: 2, marginBottom: 14, fontSize: 11, lineHeight: 1.5, color: "var(--text-secondary)" }}>
+            <div className="pm-info" style={{ marginTop: 2, marginBottom: 14, fontSize: 11, lineHeight: 1.5, color: "var(--text-secondary)" }}>
               {item.portion.kcal} ккал / {item.portion.protein} г білки / {item.portion.fat} г жири / {item.portion.carbs} г вугл.
             </div>
           )}
 
-          <div style={{ marginTop: "auto", paddingTop: 18, borderTop: "1px solid var(--border)" }}>
+          <div className="pm-cta" style={{ marginTop: "auto", paddingTop: 18, borderTop: "1px solid var(--border)" }}>
             <button className="btn-primary" style={{ width: "100%" }} onClick={() => { if (closed.current) return; onAdd(item); close(); }}>
               Додати в кошик
             </button>
-            <Link
-              href={`/menu/${item.slug}`}
-              style={{ display: "block", marginTop: 10, textAlign: "center", fontSize: 11, letterSpacing: 1.5, textTransform: "uppercase", color: "var(--text-secondary)", textDecoration: "underline", textUnderlineOffset: 3 }}
-            >
-              Сторінка страви
-            </Link>
           </div>
         </div>
       </div>

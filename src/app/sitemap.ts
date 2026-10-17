@@ -1,16 +1,20 @@
 import type { MetadataRoute } from "next";
 import { SITE_URL } from "@/lib/seo";
-import { fetchProductSlugs } from "@/features/publicData.server";
+import { fetchProductSlugs, fetchPublicData } from "@/features/publicData.server";
+import { CATEGORY_SEO } from "@/lib/categorySeo";
 
 // кеш — під PUBLIC_TAG (fetchProductSlugs); ISR раз на хвилину як страховка
 export const revalidate = 60;
 
 export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   const now = new Date();
-  const products = await fetchProductSlugs();
+  const [products, { categories }] = await Promise.all([fetchProductSlugs(), fetchPublicData()]);
+  // сторінки категорій — лише активних і тих, що мають SEO-текст
+  const catPages = categories.filter((c) => c.isActive && CATEGORY_SEO[c.slug]).map((c) => CATEGORY_SEO[c.slug].path);
 
   return [
     { url: `${SITE_URL}/`, lastModified: now, changeFrequency: "daily", priority: 1 },
+    ...catPages.map((path) => ({ url: `${SITE_URL}/${path}`, lastModified: now, changeFrequency: "daily" as const, priority: 0.9 })),
     // /about, /oferta, /privacy поки чернетки (noindex) — повернути сюди, коли тексти будуть фінальні
     // сторінки страв — по них і приходять запити на кшталт «філадельфія тульчин»
     // lastModified — дата створення товару (колонки updated_at у products немає)

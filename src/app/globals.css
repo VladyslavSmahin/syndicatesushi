@@ -235,6 +235,12 @@ body {
 .search-row.active { background: var(--bg-elevated); }
 /* модалка страви: на ПК хрестик «закрити» стоїть над правою колонкою — зірочку відсуваємо від нього */
 @media (min-width: 861px) { .pm-title-row { padding-right: 44px; } }
+/* мобілка: «Додати в кошик» одразу під ціною (над складом), щоб було видно без прокрутки */
+@media (max-width: 860px) {
+  .pm-cta { display: contents; }
+  .pm-cta .btn-primary { order: 1; margin-bottom: 18px; }
+  .pm-info { order: 2; }
+}
 /* календар періоду (статистика): на телефоні — аркуш знизу, на ПК — вікно */
 .rc-overlay { position: fixed; inset: 0; z-index: 1000; background: rgba(0,0,0,0.7); display: flex; align-items: flex-end; justify-content: center; }
 @media (min-width: 701px) { .rc-overlay { align-items: center; padding: 16px; } }
@@ -634,7 +640,13 @@ textarea.form-input { resize: vertical; min-height: 120px; font-family: var(--fo
 .ph-points-soon b { color: var(--text-primary); font-weight: 500; }
 .ph-soon-tag { display: inline-block; margin-right: 6px; padding: 1px 7px; border-radius: 999px; background: var(--gold); color: #1A1208; font-size: 9px; font-weight: 600; letter-spacing: 1.5px; text-transform: uppercase; vertical-align: 1px; }
 @media (max-width: 380px) { .ph-points { flex-direction: column; align-items: flex-start; gap: 6px; } .ph-points-num { border-right: none; padding-right: 0; } }
-.ph-avatar { position: relative; width: 88px; height: 88px; flex-shrink: 0; padding: 0; border: none; background: transparent; cursor: pointer; border-radius: 50%; }
+.ph-avatar-col { display: flex; flex-direction: column; align-items: center; gap: 8px; flex-shrink: 0; }
+.ph-avatar { position: relative; width: 88px; height: 88px; flex-shrink: 0; border-radius: 50%; }
+/* «Змінити аватар» під фото — білий підкреслений текст */
+.ph-avatar-change { padding: 0; background: transparent; border: none; cursor: pointer; font-family: var(--font-body); font-size: 12px; color: #fff; text-decoration: underline; text-underline-offset: 3px; white-space: nowrap; text-shadow: 0 1px 6px rgba(0,0,0,0.85); }
+.ph-avatar-change:disabled { opacity: 0.5; cursor: default; }
+/* світла тема: білий на світлому фоні не видно — беремо основний колір тексту */
+:root[data-theme="light"] .ph-avatar-change { color: var(--text-primary); text-shadow: 0 1px 4px rgba(255,255,255,0.9); }
 .ph-ring { position: absolute; inset: 0; width: 100%; height: 100%; transform: rotate(-90deg); }
 .ph-ring-bg { fill: none; stroke: var(--border-light); stroke-width: 4; }
 .ph-ring-fg { fill: none; stroke-width: 4; stroke-linecap: round; transition: stroke-dashoffset 1.1s cubic-bezier(.3,.8,.3,1); }
@@ -642,11 +654,6 @@ textarea.form-input { resize: vertical; min-height: 120px; font-family: var(--fo
 .ph-photo img { width: 100%; height: 100%; object-fit: cover; display: block; }
 .ph-initial { font-family: var(--font-display); font-size: 30px; font-weight: 700; color: var(--gold); }
 .ph-busy { position: absolute; inset: 0; border-radius: 50%; opacity: 0.85; }
-.ph-cam {
-  position: absolute; right: 2px; bottom: 4px; width: 24px; height: 24px; border-radius: 50%;
-  display: flex; align-items: center; justify-content: center;
-  background: var(--bg-card); border: 1px solid var(--border-light); color: var(--text-primary);
-}
 .ph-name { font-family: var(--font-display); font-size: 24px; font-weight: 700; color: var(--text-primary); line-height: 1.1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .ph-pct { font-size: 12px; letter-spacing: 1px; color: var(--text-secondary); margin-top: 4px; }
 .ph-pct.full { color: var(--gold); }
@@ -770,7 +777,9 @@ textarea.form-input { resize: vertical; min-height: 120px; font-family: var(--fo
 .rail-tabs { display: flex; align-items: center; gap: 10px; }
 .rail-tab { font-size: 14px !important; padding: 11px 22px !important; letter-spacing: 1.4px !important; white-space: nowrap; }
 @media (max-width: 520px) { .rail-tabs { gap: 6px; } .rail-tab { font-size: 12px !important; padding: 10px 12px !important; letter-spacing: 1px !important; } }
-.rail-count { margin-left: 8px; font-size: 11px; opacity: 0.55; letter-spacing: 0; }
+.rail-tab { display: inline-flex; align-items: center; }
+/* лічильник — по центру висоти кнопки, а не по базовій лінії тексту (дрібні цифри «просідали») */
+.rail-count { margin-left: 8px; font-size: 11px; line-height: 1; opacity: 0.55; letter-spacing: 0; }
 .rail {
   --rail-w: clamp(200px, 62vw, 290px);
   display: flex; gap: clamp(10px, 2.4vw, 18px); overflow-x: auto; overscroll-behavior-x: contain;
@@ -829,8 +838,12 @@ textarea.form-input { resize: vertical; min-height: 120px; font-family: var(--fo
 }
 .rail-add:hover, .rail-add:active { background: var(--accent); border-color: var(--accent); color: var(--on-accent); }
 
-.rail-progress { max-width: 1440px; margin: 14px auto 0; height: 2px; background: var(--border); position: relative; width: calc(100% - 2 * var(--page-pad)); }
-.rail-progress span { position: absolute; left: 0; top: 0; bottom: 0; background: var(--accent); transition: width 0.15s linear; }
+/* точки під стрічкою — зрізи роли «Філадельфія»; активна більша й кольорова */
+.rail-dots { display: flex; justify-content: center; align-items: center; gap: 4px; margin: 10px auto 0; height: 30px; }
+.rail-dot { width: 30px; height: 30px; padding: 0; border: 0; background: none; cursor: pointer; display: flex; align-items: center; justify-content: center; -webkit-tap-highlight-color: transparent; }
+.rail-dot svg { width: 17px; height: 17px; opacity: 0.55; filter: grayscale(0.35) brightness(0.8); transition: width 0.25s ease, height 0.25s ease, opacity 0.25s ease, filter 0.25s ease, transform 0.4s ease; }
+.rail-dot.active svg { width: 28px; height: 28px; opacity: 1; filter: drop-shadow(0 2px 4px rgba(0,0,0,0.45)); transform: rotate(-18deg); }
+@media (prefers-reduced-motion: reduce) { .rail-dot svg { transition: none; } }
 @media (max-width: 760px) { .rail-arrows { display: none !important; } }
 @media (prefers-reduced-motion: reduce) { .rail-card, .rail-photo { transition: none; } }
 

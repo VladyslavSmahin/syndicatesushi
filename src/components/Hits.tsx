@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import ArrowBtn from "./ArrowBtn";
 import RailCard from "./RailCard";
+import RollDot from "./RollDot";
 import { usePublicCatalog } from "@/features/publicData";
 import { peekHomeRestore, isHomeRestoring, saveHomeState } from "@/features/navHistory";
 import type { Product } from "@/lib/types";
@@ -66,6 +67,14 @@ export default function Hits({
     ro.observe(el);
     return () => ro.disconnect();
   }, [tabIdx, measure]);
+
+  // точка → прокрутити стрічку до цієї картки
+  const scrollToCard = (i: number) => {
+    const el = railRef.current;
+    const card = el?.children[i] as HTMLElement | undefined;
+    // відстань від першої картки = скільки прокрутити (перша стоїть на лінії вкладок)
+    if (el && card) el.scrollTo({ left: card.offsetLeft - (el.children[0] as HTMLElement).offsetLeft, behavior: "smooth" });
+  };
 
   const scrollBy = (dir: 1 | -1) => {
     const el = railRef.current;
@@ -147,8 +156,18 @@ export default function Hits({
             ))}
           </div>
           {!edge.fits && (
-            <div className="rail-progress" aria-hidden>
-              <span style={{ width: `${Math.max(12, edge.progress * 100)}%` }} />
+            <div className="rail-dots">
+              {items.map((item, i) => {
+                // активна — картка, до якої докрутили (прогрес прокрутки → номер картки)
+                const active = i === Math.round(edge.progress * (items.length - 1));
+                return (
+                  <button key={item.id} className={`rail-dot${active ? " active" : ""}`}
+                    aria-label={`${item.name} (${i + 1} з ${items.length})`} aria-current={active || undefined}
+                    onClick={() => scrollToCard(i)}>
+                    <RollDot />
+                  </button>
+                );
+              })}
             </div>
           )}
         </>

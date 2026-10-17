@@ -10,6 +10,7 @@ import { useCart } from "@/features/cart/CartContext";
 import { usePublicCategories, usePublicNavSpecials, useContacts } from "@/features/publicData";
 import type { NavCategory } from "@/lib/types";
 import { sitePhones, telHref } from "@/lib/contacts";
+import { navHref } from "@/lib/categorySeo";
 
 export default function Header({
   onCartOpen,
@@ -70,7 +71,7 @@ export default function Header({
         {/* Desktop nav */}
         <nav className="desktop-only" style={{ display: "flex", alignItems: "center", gap: 0, flexWrap: "wrap", justifyContent: "center" }}>
           {navItems.map((c) => (
-            <a key={c.id} href={`#${c.id}`} className="nav-link" onClick={(e) => { e.preventDefault(); onNavClick(c); }}>
+            <a key={c.id} href={navHref(c)} className="nav-link" onClick={(e) => { e.preventDefault(); onNavClick(c); }}>
               {c.label.toUpperCase()}
             </a>
           ))}

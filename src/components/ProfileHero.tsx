@@ -77,31 +77,31 @@ export default function ProfileHero({ profile, ordersCount, onChanged }: {
 
   return (
     <div className="profile-hero">
-      <button type="button" className="ph-avatar" onClick={() => fileRef.current?.click()} disabled={busy}
-        aria-label={photo ? "Змінити фото профілю" : "Додати фото профілю"} title={photo ? "Змінити фото" : "Додати фото"}>
-        <svg viewBox="0 0 100 100" className="ph-ring" aria-hidden>
-          <defs>
-            <linearGradient id="ph-grad" x1="0" y1="0" x2="1" y2="1">
-              <stop offset="0%" stopColor="#E9D7A0" /><stop offset="100%" stopColor="var(--gold)" />
-            </linearGradient>
-          </defs>
-          <circle cx="50" cy="50" r={R} className="ph-ring-bg" />
-          <circle cx="50" cy="50" r={R} className="ph-ring-fg" stroke="url(#ph-grad)"
-            strokeDasharray={C} strokeDashoffset={C * (1 - shown / 100)} />
-        </svg>
-        <span className="ph-photo">
-          {photo
-            // eslint-disable-next-line @next/next/no-img-element
-            ? <img src={photo} alt="" referrerPolicy="no-referrer" />
-            : <span className="ph-initial">{initial}</span>}
-          {busy && <span className="ph-busy skel" />}
-        </span>
-        <span className="ph-cam" aria-hidden>
-          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-            <path d="M4 8h3l2-3h6l2 3h3v11H4z" /><circle cx="12" cy="13" r="3.5" />
+      {/* аватар не клікабельний — фото міняється текстовим посиланням під ним */}
+      <div className="ph-avatar-col">
+        <div className="ph-avatar">
+          <svg viewBox="0 0 100 100" className="ph-ring" aria-hidden>
+            <defs>
+              <linearGradient id="ph-grad" x1="0" y1="0" x2="1" y2="1">
+                <stop offset="0%" stopColor="#E9D7A0" /><stop offset="100%" stopColor="var(--gold)" />
+              </linearGradient>
+            </defs>
+            <circle cx="50" cy="50" r={R} className="ph-ring-bg" />
+            <circle cx="50" cy="50" r={R} className="ph-ring-fg" stroke="url(#ph-grad)"
+              strokeDasharray={C} strokeDashoffset={C * (1 - shown / 100)} />
           </svg>
-        </span>
-      </button>
+          <span className="ph-photo">
+            {photo
+              // eslint-disable-next-line @next/next/no-img-element
+              ? <img src={photo} alt="" referrerPolicy="no-referrer" />
+              : <span className="ph-initial">{initial}</span>}
+            {busy && <span className="ph-busy skel" />}
+          </span>
+        </div>
+        <button type="button" className="ph-avatar-change" onClick={() => fileRef.current?.click()} disabled={busy}>
+          {photo ? "Змінити аватар" : "Додати аватар"}
+        </button>
+      </div>
       <input ref={fileRef} type="file" accept="image/*,.heic,.heif" onChange={onFile} style={{ display: "none" }} />
 
       <div style={{ flex: 1, minWidth: 0 }}>

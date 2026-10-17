@@ -2,24 +2,25 @@
 
 import { useState } from "react";
 import Link from "next/link";
-import BackButton from "./BackButton";
+import SubpageHeader from "./SubpageHeader";
 import FavoriteStar from "./FavoriteStar";
 import { PhotoSlot } from "./icons";
 import { useCart } from "@/features/cart/CartContext";
-import { usePublicCatalog, usePublicCategories, useContacts } from "@/features/publicData";
-import { telHref, sitePhones } from "@/lib/contacts";
-import { ASSET_ICONS } from "@/data/site";
+import { usePublicCatalog, usePublicCategories } from "@/features/publicData";
+import { categorySeoBySlug } from "@/lib/categorySeo";
 import type { Product } from "@/lib/types";
 
 /** Сторінка окремої страви: власний URL /menu/<slug> для пошуку та для того, щоб нею можна було ділитися. */
 export default function ProductPage({ item }: { item: Product }) {
   const { add } = useCart();
-  const contacts = useContacts();
   const catalog = usePublicCatalog();
   const cats = usePublicCategories();
   const [added, setAdded] = useState(false);
 
   const catName = cats.find((c) => c.slug === item.category)?.name ?? "Меню";
+  // хлібні крихти ведуть на сторінку категорії, якщо вона є (інакше — меню на головній)
+  const catSeo = categorySeoBySlug(item.category);
+  const catHref = catSeo ? `/${catSeo.path}` : "/#menu";
   const similar = catalog.filter((p) => p.category === item.category && p.id !== item.id).slice(0, 4);
 
   const onAdd = () => {
@@ -30,38 +31,14 @@ export default function ProductPage({ item }: { item: Product }) {
 
   return (
     <main style={{ minHeight: "100vh", background: "var(--bg-primary)", color: "var(--text-primary)" }}>
-      <header
-        style={{
-          position: "sticky", top: 0, zIndex: 10, height: "var(--header-h)",
-          borderBottom: "1px solid var(--border)", background: "var(--glass)", backdropFilter: "blur(12px)",
-          display: "flex", alignItems: "center",
-        }}
-      >
-        <div style={{ maxWidth: 1100, width: "100%", margin: "0 auto", padding: "0 var(--page-pad)", display: "flex", alignItems: "center", justifyContent: "space-between", gap: 16 }}>
-          <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
-          <BackButton />
-          <Link href="/" style={{ display: "flex", alignItems: "center", gap: 10, textDecoration: "none" }}>
-            {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img src={ASSET_ICONS.logo} alt="Sushi Syndicate" className="site-logo" style={{ height: 34 }} />
-            <span style={{ fontFamily: "var(--font-display)", fontWeight: 700, letterSpacing: 4, color: "var(--text-primary)" }}>SUSHI</span>
-          </Link>
-          </div>
-          <div style={{ display: "flex", flexDirection: "column", alignItems: "flex-end", gap: 2 }}>
-            {sitePhones(contacts).map((ph) => (
-              <a key={ph} href={telHref(ph)} style={{ fontSize: 13, color: "var(--text-primary)", textDecoration: "none", letterSpacing: 0.5, whiteSpace: "nowrap" }}>
-                {ph}
-              </a>
-            ))}
-          </div>
-        </div>
-      </header>
+      <SubpageHeader />
 
       <div style={{ maxWidth: 1100, margin: "0 auto", padding: "24px var(--page-pad) 80px" }}>
         {/* хлібні крихти — і для людей, і для пошуку */}
         <nav aria-label="Навігація" style={{ fontSize: 11, letterSpacing: 1.2, textTransform: "uppercase", color: "var(--text-secondary)", marginBottom: 24 }}>
           <Link href="/" style={{ color: "inherit", textDecoration: "none" }}>Головна</Link>
           <span style={{ margin: "0 8px" }}>/</span>
-          <Link href="/#menu" style={{ color: "inherit", textDecoration: "none" }}>{catName}</Link>
+          <Link href={catHref} style={{ color: "inherit", textDecoration: "none" }}>{catName}</Link>
           <span style={{ margin: "0 8px" }}>/</span>
           <span style={{ color: "var(--text-primary)" }}>{item.name}</span>
         </nav>
