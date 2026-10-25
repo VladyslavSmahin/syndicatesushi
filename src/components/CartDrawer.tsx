@@ -426,6 +426,11 @@ export default function CartDrawer({ isOpen, onClose }: { isOpen: boolean; onClo
               </div>
               {needsCutlery && (
                 <div style={{ marginBottom: 18 }}>
+                  {/* базовий набір іде в комплекті; більше — платно, з «Додатково» вище */}
+                  <p style={{ fontSize: 12, lineHeight: 1.5, color: "var(--text-secondary)", margin: "0 0 12px" }}>
+                    <b style={{ color: "var(--text-primary)", fontWeight: 600 }}>У комплекті — стандартний набір: соєвий соус, імбир і васабі.</b>{" "}
+                    Потрібно більше — додайте вище в «Додатково».
+                  </p>
                   <CutleryRow value={cutlery} onChange={pickCutlery} training={cutleryTraining} onTraining={setCutleryTraining} attention={cutleryAsk} />
                   {cutleryAsk && (
                     <div role="alert" style={{ marginTop: 10, padding: "10px 12px", border: "1px solid var(--accent)", fontSize: 12, lineHeight: 1.5, color: "var(--text-primary)" }}>
