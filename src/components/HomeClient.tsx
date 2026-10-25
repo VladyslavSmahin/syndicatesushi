@@ -191,7 +191,9 @@ export default function HomeClient() {
     if (isScrollLocked() && tries > 0) { requestAnimationFrame(() => scrollTo(id, tries - 1)); return; }
     const el = document.getElementById(id);
     if (el) {
-      const top = el.getBoundingClientRect().top + window.scrollY - HEADER_OFFSET;
+      // + панель категорій, закріплена під шапкою на мобільному
+      const mcat = parseFloat(getComputedStyle(document.documentElement).getPropertyValue("--mcat-h")) || 0;
+      const top = el.getBoundingClientRect().top + window.scrollY - HEADER_OFFSET - mcat;
       window.scrollTo({ top, behavior: "smooth" });
     }
   };

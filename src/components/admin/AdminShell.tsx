@@ -70,11 +70,65 @@ const NAV: { group: string; items: { href: string; label: string }[] }[] = [
   },
 ];
 
+// Пошук розділу: назва + слова, якими співробітники шукають (укр. і рос.), напр. «знижка» → Акції
+const NAV_KEYWORDS: Record<string, string> = {
+  "/admin": "огляд обзор дашборд головна",
+  "/admin/customers": "клієнти клиенты покупці користувачі бали реферали друзі",
+  "/admin/stats": "статистика графік продажі виручка аналітика выручка",
+  "/admin/categories": "категорії категории розділи меню",
+  "/admin/subcategories": "підкатегорії подкатегории",
+  "/admin/products": "товари товары страви блюда меню роли сети ціна цена бейдж хіт нове фото склад наявність",
+  "/admin/ingredients": "інгредієнти ингредиенты кбжу калорії грамовка",
+  "/admin/price-history": "історія цін история цен зміна цін",
+  "/admin/orders/board": "замовлення заказы дошка заявки",
+  "/admin/reviews": "відгуки отзывы рейтинг",
+  "/admin/settings": "доставка налаштування настройки мінімальна сума зони",
+  "/admin/contacts": "контакти контакты телефон адреса години роботи график соцмережі",
+  "/admin/seo-text": "seo сео текст google",
+  "/admin/glossary": "глосарій глоссарий підписи тексти кнопки назви",
+  "/admin/staff": "співробітники сотрудники персонал доступ ролі адмін",
+  "/admin/promos": "акції акция знижка скидка акційна ціна бейдж банери баннеры",
+  "/admin/promo-codes": "промокоди промокоды код купон знижка скидка",
+  "/admin/hero-bg": "фон головної главная hero банер",
+  "/admin/tiktok": "tiktok тікток тикток відео",
+  "/admin/deleted": "кошик корзина видалені удаленные відновити",
+};
+const SEARCH_ITEMS = [
+  ...NAV.flatMap((g) => g.items.flatMap((it) => (it.href === "/admin" ? OVERVIEW_TABS : [it])).map((it) => ({ ...it, group: g.group }))),
+  { ...TRASH, group: "Система" },
+].map((it) => ({ ...it, text: `${it.label} ${it.group} ${NAV_KEYWORDS[it.href] ?? ""}`.toLowerCase() }));
+
+/** Розділи, що підходять під запит: кожне слово запиту має знайтись (у назві — вище). */
+function searchNav(q: string) {
+  const words = q.toLowerCase().split(/\s+/).filter(Boolean);
+  if (!words.length) return [];
+  return SEARCH_ITEMS
+    .filter((it) => words.every((w) => it.text.includes(w)))
+    .sort((a, b) => Number(!a.label.toLowerCase().includes(words[0])) - Number(!b.label.toLowerCase().includes(words[0])));
+}
+
 export default function AdminShell({ children }: { children: React.ReactNode }) {
   const { user, loading, denied, logout } = useAdminAuth();
   const pathname = usePathname();
   const router = useRouter();
   const [navOpen, setNavOpen] = useState(false);
+  const [query, setQuery] = useState("");
+  const searchRef = useRef<HTMLInputElement>(null);
+  const results = searchNav(query);
+  // Ctrl/⌘+K або «/» — фокус у пошук розділів (на компʼютері)
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      const t = e.target as HTMLElement;
+      const typing = /^(INPUT|TEXTAREA|SELECT)$/.test(t.tagName) || t.isContentEditable;
+      if ((e.key === "k" && (e.metaKey || e.ctrlKey)) || (e.key === "/" && !typing)) {
+        e.preventDefault();
+        setNavOpen(true);
+        searchRef.current?.focus();
+      }
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, []);
   const [helpOpen, setHelpOpen] = useState(false);
   // адмінка завжди темна: якщо на сайті була світла тема — знімаємо її тут і повертаємо при виході
   useEffect(() => {
@@ -150,7 +204,7 @@ export default function AdminShell({ children }: { children: React.ReactNode }) 
   const isLogin = pathname === "/admin/login";
 
   // перехід завершено (маршрут змінився) — прибираємо індикатор
-  useEffect(() => { setNavOpen(false); setPendingHref(null); setHelpOpen(false); }, [pathname]);
+  useEffect(() => { setNavOpen(false); setPendingHref(null); setHelpOpen(false); setQuery(""); }, [pathname]);
 
   // перейшли на сторінку зі згорнутої групи — розгортаємо її (далі користувач може знову згорнути)
   useEffect(() => {
@@ -234,8 +288,47 @@ export default function AdminShell({ children }: { children: React.ReactNode }) 
     <div className={s.shell}>
       {navOpen && <div className={s.overlay} onClick={() => setNavOpen(false)} />}
       <aside className={`${s.sidebar} ${navOpen ? s.sidebarOpen : ""}`}>
+        <div className={s.navSearch}>
+          <SearchIcon />
+          <input
+            ref={searchRef}
+            type="search"
+            value={query}
+            onChange={(e) => setQuery(e.target.value)}
+            onKeyDown={(e) => {
+              if (e.key === "Enter" && results[0]) {
+                e.preventDefault();
+                if (pathname !== results[0].href) { setPendingHref(results[0].href); router.push(results[0].href); }
+                else setQuery("");
+              }
+              if (e.key === "Escape") { setQuery(""); e.currentTarget.blur(); }
+            }}
+            placeholder="Знайти розділ…"
+            aria-label="Знайти розділ адмінки"
+            enterKeyHint="go"
+            autoComplete="off"
+          />
+        </div>
 
-        {NAV.map((g) => {
+        {query.trim() ? (
+          results.length ? results.map((it, i) => {
+            const pending = pendingHref === it.href;
+            return (
+              <Link
+                key={it.href}
+                href={it.href}
+                onClick={() => { if (pathname !== it.href) setPendingHref(it.href); else setQuery(""); }}
+                className={`${s.navItem} ${i === 0 || pending ? s.navItemActive : ""}`}
+              >
+                <span style={{ minWidth: 0 }}>
+                  {it.label}
+                  <span className={s.navSearchGroup}>{it.group}</span>
+                </span>
+                {pending && <Spinner />}
+              </Link>
+            );
+          }) : <p className={s.navSearchEmpty}>Нічого не знайдено</p>
+        ) : NAV.map((g) => {
           const open = !collapsed.includes(g.group);
           return (
           <div key={g.group}>
@@ -308,6 +401,14 @@ export default function AdminShell({ children }: { children: React.ReactNode }) 
       </div>
     </div>
     </div>
+  );
+}
+
+function SearchIcon() {
+  return (
+    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" aria-hidden style={{ flexShrink: 0 }}>
+      <circle cx="11" cy="11" r="7" /><path d="M20 20l-3.5-3.5" />
+    </svg>
   );
 }
 

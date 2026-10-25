@@ -92,6 +92,7 @@
   --fab-left: 18px;
   --fab-right: 18px;
   --fab-bottom: 24px;
+  --mcat-h: 0px; /* висота фіксованої панелі категорій під шапкою (лише на мобільному) */
   --head-mb: 32px;      /* відступ під заголовком секції */
   --logo-h: 48px;       /* висота лого у шапці */
 }
@@ -449,10 +450,6 @@ textarea.form-input { resize: vertical; min-height: 120px; font-family: var(--fo
 .no-scrollbar { scrollbar-width: none; -ms-overflow-style: none; }
 .no-scrollbar::-webkit-scrollbar { display: none; }
 
-/* місце знизу під фіксовану панель категорій на мобільному */
-@media (max-width: 860px) {
-  body { padding-bottom: 84px; }
-}
 
 /* показувати лише на десктопі / лише на мобільному */
 .desktop-only { display: initial; }
@@ -508,7 +505,8 @@ textarea.form-input { resize: vertical; min-height: 120px; font-family: var(--fo
     --head-mb: 16px;
     --fab-left: 14px;
     --fab-right: 14px;
-    --fab-bottom: 78px;  /* над нижньою панеллю категорій */
+    --fab-bottom: 20px;
+    --mcat-h: 58px;      /* панель категорій під шапкою: 52px + зазор */
   }
   .desktop-only { display: none !important; }
   .mobile-only { display: initial; }
@@ -524,7 +522,7 @@ textarea.form-input { resize: vertical; min-height: 120px; font-family: var(--fo
   /* пошук угорі Hero: підтягуємо ближче до шапки (замість частини верхнього відступу) */
   .hero-search {
     position: relative; top: auto; padding: 0;
-    margin: calc(var(--header-h) + 10px - var(--hero-pt)) 0 16px;
+    margin: calc(var(--header-h) + var(--mcat-h) + 10px - var(--hero-pt)) 0 16px;
   }
   .hero-search-inner > * { width: 300px; }
   .hero-eyebrow { order: 1; margin-bottom: 0 !important; }

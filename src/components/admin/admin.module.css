@@ -53,6 +53,19 @@
   border: 1px solid transparent;
 }
 .navItem:hover { background: var(--bg-elevated); color: var(--text-primary); }
+/* пошук розділу — над меню */
+.navSearch {
+  display: flex; align-items: center; gap: 8px; margin-bottom: 6px;
+  padding: 0 12px; border: 1px solid var(--border-light); border-radius: 6px;
+  background: var(--bg-elevated); color: var(--text-tertiary);
+}
+.navSearch:focus-within { border-color: var(--accent); color: var(--text-secondary); }
+.navSearch input {
+  flex: 1; min-width: 0; padding: 10px 0; background: transparent; border: none; outline: none;
+  color: var(--text-primary); font-family: var(--font-body); font-size: 16px; /* 16px — iOS не зумить */
+}
+.navSearchGroup { display: block; font-size: 10px; letter-spacing: 1.5px; text-transform: uppercase; color: var(--text-tertiary); margin-top: 2px; }
+.navSearchEmpty { padding: 10px 12px; font-size: 14px; color: var(--text-tertiary); }
 .navItemActive {
   background: var(--bg-elevated);
   color: var(--accent);

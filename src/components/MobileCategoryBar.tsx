@@ -34,7 +34,8 @@ export default function MobileCategoryBar({
     <div
       className="silver-strip"
       style={{
-        position: "fixed", left: 10, right: 10, bottom: 10, zIndex: 90,
+        // закріплена під шапкою (над пошуком); висота — var(--mcat-h) у globals.css
+        position: "fixed", left: 10, right: 10, top: "var(--header-h)", zIndex: 99,
         backdropFilter: "blur(14px)", borderRadius: 14,
       }}
     >
