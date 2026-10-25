@@ -4,6 +4,7 @@ import { createAdminClient } from "@/lib/supabase/admin";
 import { createClient } from "@/lib/supabase/server";
 import { rateLimit, clientIp } from "@/lib/rateLimit";
 import { parseContacts } from "@/lib/contacts";
+import { activePromo, timeToMinutes, type PromoRule } from "@/lib/promoPrice";
 import { kyivNow, addDays, parseHours, toMinutes, PICKUP_DAYS_AHEAD, PICKUP_STEP_MIN } from "@/lib/kyivTime";
 import { findReferrer, referralBlock, firstName, REFERRAL_PERCENT, REFERRAL_MIN_TOTAL, activeCertificate, claimCertificate, referrerOfUser, releaseCertificate, bindCertificate } from "@/lib/referral.server";
 
@@ -26,8 +27,11 @@ interface OrderBody {
   /** старі назви полів (вкладки, відкриті до оновлення сайту) — лише самовивіз */
   pickupDate?: string;
   pickupTime?: string;
-  /** кількість наборів приборів (0 = не потрібні) */
+  /** кількість паличок (0 = не потрібні; не передано — у замовленні немає страв, до яких їх дають) */
   cutlery?: number;
+  /** скільки з них навчальних (0…cutlery) */
+  cutleryTraining?: number;
+  /** старе поле (вкладки, відкриті до оновлення сайту): усі палички одного виду */
   cutleryKind?: "regular" | "training";
   promo?: string;
   /** списати сертифікат «Приведи друга» (лише для залогіненого, не разом із промокодом) */
@@ -80,7 +84,7 @@ export async function POST(req: Request) {
   if (!body || typeof body !== "object") {
     return NextResponse.json({ ok: false, error: "bad_json" }, { status: 400 });
   }
-  const { delivery, name, phone, address, comment, cutlery, cutleryKind, promo, consent, items } = body;
+  const { delivery, name, phone, address, comment, cutlery, cutleryTraining, cutleryKind, promo, consent, items } = body;
   const scheduleDate = body.scheduleDate ?? body.pickupDate;
   const scheduleTime = body.scheduleTime ?? body.pickupTime;
 
@@ -112,10 +116,14 @@ export async function POST(req: Request) {
     return NextResponse.json({ ok: false, error: "field_too_long" }, { status: 400 });
   }
 
-  // прибори: ціле число в межах 0…MAX_CUTLERY, решту ігноруємо
+  // палички: ціле число в межах 0…MAX_CUTLERY, з них навчальних — 0…кількість; решту ігноруємо
   const cutleryQty = Math.min(MAX_CUTLERY, Math.max(0, Math.floor(Number(cutlery) || 0)));
-  // вид паличок — лише з білого списку (у коментар/бот іде готовий текст, не вільний рядок клієнта)
-  const cutleryNote = cutleryKind === "training" ? " (навчальні)" : "";
+  const trainingQty = cutleryKind === "training" ? cutleryQty : Math.min(cutleryQty, Math.max(0, Math.floor(Number(cutleryTraining) || 0)));
+  // у коментар/бот іде готовий текст, не вільний рядок клієнта.
+  // 0 явно — клієнт сам підтвердив, що палички не потрібні (кухні варто це бачити)
+  const cutleryText = cutleryQty > 0
+    ? `${cutleryQty} шт${trainingQty > 0 ? `, з них навчальних: ${trainingQty}` : ""}`
+    : cutlery === 0 ? "не потрібні" : "";
 
   const supabase = createAdminClient();
 
@@ -176,19 +184,22 @@ export async function POST(req: Request) {
     // активні акції на ці товари — щоб ціна замовлення збігалася з тією, що бачить клієнт
     const { data: promos } = await supabase
       .from("promos")
-      .select("product_id, promo_price, is_active, valid_from, valid_until")
+      .select("product_id, promo_price, is_active, valid_from, valid_until, daily_from, daily_until")
       .in("product_id", ids)
       .eq("is_active", true);
-    const now = new Date();
+    // ті самі правила, що й на сайті (дати + щоденне вікно за київським часом)
+    const rules = new Map<string, PromoRule[]>();
     for (const pr of promos ?? []) {
       if (!pr.product_id) continue;
-      if (pr.valid_from && new Date(pr.valid_from) > now) continue;
-      if (pr.valid_until && new Date(pr.valid_until) < now) continue;
-      const pp = Number(pr.promo_price);
-      if (pp > 0) {
-        const prev = promoPrice.get(pr.product_id);
-        promoPrice.set(pr.product_id, prev != null ? Math.min(prev, pp) : pp);
-      }
+      const list = rules.get(pr.product_id) ?? [];
+      list.push({ price: Number(pr.promo_price), from: pr.valid_from, until: pr.valid_until, dailyFrom: timeToMinutes(pr.daily_from), dailyTo: timeToMinutes(pr.daily_until) });
+      rules.set(pr.product_id, list);
+    }
+    const now = new Date();
+    for (const [pid, list] of rules) {
+      const db = fromDb.get(pid);
+      const pr = db && activePromo(list, db.price, now);
+      if (pr) promoPrice.set(pid, pr.price);
     }
   }
 
@@ -303,7 +314,7 @@ export async function POST(req: Request) {
         phone: phone.trim(),
         delivery_type: delivery,
         address: delivery === "delivery" ? address?.trim() ?? null : null,
-        comment: [cutleryQty > 0 && `Прибори: ${cutleryQty} шт${cutleryNote}`, comment?.trim()].filter(Boolean).join("\n") || null,
+        comment: [cutleryText && `Палички: ${cutleryText}`, comment?.trim()].filter(Boolean).join("\n") || null,
         scheduled_date: schedule ? date : null,
         scheduled_time: schedule && time ? time : null,
         user_id: userId,
@@ -401,7 +412,7 @@ export async function POST(req: Request) {
     `🚚 <b>Спосіб:</b> ${delivery === "delivery" ? "Доставка" : "Самовивіз"}`,
     delivery === "delivery" && address ? `📍 <b>Адреса:</b> ${esc(address)}` : null,
     `🕒 <b>${delivery === "delivery" ? "Доставити" : "Забрати"}:</b> ${esc(schedule || "якнайшвидше")}`,
-    cutleryQty > 0 ? `🥢 <b>Прибори:</b> ${cutleryQty} шт${cutleryNote}` : null,
+    cutleryText ? `🥢 <b>Палички:</b> ${cutleryText}` : null,
     certLine,
     referralLine ?? (code ? `🎟 <b>Промокод:</b> ${esc(code)}${discount ? ` (−${discount} грн)` : " (не застосовано)"}` : null),
     commentHtml ? `💬 <b>Коментар:</b> ${commentHtml}` : null,

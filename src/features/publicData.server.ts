@@ -13,6 +13,7 @@ import { parseContacts } from "@/lib/contacts";
 import { parseSeoBlock } from "@/lib/seoBlock";
 import { parseHeroBg } from "@/lib/heroBg";
 import { parseTikTok } from "@/lib/tiktok";
+import { timeToMinutes, type PromoRule } from "@/lib/promoPrice";
 
 const num = (v: unknown) => (v == null ? 0 : Number(v));
 const r1 = (n: number) => Math.round(n * 10) / 10;
@@ -104,11 +105,12 @@ async function queryPublicData(): Promise<PublicData> {
       .select("id, name, slug, short_desc, full_desc, composition, price, weight, pieces, badge, image_path, sort_order, category:categories(slug, is_active), subcategory:subcategories(slug), items:product_ingredients(grams, ingredient:ingredients(name, kcal, protein, fat, carbs))")
       .is("deleted_at", null)
       .eq("is_available", true)
+      .eq("show_in_menu", true) // «не показувати в меню» — роли лише для складу сетів
       .order("sort_order"),
     supabase
       .from("set_items")
       .select("set_id, qty, product:products!product_id(items:product_ingredients(grams, ingredient:ingredients(name, kcal, protein, fat, carbs)))"),
-    supabase.from("promos").select("id, label, title, promo_price, old_price, banner_image_path, valid_from, valid_until, product:products(id)").eq("is_active", true).order("sort_order"),
+    supabase.from("promos").select("id, label, title, promo_price, old_price, banner_image_path, valid_from, valid_until, daily_from, daily_until, product:products(id)").eq("is_active", true).order("sort_order"),
     supabase.from("banners").select("id, image_path").eq("is_active", true).order("sort_order"),
     supabase.from("settings").select("key, value").in("key", ["delivery", "nav_specials", "glossary", "contacts", "seo_block", "hero_bg", "tiktok"]),
     supabase.from("reviews").select("id, author_name, rating, text, created_at").eq("status", "approved").order("created_at", { ascending: false }).limit(24),
@@ -132,18 +134,21 @@ async function queryPublicData(): Promise<PublicData> {
     return { id: s.id, categorySlug, name: s.name, slug: s.slug, sortOrder: s.sort_order };
   });
 
-  // ефективна акційна ціна на товар: активна акція в межах дат і нижча за каталожну
+  // Акції на товар — правилами, а не готовою ціною: сторінки кешуються (ISR), а акція може
+  // діяти лише в щоденне вікно («до 16:00»). Діючу ціну рахує withPromoPrices на клієнті й у /api/order.
+  // Вже завершені за датою акції відкидаємо одразу.
   const now = Date.now();
-  const promoByProduct = new Map<string, { price: number; until: string | null }>();
-  for (const pr of (promosRes.data ?? []) as { promo_price: number | string; valid_from: string | null; valid_until: string | null; product: { id: string } | { id: string }[] | null }[]) {
+  const promoRulesByProduct = new Map<string, PromoRule[]>();
+  for (const pr of (promosRes.data ?? []) as { promo_price: number | string; valid_from: string | null; valid_until: string | null; daily_from: string | null; daily_until: string | null; product: { id: string } | { id: string }[] | null }[]) {
     const prod = pr.product;
     const pid = Array.isArray(prod) ? prod[0]?.id : prod?.id;
     if (!pid) continue;
-    if (pr.valid_from && new Date(pr.valid_from).getTime() > now) continue;
     if (pr.valid_until && new Date(pr.valid_until).getTime() < now) continue;
     const pp = Number(pr.promo_price);
-    const prev = promoByProduct.get(pid);
-    if (pp > 0 && (!prev || pp < prev.price)) promoByProduct.set(pid, { price: pp, until: pr.valid_until });
+    if (!(pp > 0)) continue;
+    const list = promoRulesByProduct.get(pid) ?? [];
+    list.push({ price: pp, from: pr.valid_from, until: pr.valid_until, dailyFrom: timeToMinutes(pr.daily_from), dailyTo: timeToMinutes(pr.daily_until) });
+    promoRulesByProduct.set(pid, list);
   }
 
   // Порядок товарів: спочатку за порядком категорій (як у меню сайту), далі
@@ -161,9 +166,8 @@ async function queryPublicData(): Promise<PublicData> {
     .map((p) => mapProduct(p, setPortionById.get(p.id)))
     .sort((a, b) => catRank(a.category) - catRank(b.category) || photoRank(a) - photoRank(b))
     .map((p) => {
-      const pr = promoByProduct.get(p.id);
-      if (!pr || pr.price >= p.price) return p;
-      return { ...p, oldPrice: p.price, price: pr.price, ...(pr.until ? { promoUntil: pr.until } : {}) };
+      const rules = promoRulesByProduct.get(p.id)?.filter((r) => r.price < p.price);
+      return rules?.length ? { ...p, promoRules: rules } : p;
     });
 
   const promos: Promo[] = (promosRes.data ?? []).map((p) => {
@@ -217,6 +221,7 @@ async function queryProductSlugs(): Promise<ProductSlug[]> {
     .select("slug, created_at, category:categories(is_active)")
     .is("deleted_at", null)
     .eq("is_available", true)
+    .eq("show_in_menu", true)
     .order("sort_order");
   if (error) { console.error("product slugs:", error.message); return []; }
   type SlugRow = { slug: string; created_at: string | null; category: { is_active: boolean | null } | { is_active: boolean | null }[] | null };

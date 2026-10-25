@@ -33,11 +33,11 @@ export default function PromosPage() {
   const openNew = () => {
     setEditing(null);
     const pid = active[0]?.id ?? null;
-    setDraft({ productId: pid, price: 0, oldPrice: priceOf(pid), isActive: true, validFrom: null, validUntil: null });
+    setDraft({ productId: pid, price: 0, oldPrice: priceOf(pid), isActive: true, validFrom: null, validUntil: null, dailyFrom: null, dailyUntil: null });
   };
   const openEdit = (p: DbPromo) => {
     setEditing(p);
-    setDraft({ productId: p.productId, price: p.price, oldPrice: priceOf(p.productId), isActive: p.isActive, validFrom: p.validFrom, validUntil: p.validUntil });
+    setDraft({ productId: p.productId, price: p.price, oldPrice: priceOf(p.productId), isActive: p.isActive, validFrom: p.validFrom, validUntil: p.validUntil, dailyFrom: p.dailyFrom, dailyUntil: p.dailyUntil });
   };
   const close = () => { setDraft(null); setEditing(null); };
   const set = <K extends keyof Draft>(k: K, v: Draft[K]) => setDraft((d) => (d ? { ...d, [k]: v } : d));
@@ -77,7 +77,12 @@ export default function PromosPage() {
               ) : promos.map((p) => (
                 <tr key={p.id}>
                   <td style={{ fontFamily: "var(--font-display)", fontSize: 15, fontWeight: 600 }}>{productName(p.productId)}</td>
-                  <td style={{ color: "var(--accent)" }}>{p.price} грн</td>
+                  <td style={{ color: "var(--accent)" }}>
+                    {p.price} грн
+                    {(p.dailyFrom || p.dailyUntil) && (
+                      <div style={{ fontSize: 11, color: "var(--text-secondary)", whiteSpace: "nowrap" }}>щодня {p.dailyFrom ? `з ${p.dailyFrom} ` : ""}{p.dailyUntil ? `до ${p.dailyUntil}` : ""}</div>
+                    )}
+                  </td>
                   <td style={{ color: "var(--text-secondary)", textDecoration: "line-through" }}>{p.oldPrice || "—"}</td>
                   <td>
                     <button className={`${s.pill} ${p.isActive ? s.pillOn : s.pillOff}`} style={{ cursor: "pointer", border: "none" }} onClick={() => toggle(p)}>
@@ -126,6 +131,16 @@ export default function PromosPage() {
                 <input className={s.input} type="date" value={draft.validFrom ?? ""} onChange={(e) => set("validFrom", e.target.value || null)} /></div>
               <div className={s.field} style={{ flex: 1 }}><span className={s.fieldLabel}>Діє до (необовʼязково)</span>
                 <input className={s.input} type="date" value={draft.validUntil ?? ""} onChange={(e) => set("validUntil", e.target.value || null)} /></div>
+            </div>
+            {/* щоденне вікно: напр. «до 16:00» — до 16:00 акційна ціна, після — звичайна (київський час) */}
+            <div style={{ display: "flex", gap: 14, flexWrap: "wrap" }}>
+              <div className={s.field} style={{ flex: 1 }}><span className={s.fieldLabel}>Щодня з (необовʼязково)</span>
+                <input className={s.input} type="time" value={draft.dailyFrom ?? ""} onChange={(e) => set("dailyFrom", e.target.value || null)} /></div>
+              <div className={s.field} style={{ flex: 1 }}><span className={s.fieldLabel}>Щодня до (необовʼязково)</span>
+                <input className={s.input} type="time" value={draft.dailyUntil ?? ""} onChange={(e) => set("dailyUntil", e.target.value || null)} /></div>
+            </div>
+            <div style={{ fontSize: 11, lineHeight: 1.5, color: "var(--text-secondary)", marginTop: -6 }}>
+              Напр. «до 16:00»: щодня до 16:00 — акційна ціна, після — звичайна. Порожньо — акція діє весь день.
             </div>
             <label style={{ display: "flex", alignItems: "center", gap: 8, color: "var(--text-primary)", fontSize: 13, cursor: "pointer" }}>
               <input type="checkbox" checked={draft.isActive} onChange={(e) => set("isActive", e.target.checked)} /> Активна

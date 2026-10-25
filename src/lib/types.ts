@@ -1,6 +1,8 @@
 // Типи даних сайту. Узгоджені зі схемою БД (див. ARCHITECTURE.md §4).
 // Поки що джерело — статичні дані (src/data/site.ts). Пізніше замінимо на Supabase.
 
+import type { PromoRule } from "@/lib/promoPrice";
+
 export type Badge = "ХІТ" | "НОВЕ" | "";
 
 /** Харчова цінність порції (сума по інгредієнтах з урахуванням грамовки). */
@@ -31,6 +33,9 @@ export interface Product {
   oldPrice?: number;
   /** кінець дії акції (ISO), якщо задано — для розмітки priceValidUntil */
   promoUntil?: string;
+  /** акції на товар (з датами й щоденним вікном); price при цьому — звичайна ціна.
+   *  Діючу ціну рахує withPromoPrices (lib/promoPrice) — на сайті наживо, щоб «до 16:00» перемикалось вчасно. */
+  promoRules?: PromoRule[];
   /** напр. "290 г" */
   weight: string;
   /** напр. "8 шт" */

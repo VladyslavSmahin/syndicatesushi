@@ -16,11 +16,9 @@ import { useCustomerProfile, updateCustomerPhone, useIsSignedIn, fetchActiveCert
 import { readRef, clearRef } from "@/lib/referral";
 
 const EXTRAS_CATEGORY = "додатково";
-// категорії, для яких потрібні набори приборів (палички, серветки)
+// категорії, до яких дають палички (безкоштовно)
 const CUTLERY_CATEGORIES = ["сети", "роли", "hot/wok", "боули"];
 const CUTLERY_MAX = 6;
-/** Скільки наборів пропонуємо за замовчуванням, залежно від суми замовлення. */
-const autoCutlery = (sum: number) => (sum >= 2000 ? 4 : sum >= 1500 ? 3 : sum >= 1000 ? 2 : 1);
 
 const qtyBtn: CSSProperties = {
   width: 32, height: 32, background: "transparent", border: "none", color: "var(--text-primary)",
@@ -126,9 +124,10 @@ export default function CartDrawer({ isOpen, onClose }: { isOpen: boolean; onClo
   const [promoMsg, setPromoMsg] = useState<{ ok: boolean; text: string } | null>(null);
   const [promoChecking, setPromoChecking] = useState(false);
   const [promoOpen, setPromoOpen] = useState(false); // поле промокоду згорнуте за замовчуванням
-  // прибори: null = авто за сумою; число = обрано вручну
+  // палички: null = клієнт ще не обрав кількість (тоді перед оформленням питаємо, чи точно 0)
   const [cutlery, setCutlery] = useState<number | null>(null);
-  const [cutleryKind, setCutleryKind] = useState<CutleryKind>("regular");
+  const [cutleryTraining, setCutleryTraining] = useState(0); // скільки з них навчальних
+  const [cutleryAsk, setCutleryAsk] = useState(false); // показане питання «точно без паличок?»
   const [consent, setConsent] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState("");
@@ -232,7 +231,15 @@ export default function CartDrawer({ isOpen, onClose }: { isOpen: boolean; onClo
   applyPromoRef.current = applyPromo;
 
   const needsCutlery = items.some((i) => CUTLERY_CATEGORIES.includes(catById.get(i.id) ?? ""));
-  const cutleryQty = cutlery ?? autoCutlery(total);
+  const cutleryQty = cutlery ?? 0;
+  const pickCutlery = (n: number) => { setCutlery(n); setCutleryTraining((t) => Math.min(t, n)); setCutleryAsk(false); };
+  const goCheckout = () => {
+    setCutleryAsk(false);
+    setStep("checkout");
+    if (signedIn === false && !promoHidden) setPromoToast(true);
+  };
+  // кількість паличок не обрано — не пускаємо далі, поки клієнт не підтвердить, що вони не потрібні
+  const onCheckout = () => { if (needsCutlery && cutlery === null) setCutleryAsk(true); else goCheckout(); };
 
   const addrOk = delivery === "pickup" || !!address.trim();
   const phoneOk = isPhoneValid(phone);
@@ -271,8 +278,8 @@ export default function CartDrawer({ isOpen, onClose }: { isOpen: boolean; onClo
           delivery, name, phone, address: fullAddress, comment,
           scheduleDate: pickupDate,
           scheduleTime: pickupTime,
-          cutlery: needsCutlery ? cutleryQty : 0,
-          cutleryKind: needsCutlery ? cutleryKind : undefined,
+          cutlery: needsCutlery ? cutleryQty : undefined,
+          cutleryTraining: needsCutlery ? Math.min(cutleryTraining, cutleryQty) : undefined,
           promo: promoInfo?.code ?? "", useCertificate: useCert && certOk, consent, items,
         }),
       });
@@ -302,7 +309,7 @@ export default function CartDrawer({ isOpen, onClose }: { isOpen: boolean; onClo
       clear();
       if (promoInfo?.referral) clearRef();
       setUseCert(false); setCert(null);
-      setPromo(""); setPromoInfo(null); setPromoMsg(null); setPromoOpen(false); setCutlery(null);
+      setPromo(""); setPromoInfo(null); setPromoMsg(null); setPromoOpen(false); setCutlery(null); setCutleryTraining(0);
       setPickupMsg(""); setPickupChosen(false);
     } catch {
       setError(GENERIC_ERROR);
@@ -417,7 +424,21 @@ export default function CartDrawer({ isOpen, onClose }: { isOpen: boolean; onClo
                 <span style={{ fontSize: 11, letterSpacing: 3, textTransform: "uppercase", color: "var(--text-secondary)" }}>Разом</span>
                 <span style={{ fontFamily: "var(--font-display)", fontSize: 30, fontWeight: 700, color: "var(--text-primary)" }}>{total} грн</span>
               </div>
-              <button className="btn-primary" style={{ width: "100%" }} onClick={() => { setStep("checkout"); if (signedIn === false && !promoHidden) setPromoToast(true); }}>Оформити замовлення</button>
+              {needsCutlery && (
+                <div style={{ marginBottom: 18 }}>
+                  <CutleryRow value={cutlery} onChange={pickCutlery} training={cutleryTraining} onTraining={setCutleryTraining} attention={cutleryAsk} />
+                  {cutleryAsk && (
+                    <div role="alert" style={{ marginTop: 10, padding: "10px 12px", border: "1px solid var(--accent)", fontSize: 12, lineHeight: 1.5, color: "var(--text-primary)" }}>
+                      Оберіть кількість паличок. Чи точно палички не потрібні?
+                      <div style={{ display: "flex", gap: 6, marginTop: 8, flexWrap: "wrap" }}>
+                        <button type="button" onClick={() => { setCutlery(0); setCutleryTraining(0); goCheckout(); }} style={askBtn}>Так, без паличок</button>
+                        <button type="button" onClick={() => setCutleryAsk(false)} style={askBtn}>Оберу кількість</button>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              )}
+              <button className="btn-primary" style={{ width: "100%" }} onClick={onCheckout}>Оформити замовлення</button>
             </div>
           </>
         ) : (
@@ -482,10 +503,6 @@ export default function CartDrawer({ isOpen, onClose }: { isOpen: boolean; onClo
               {delivery === "delivery" && (
                 <input className="form-input" placeholder="Адреса доставки * (вулиця, будинок, квартира)"
                   value={address} onChange={(e) => setAddress(e.target.value)} autoComplete="off" maxLength={MAX_ADDRESS} />
-              )}
-
-              {needsCutlery && (
-                <CutleryRow value={cutleryQty} onChange={setCutlery} kind={cutleryKind} onKind={setCutleryKind} />
               )}
 
               <div>
@@ -622,29 +639,30 @@ export default function CartDrawer({ isOpen, onClose }: { isOpen: boolean; onClo
   );
 }
 
-/** Кількість наборів приборів: за замовчуванням рахується від суми, можна змінити. */
-type CutleryKind = "regular" | "training";
-const CUTLERY_KINDS: { value: CutleryKind; label: string }[] = [
-  { value: "regular", label: "Звичайні" },
-  { value: "training", label: "Навчальні" },
-];
+const askBtn: CSSProperties = {
+  flex: "1 1 auto", padding: "8px 10px", cursor: "pointer", fontFamily: "var(--font-body)", fontSize: 10, letterSpacing: 1, textTransform: "uppercase",
+  background: "transparent", border: "1px solid var(--border-light)", color: "var(--text-primary)",
+};
 
-/** Прибори: вид паличок (звичайні / навчальні) + кількість — два компактні дропдауни в один рядок. */
-function CutleryRow({ value, onChange, kind, onKind }: { value: number; onChange: (n: number) => void; kind: CutleryKind; onKind: (k: CutleryKind) => void }) {
+/** Палички (безкоштовні): кількість (null — ще не обрано) і скільки з них навчальних — два компактні дропдауни. */
+function CutleryRow({ value, onChange, training, onTraining, attention }: { value: number | null; onChange: (n: number) => void; training: number; onTraining: (n: number) => void; attention: boolean }) {
+  const qty = value ?? 0;
   return (
-    <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-      <span style={{ fontSize: 10, letterSpacing: 2, textTransform: "uppercase", color: "var(--text-secondary)", marginRight: "auto", whiteSpace: "nowrap" }}>
-        🥢 <span className="co-cut-label">Прибори</span>
+    <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
+      <span style={{ fontSize: 10, letterSpacing: 2, textTransform: "uppercase", color: attention ? "var(--accent)" : "var(--text-secondary)", marginRight: "auto", whiteSpace: "nowrap" }}>
+        🥢 Палички
       </span>
-      <MiniDropdown width={124} label={CUTLERY_KINDS.find((k) => k.value === kind)!.label}
-        options={CUTLERY_KINDS.map((k) => ({ key: k.value, label: k.label, on: k.value === kind, pick: () => onKind(k.value) }))} />
-      <MiniDropdown width={84} label={`${value} шт`}
-        options={Array.from({ length: CUTLERY_MAX }, (_, i) => i + 1).map((n) => ({ key: String(n), label: `${n} шт`, on: n === value, pick: () => onChange(n) }))} />
+      <MiniDropdown width={92} label={value === null ? "Скільки?" : `${value} шт`} attention={attention}
+        options={Array.from({ length: CUTLERY_MAX + 1 }, (_, i) => i).map((n) => ({ key: String(n), label: n === 0 ? "Не потрібні" : `${n} шт`, on: n === value, pick: () => onChange(n) }))} />
+      {qty > 0 && (
+        <MiniDropdown width={132} label={`навчальних: ${Math.min(training, qty)}`}
+          options={Array.from({ length: qty + 1 }, (_, i) => i).map((n) => ({ key: String(n), label: `навчальних: ${n}`, on: n === training, pick: () => onTraining(n) }))} />
+      )}
     </div>
   );
 }
 
-function MiniDropdown({ label, options, width }: { label: string; width: number; options: { key: string; label: string; on: boolean; pick: () => void }[] }) {
+function MiniDropdown({ label, options, width, attention }: { label: string; width: number; attention?: boolean; options: { key: string; label: string; on: boolean; pick: () => void }[] }) {
   const [open, setOpen] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
   useEffect(() => {
@@ -661,7 +679,7 @@ function MiniDropdown({ label, options, width }: { label: string; width: number;
         style={{
           width: "100%", display: "flex", alignItems: "center", justifyContent: "space-between", gap: 6,
           padding: "var(--co-ctl-py, 12px) 12px", cursor: "pointer", background: "var(--bg-card)",
-          border: `1px solid ${open ? "var(--accent)" : "var(--border-light)"}`,
+          border: `1px solid ${open || attention ? "var(--accent)" : "var(--border-light)"}`,
           color: "var(--text-primary)", fontFamily: "var(--font-body)", fontSize: 13, fontWeight: 300,
         }}>
         <span style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{label}</span>

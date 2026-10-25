@@ -26,7 +26,7 @@ export interface DbProduct {
   id: string; categoryId: string | null; subcategoryId: string | null;
   name: string; slug: string; price: number; weight: string; pieces: string; badge: Badge;
   desc: string; composition: string; fullDesc: string; photo: string | null;
-  isAvailable: boolean; deletedAt: string | null; sortOrder: number;
+  isAvailable: boolean; showInMenu: boolean; deletedAt: string | null; sortOrder: number;
   ingredientIds: string[]; ingredientGrams: Record<string, number>;
   setItemIds: string[]; // для сетів: id товарів-ролів у складі
 }
@@ -34,7 +34,7 @@ export interface ProductInput {
   categoryId: string | null; subcategoryId: string | null;
   name: string; price: number; weight: string; pieces: string; badge: Badge;
   desc: string; composition: string; fullDesc: string; photo: string | null;
-  isAvailable: boolean; ingredientIds: string[]; ingredientGrams: Record<string, number>;
+  isAvailable: boolean; showInMenu: boolean; ingredientIds: string[]; ingredientGrams: Record<string, number>;
   setItemIds: string[];
 }
 
@@ -47,7 +47,7 @@ interface ProductRow {
   id: string; category_id: string | null; subcategory_id: string | null; name: string; slug: string;
   price: number | string; weight: string | null; pieces: string | null; badge: string | null;
   short_desc: string | null; full_desc: string | null; composition: string | null; image_path: string | null;
-  is_available: boolean; deleted_at: string | null; sort_order: number;
+  is_available: boolean; show_in_menu: boolean | null; deleted_at: string | null; sort_order: number;
   items: { ingredient_id: string; grams: number | string | null }[] | null;
   setItems: { product_id: string; qty: number | null; sort_order: number }[] | null;
 }
@@ -65,14 +65,14 @@ function mapProduct(p: ProductRow): DbProduct {
     name: p.name, slug: p.slug, price: Number(p.price), weight: p.weight ?? "", pieces: p.pieces ?? "",
     badge: (p.badge ?? "") as Badge, desc: p.short_desc ?? "", composition: p.composition ?? "",
     fullDesc: p.full_desc ?? "", photo: p.image_path ?? null, isAvailable: p.is_available,
-    deletedAt: p.deleted_at, sortOrder: p.sort_order,
+    showInMenu: p.show_in_menu !== false, deletedAt: p.deleted_at, sortOrder: p.sort_order,
     ingredientIds: items.map((it) => it.ingredient_id), ingredientGrams: grams,
     setItemIds,
   };
 }
 
 const PRODUCT_SELECT =
-  "id, category_id, subcategory_id, name, slug, price, weight, pieces, badge, short_desc, full_desc, composition, image_path, is_available, deleted_at, sort_order, items:product_ingredients(ingredient_id, grams), setItems:set_items!set_id(product_id, qty, sort_order)";
+  "id, category_id, subcategory_id, name, slug, price, weight, pieces, badge, short_desc, full_desc, composition, image_path, is_available, show_in_menu, deleted_at, sort_order, items:product_ingredients(ingredient_id, grams), setItems:set_items!set_id(product_id, qty, sort_order)";
 
 // ---------- Хуки читання ----------
 export function useDbProducts() {
@@ -190,6 +190,7 @@ function productFields(input: ProductInput) {
     name: input.name, short_desc: input.desc, full_desc: input.fullDesc, composition: input.composition,
     price: input.price, weight: input.weight || null, pieces: input.pieces || null,
     badge: input.badge || null, image_path: input.photo, is_available: input.isAvailable,
+    show_in_menu: input.showInMenu,
   };
 }
 
@@ -233,6 +234,10 @@ export async function dbReorderProducts(ids: string[]) {
 
 export async function dbSetAvailable(id: string, value: boolean) {
   const { error } = await createClient().from("products").update({ is_available: value }).eq("id", id);
+  if (!error) touchPublic();
+}
+export async function dbSetShowInMenu(id: string, value: boolean) {
+  const { error } = await createClient().from("products").update({ show_in_menu: value }).eq("id", id);
   if (!error) touchPublic();
 }
 export async function dbSoftDelete(id: string) {
@@ -334,11 +339,13 @@ export interface DbPromo {
   id: string; productId: string | null;
   price: number; oldPrice: number; isActive: boolean; sortOrder: number;
   validFrom: string | null; validUntil: string | null; // дати у форматі YYYY-MM-DD (для інпутів)
+  dailyFrom: string | null; dailyUntil: string | null; // щоденне вікно «HH:MM» (київський час); null — весь день
 }
 export interface PromoInput {
   productId: string | null;
   price: number; oldPrice: number; isActive: boolean;
   validFrom: string | null; validUntil: string | null;
+  dailyFrom: string | null; dailyUntil: string | null;
 }
 
 export function useDbPromos() {
@@ -349,7 +356,7 @@ export function useDbPromos() {
     setLoading(true);
     const { data, error } = await supabase
       .from("promos")
-      .select("id, product_id, promo_price, old_price, is_active, sort_order, valid_from, valid_until")
+      .select("id, product_id, promo_price, old_price, is_active, sort_order, valid_from, valid_until, daily_from, daily_until")
       .order("sort_order");
     if (error) console.error("promos:", error.message);
     else setPromos((data ?? []).map((p) => ({
@@ -358,6 +365,8 @@ export function useDbPromos() {
       isActive: p.is_active, sortOrder: p.sort_order,
       validFrom: p.valid_from ? String(p.valid_from).slice(0, 10) : null,
       validUntil: p.valid_until ? String(p.valid_until).slice(0, 10) : null,
+      dailyFrom: p.daily_from ? String(p.daily_from).slice(0, 5) : null,
+      dailyUntil: p.daily_until ? String(p.daily_until).slice(0, 5) : null,
     })));
     setLoading(false);
   }, [supabase]);
@@ -373,6 +382,8 @@ function promoFields(input: PromoInput) {
     // дату-початок беремо як 00:00, дату-кінець — як кінець доби, щоб акція діяла весь день
     valid_from: input.validFrom ? `${input.validFrom}T00:00:00` : null,
     valid_until: input.validUntil ? `${input.validUntil}T23:59:59` : null,
+    daily_from: input.dailyFrom || null,
+    daily_until: input.dailyUntil || null,
   };
 }
 export async function dbCreatePromo(input: PromoInput): Promise<string | undefined> {

@@ -11,9 +11,11 @@ import { categorySeoBySlug } from "@/lib/categorySeo";
 import type { Product } from "@/lib/types";
 
 /** Сторінка окремої страви: власний URL /menu/<slug> для пошуку та для того, щоб нею можна було ділитися. */
-export default function ProductPage({ item }: { item: Product }) {
+export default function ProductPage({ item: initial }: { item: Product }) {
   const { add } = useCart();
   const catalog = usePublicCatalog();
+  // з каталогу — актуальна ціна: акція «до 16:00» перемикається, поки сторінка відкрита
+  const item = catalog.find((p) => p.id === initial.id) ?? initial;
   const cats = usePublicCategories();
   const [added, setAdded] = useState(false);
 

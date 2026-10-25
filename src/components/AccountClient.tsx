@@ -331,7 +331,7 @@ function FavoritesList({ ids }: { ids: string[] }) {
     let active = true;
     createClient()
       .from("products")
-      .select("id, name, slug, price, weight, image_path, is_available")
+      .select("id, name, slug, price, weight, image_path, is_available, show_in_menu")
       .in("id", ids)
       .then(({ data, error }) => {
         if (error) console.error("favorites products:", error.message);
@@ -340,7 +340,7 @@ function FavoritesList({ ids }: { ids: string[] }) {
         // знятий зовсім (видалений) товар RLS не віддасть — просто не показуємо
         setItems(ids.flatMap((id) => {
           const p = byId.get(id);
-          return p ? [{ id, name: p.name, slug: p.slug, price: Number(p.price), weight: p.weight, photo: p.image_path, available: !!p.is_available }] : [];
+          return p ? [{ id, name: p.name, slug: p.slug, price: Number(p.price), weight: p.weight, photo: p.image_path, available: !!p.is_available && p.show_in_menu !== false }] : [];
         }));
       });
     return () => { active = false; };

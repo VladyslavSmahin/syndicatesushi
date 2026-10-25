@@ -10,7 +10,7 @@ import { downscaleImage } from "@/lib/clientImage";
 import { computePortion, sumPortions } from "@/features/nutrition";
 import {
   useDbProducts, useDbIngredients, useDbCategories, useDbSubcategories,
-  dbCreateProduct, dbUpdateProduct, dbSetAvailable, dbSoftDelete, dbCreateIngredient, dbUploadImage, dbReorderProducts,
+  dbCreateProduct, dbUpdateProduct, dbSetAvailable, dbSetShowInMenu, dbSoftDelete, dbCreateIngredient, dbUploadImage, dbReorderProducts,
   type DbProduct, type ProductInput,
 } from "@/features/admin/db";
 import { useAdminAuth } from "@/features/admin/AdminAuthContext";
@@ -26,20 +26,20 @@ const ROLL_SLUG = "роли";
 interface Draft {
   categoryId: string; subcategoryId: string;
   name: string; price: number; weight: string; pieces: string; badge: Badge;
-  desc: string; composition: string; fullDesc: string; photo: string | null; isAvailable: boolean;
+  desc: string; composition: string; fullDesc: string; photo: string | null; isAvailable: boolean; showInMenu: boolean;
   ingredientIds: string[]; ingredientGrams: Record<string, number>; setItemIds: string[];
 }
 
 const emptyDraft = (categoryId: string): Draft => ({
   categoryId, subcategoryId: "", name: "", price: 0, weight: "", pieces: "", badge: "",
-  desc: "", composition: "", fullDesc: "", photo: null, isAvailable: true,
+  desc: "", composition: "", fullDesc: "", photo: null, isAvailable: true, showInMenu: true,
   ingredientIds: [], ingredientGrams: {}, setItemIds: [],
 });
 
 const toInput = (d: Draft): ProductInput => ({
   categoryId: d.categoryId || null, subcategoryId: d.subcategoryId || null,
   name: d.name.trim(), price: d.price, weight: d.weight, pieces: d.pieces, badge: d.badge,
-  desc: d.desc, composition: d.composition, fullDesc: d.fullDesc, photo: d.photo, isAvailable: d.isAvailable,
+  desc: d.desc, composition: d.composition, fullDesc: d.fullDesc, photo: d.photo, isAvailable: d.isAvailable, showInMenu: d.showInMenu,
   ingredientIds: d.ingredientIds, ingredientGrams: d.ingredientGrams, setItemIds: d.setItemIds,
 });
 
@@ -190,7 +190,7 @@ export default function ProductsPage() {
     setDraft({
       categoryId: p.categoryId ?? "", subcategoryId: p.subcategoryId ?? "",
       name: p.name, price: p.price, weight: p.weight, pieces: p.pieces, badge: p.badge,
-      desc: p.desc, composition: p.composition, fullDesc: p.fullDesc, photo: p.photo, isAvailable: p.isAvailable,
+      desc: p.desc, composition: p.composition, fullDesc: p.fullDesc, photo: p.photo, isAvailable: p.isAvailable, showInMenu: p.showInMenu,
       ingredientIds: [...p.ingredientIds], ingredientGrams: { ...p.ingredientGrams }, setItemIds: [...p.setItemIds],
     });
   };
@@ -220,6 +220,7 @@ export default function ProductsPage() {
   };
 
   const toggleAvailable = async (p: DbProduct) => { await dbSetAvailable(p.id, !p.isAvailable); refetch(); };
+  const toggleShowInMenu = async (p: DbProduct) => { await dbSetShowInMenu(p.id, !p.showInMenu); refetch(); };
   const remove = async (p: DbProduct) => { await dbSoftDelete(p.id); refetch(); };
 
   const set = <K extends keyof Draft>(k: K, v: Draft[K]) => setDraft((d) => (d ? { ...d, [k]: v } : d));
@@ -361,13 +362,13 @@ export default function ProductsPage() {
         <div className={s.tableWrap}>
           <table className={s.table}>
             <thead>
-              <tr><th>Назва</th><th>Ціна</th><th>Склад</th><th>Бейдж</th><th>В наявності</th><th style={{ textAlign: "right" }}>Дії</th></tr>
+              <tr><th>Назва</th><th>Ціна</th><th>Склад</th><th>Бейдж</th><th>В наявності</th><th>В меню</th><th style={{ textAlign: "right" }}>Дії</th></tr>
             </thead>
             <tbody>
               {loading ? (
-                <tr><td colSpan={6} style={{ padding: 20, color: "var(--text-secondary)" }}>Завантаження…</td></tr>
+                <tr><td colSpan={7} style={{ padding: 20, color: "var(--text-secondary)" }}>Завантаження…</td></tr>
               ) : groups.length === 0 ? (
-                <tr><td colSpan={6} style={{ padding: 20, color: "var(--text-secondary)" }}>Немає товарів.</td></tr>
+                <tr><td colSpan={7} style={{ padding: 20, color: "var(--text-secondary)" }}>Немає товарів.</td></tr>
               ) : groups.map((g) => {
                 const ids = g.items.map((p) => p.id);
                 return (
@@ -415,6 +416,13 @@ export default function ProductsPage() {
                         <button className={`${s.pill} ${p.isAvailable ? s.pillOn : s.pillOff}`} style={{ cursor: "pointer", border: "none" }}
                           onClick={() => toggleAvailable(p)}>
                           {p.isAvailable ? "Так" : "Ні"}
+                        </button>
+                      </td>
+                      <td data-label="В меню">
+                        <button className={`${s.pill} ${p.showInMenu ? s.pillOn : s.pillOff}`} style={{ cursor: "pointer", border: "none" }}
+                          title="Ні — товар не видно на сайті, але його можна додати в склад сету"
+                          onClick={() => toggleShowInMenu(p)}>
+                          {p.showInMenu ? "Так" : "Ні"}
                         </button>
                       </td>
                       <td>
@@ -522,12 +530,21 @@ export default function ProductsPage() {
               </Field>
             </div>
 
+            {/* напр. рол лише для складу сетів: у меню сайту його не видно, у сет додати можна */}
+            <label style={{ display: "flex", alignItems: "flex-start", gap: 8, color: "var(--text-primary)", fontSize: 13, lineHeight: 1.4, cursor: "pointer" }}>
+              <input type="checkbox" checked={draft.showInMenu} onChange={(e) => set("showInMenu", e.target.checked)} style={{ marginTop: 2 }} />
+              <span>
+                Показувати в меню
+                <span style={{ display: "block", fontSize: 11, color: "var(--text-secondary)" }}>Вимкніть для ролів, що йдуть лише в склад сетів: на сайті їх не буде, у сет додати можна.</span>
+              </span>
+            </label>
+
             {isSetDraft ? (
               <Field label="Ролы в сеті">
                 <AdminSelect
                   value={null}
                   onChange={addSetItem}
-                  options={rollOptions.map((r) => ({ value: r.id, label: r.name, hint: `${r.price} грн` }))}
+                  options={rollOptions.map((r) => ({ value: r.id, label: r.name, hint: `${r.price} грн${r.showInMenu ? "" : " · не в меню"}` }))}
                   placeholder="+ Додати рол у сет"
                   searchPlaceholder="Почніть вводити назву рола…"
                   resetOnPick
@@ -640,7 +657,7 @@ function GroupRows({ name, count, children }: { name: string; count: number; chi
   return (
     <>
       <tr>
-        <td colSpan={6} style={{ background: "var(--bg-elevated)", padding: "8px 14px", fontFamily: "var(--font-display)", fontWeight: 700, fontSize: 13, letterSpacing: 0.5, color: "var(--accent)", borderTop: "1px solid var(--border-light)" }}>
+        <td colSpan={7} style={{ background: "var(--bg-elevated)", padding: "8px 14px", fontFamily: "var(--font-display)", fontWeight: 700, fontSize: 13, letterSpacing: 0.5, color: "var(--accent)", borderTop: "1px solid var(--border-light)" }}>
           {name} <span style={{ color: "var(--text-secondary)", fontWeight: 400 }}>· {count}</span>
         </td>
       </tr>

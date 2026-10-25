@@ -5,7 +5,8 @@
 // localStorage-сторів, щоб публічні компоненти змінювались мінімально.
 
 import { DEFAULT_TIKTOK, type TikTokBlock } from "@/lib/tiktok";
-import { createContext, useContext } from "react";
+import { createContext, useContext, useEffect, useMemo, useState } from "react";
+import { promoStateKey, withPromoPrices } from "@/lib/promoPrice";
 import type { Product, Promo, Banner, NavCategory } from "@/lib/types";
 import { DEFAULT_DELIVERY, type DeliverySettings } from "@/lib/delivery";
 import { GLOSSARY_DEFAULTS, type Glossary } from "@/lib/glossary";
@@ -56,8 +57,26 @@ export interface PublicData {
 
 const Ctx = createContext<PublicData>({ catalog: [], categories: [], subcategories: [], promos: [], banners: [], delivery: DEFAULT_DELIVERY, navSpecials: [], glossary: GLOSSARY_DEFAULTS, contacts: CONTACTS_DEFAULTS, seoBlock: DEFAULT_SEO_BLOCK, heroBg: DEFAULT_HERO_BG, tiktok: DEFAULT_TIKTOK, reviews: [] });
 
+/** Як часто звіряємо, чи не почалась/скінчилась акція з щоденним вікном («до 16:00»). */
+const PROMO_TICK_MS = 30_000;
+
 export function PublicDataProvider({ value, children }: { value: PublicData; children: React.ReactNode }) {
-  return <Ctx.Provider value={value}>{children}</Ctx.Provider>;
+  // ціни «на зараз»: сторінка кешується й може бути відкрита годинами — акція має вимкнутись вчасно
+  const raw = value.catalog;
+  const [promoKey, setPromoKey] = useState(() => promoStateKey(raw, new Date()));
+  useEffect(() => {
+    if (!raw.some((p) => p.promoRules?.length)) return;
+    const sync = () => setPromoKey(promoStateKey(raw, new Date())); // той самий рядок — без перерендеру
+    sync();
+    const id = setInterval(sync, PROMO_TICK_MS);
+    return () => clearInterval(id);
+  }, [raw]);
+  const live = useMemo(
+    () => ({ ...value, catalog: withPromoPrices(raw, new Date()) }),
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- promoKey: перерахунок, коли змінився набір діючих акцій
+    [value, raw, promoKey]
+  );
+  return <Ctx.Provider value={live}>{children}</Ctx.Provider>;
 }
 
 export function usePublicCatalog(): Product[] {

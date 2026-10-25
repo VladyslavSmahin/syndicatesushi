@@ -6,6 +6,7 @@ import { fetchPublicData } from "@/features/publicData.server";
 import { SITE_URL, SITE_NAME, CITY } from "@/lib/seo";
 import { fetchOgImage } from "@/features/ogImage.server";
 import type { Product } from "@/lib/types";
+import { withPromoPrices } from "@/lib/promoPrice";
 
 // ISR: сторінка кешується, адмінка скидає кеш через revalidateTag(PUBLIC_TAG);
 // раз на хвилину — страховий перерендер. Нові слаги рендеряться на першому запиті,
@@ -72,8 +73,10 @@ export async function generateMetadata({ params }: Params): Promise<Metadata> {
 export default async function Page({ params }: Params) {
   const slug = decodeSlug((await params).slug);
   const data = await fetchPublicData();
-  const item = data.catalog.find((p) => p.slug === slug);
-  if (!item) notFound();
+  const raw = data.catalog.find((p) => p.slug === slug);
+  if (!raw) notFound();
+  // ціна для розмітки — на момент рендеру (з урахуванням акції, зокрема щоденної «до 16:00»)
+  const [item] = withPromoPrices([raw], new Date());
 
   const url = `${SITE_URL}/menu/${item.slug}`;
   const grams = item.weight ? weightGrams(item.weight) : undefined;
