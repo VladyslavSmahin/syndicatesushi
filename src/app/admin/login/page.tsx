@@ -4,6 +4,7 @@ import { ASSET_ICONS } from "@/data/site";
 import PasswordInput from "@/components/PasswordInput";
 import { useEffect, useState } from "react";
 import { createClient } from "@/lib/supabase/client";
+import { signInWithGoogle } from "@/lib/pwa";
 import s from "@/components/admin/admin.module.css";
 
 export default function LoginPage() {
@@ -21,13 +22,9 @@ export default function LoginPage() {
   const signIn = async () => {
     setBusy(true);
     setError("");
-    const supabase = createClient();
-    const { error } = await supabase.auth.signInWithOAuth({
-      provider: "google",
-      options: { redirectTo: `${window.location.origin}/auth/callback?next=/admin` },
-    });
-    if (error) { setError("Не вдалося почати вхід. Спробуйте ще раз."); setBusy(false); }
-    // інакше браузер перейде на сторінку Google
+    // у застосунку на iPhone — через вікно window.open (lib/pwa.ts), інакше звичайний перехід на Google
+    const { error } = await signInWithGoogle(createClient(), "/admin");
+    if (error) { setError("Не вдалося почати вхід. Спробуйте ще раз або увійдіть за email і паролем."); setBusy(false); }
   };
 
   // вхід за email+паролем (альтернатива Google). Сесія кладеться в cookie,

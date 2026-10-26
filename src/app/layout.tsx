@@ -1,4 +1,4 @@
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
 import { Cormorant_Garamond, Jost } from "next/font/google";
 import { Analytics } from "@vercel/analytics/next";
 import { SpeedInsights } from "@vercel/speed-insights/next";
@@ -29,6 +29,13 @@ const jost = Jost({
   display: "swap",
 });
 
+// PWA: колір рядка стану/шапки; viewport-fit=cover — щоб env(safe-area-inset-*) працювали
+// у застосунку на iPhone (відступ від «смужки» внизу в кошику, тостах, модалках)
+export const viewport: Viewport = {
+  themeColor: "#0D0B09",
+  viewportFit: "cover",
+};
+
 // картинку превʼю посилання змінюють в адмінці (SEO) — тому метадані читаємо з БД (кеш PUBLIC_TAG)
 export async function generateMetadata(): Promise<Metadata> {
   const ogImage = await fetchOgImage();
@@ -37,6 +44,11 @@ export async function generateMetadata(): Promise<Metadata> {
     title: { default: DEFAULT_TITLE, template: TITLE_TEMPLATE },
     description: DEFAULT_DESCRIPTION,
     applicationName: SITE_NAME,
+    // iPhone: «На екран Додому» відкриває сайт як застосунок; назва під іконкою — title
+    manifest: "/manifest.webmanifest",
+    appleWebApp: { capable: true, title: SITE_NAME, statusBarStyle: "black" },
+    // старіші iOS читають лише цей тег (Next виводить стандартний mobile-web-app-capable)
+    other: { "apple-mobile-web-app-capable": "yes" },
     alternates: { canonical: "/" },
     openGraph: {
       type: "website",

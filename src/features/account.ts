@@ -7,6 +7,7 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { createClient } from "@/lib/supabase/client";
 import { parseProfileBg, type ProfileBg } from "@/lib/profileBg";
+import { signInWithGoogle } from "@/lib/pwa";
 
 export interface CustomerProfile {
   id: string;
@@ -48,10 +49,8 @@ const callbackUrl = (next: string) => `${window.location.origin}/auth/callback?n
 
 /** Вхід через Google; після авторизації повертаємось на next (за замовчуванням — у кабінет). */
 export async function signInCustomer(next = "/account") {
-  return createClient().auth.signInWithOAuth({
-    provider: "google",
-    options: { redirectTo: callbackUrl(next) },
-  });
+  // у застосунку на iPhone — через вікно window.open (lib/pwa.ts)
+  return signInWithGoogle(createClient(), next);
 }
 
 /** Реєстрація поштою: ім'я й номер ідуть у метадані (customer_ensure перенесе їх у профіль).
