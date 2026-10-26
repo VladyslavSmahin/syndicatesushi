@@ -1,5 +1,6 @@
-import { NextResponse } from "next/server";
+import { NextResponse, after } from "next/server";
 import { sendTelegramMessage, esc } from "@/lib/telegram";
+import { notifyStaffNewOrder } from "@/lib/push.server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { createClient } from "@/lib/supabase/server";
 import { rateLimit, clientIp } from "@/lib/rateLimit";
@@ -447,6 +448,11 @@ export async function POST(req: Request) {
   // замовлення нікуди не дійшло (ні БД, ні Telegram) — чесна помилка, клієнт НЕ очистить кошик
   if (!dbSaved && !sent) {
     return NextResponse.json({ ok: false, error: "save_failed" }, { status: 502 });
+  }
+
+  // Пуш персоналу (застосунок «SS Адмінка») — після відповіді клієнту, щоб не затримувати оформлення
+  if (dbSaved) {
+    after(() => notifyStaffNewOrder({ id: orderId, total, delivery, name: name.trim(), when: schedule || null, items: lineItems.length }));
   }
 
   // серверна сума — клієнт покаже її, якщо вона відрізняється від тієї, що бачив у кошику

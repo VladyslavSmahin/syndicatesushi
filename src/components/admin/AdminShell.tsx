@@ -7,6 +7,7 @@ import RefreshButton from "./RefreshButton";
 import SushiLoader from "./SushiLoader";
 import Modal from "./Modal";
 import { WhatsNewBell, VersionLink } from "./WhatsNew";
+import { AdminPwaBoot, PushMenuItem } from "./PushSettings";
 import { ADMIN_HELP } from "@/lib/adminHelp";
 import BrandMark from "../BrandMark";
 import { useAdminAuth } from "@/features/admin/AdminAuthContext";
@@ -253,6 +254,7 @@ export default function AdminShell({ children }: { children: React.ReactNode }) 
 
   return (
     <div className={s.frame}>
+      <AdminPwaBoot />
       {/* шапка спільна з сайтом: той самий логотип, клік — на сайт */}
       <header className={s.topbar}>
         <div className={s.topLeft}>
@@ -365,6 +367,7 @@ export default function AdminShell({ children }: { children: React.ReactNode }) 
         })}
 
         <div style={{ marginTop: "auto", paddingTop: 16 }}>
+          <PushMenuItem />
           <button className={s.navItem} style={{ width: "100%", textAlign: "left", background: "transparent" }} onClick={signOut}>
             Вийти
           </button>

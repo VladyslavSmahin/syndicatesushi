@@ -19,12 +19,14 @@
     "react": "^19.0.0",
     "react-dom": "^19.0.0",
     "server-only": "^0.0.1",
-    "sharp": "^0.35.1"
+    "sharp": "^0.35.1",
+    "web-push": "^3.6.7"
   },
   "devDependencies": {
     "@types/node": "^22.10.7",
     "@types/react": "^19.0.7",
     "@types/react-dom": "^19.0.3",
+    "@types/web-push": "^3.6.4",
     "pg": "^8.21.0",
     "typescript": "^5.7.3"
   }

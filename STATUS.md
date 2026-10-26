@@ -122,9 +122,16 @@
 - ✅ SEO: названия карточек — ссылки на /menu/slug; h1 на мобильном визуально скрыт, но в разметке; JSON-LD вес/фото/priceValidUntil; OG на странице блюда; sitemap lastModified = created_at.
 - ✅ Мініатюри фото: при завантаженні товару в R2 кладеться ще `<uuid>_480.webp`; картки/пошук/кошик/«схожі» показують її (`ThumbImg`, фолбек на оригінал). Для старих фото — `node scripts/make_thumbs.mjs --apply` (пише лише в R2). Отказались: подписи полей/Esc/звёзды/клавиатура (доступность). Отложено: настройки Email-провайдера Supabase (signup/confirm).
 
+## 📱 PWA (2026-10-26)
+- **Два застосунки на екрані «Додому»**: магазин (`/manifest.webmanifest`, scope `/`) і «SS Адмінка» (`/admin-manifest.webmanifest`, scope `/admin`, іконка з плашкою «АДМІН»). Маніфести — роутами (файловий `manifest.ts` не дає адмінці підставити свій). Іконки — `scripts/gen-pwa-icons.mjs` з `src/app/icon.png`. Chrome (CDP): обидва встановлювані, без помилок.
+- iOS: `appleWebApp`, `apple-mobile-web-app-capable`, `viewport-fit=cover` + бокові safe-area. Вхід Google у застосунку на iPhone — `window.open` (`lib/pwa.ts`, `/auth/popup-done`); **перевірити на реальному iPhone**.
+- **Пуші персоналу про нові замовлення**: `public/sw.js` (лише push, без кешу сторінок, scope `/admin`), таблиця `staff_push_subscriptions` (міграція `20261026120000`), `/api/admin/push` (subscribe/unsubscribe/test), відправка `lib/push.server.ts` через `after()` у `/api/order`; число нових замовлень на іконці. Вмикає кожен співробітник: меню адмінки → «Сповіщення». На iPhone — лише в установленому застосунку (iOS 16.4+).
+- Перевірено: міграція на локальному Postgres (RLS: лише свої пристрої, не-staff/anon — ні), шифрування пушу (aes128gcm + VAPID) на локальному «пуш-сервісі», 410 → підписка видаляється; приватний VAPID-ключ не потрапляє в клієнтський бандл.
+
 ## 🔑 Переменные окружения
 Локально (`.env.local`, gitignored): `TELEGRAM_BOT_TOKEN`, `TELEGRAM_CHAT_ID`, `NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_ANON_KEY`, `SUPABASE_SERVICE_ROLE_KEY`, `SUPABASE_DB_PASSWORD`, `SUPABASE_DB_URL_SP` (session pooler), `R2_ACCOUNT_ID`, `R2_ACCESS_KEY_ID`, `R2_SECRET_ACCESS_KEY`, `R2_BUCKET`, `R2_PUBLIC_URL` (Cloudflare R2 для фото/баннеров).
 В Vercel (Production) обязательны: `NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_ANON_KEY`, `SUPABASE_SERVICE_ROLE_KEY` (заказы/отзывы), `TELEGRAM_*`, **`R2_*` (5 шт — иначе загрузка/показ фото и баннеров не работают)**.
+Пуші персоналу: `NEXT_PUBLIC_VAPID_PUBLIC_KEY`, `VAPID_PRIVATE_KEY` (секрет), `VAPID_SUBJECT` (https-адреса сайту). Без них сповіщення просто вимкнені (Telegram працює).
 
 ## ⚠️ Не забыть
 - **Не запускать `supabase db push`**: схему применяли напрямую (SQL), таблица миграций рассинхронизирована — упадёт без `migration repair`. Изменения БД делать напрямую/через SQL Editor.
