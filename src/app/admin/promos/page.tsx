@@ -7,6 +7,7 @@ import {
   type DbPromo, type PromoInput,
 } from "@/features/admin/db";
 import { useAdminAuth } from "@/features/admin/AdminAuthContext";
+import PromoPushCard from "@/components/admin/PromoPushCard";
 import BannersPanel from "@/components/admin/BannersPanel";
 import AdminSelect from "@/components/admin/AdminSelect";
 import s from "@/components/admin/admin.module.css";
@@ -62,6 +63,7 @@ export default function PromosPage() {
 
       {tab === "banners" ? <BannersPanel /> : (
       <>
+      {user?.role === "admin" && <PromoPushCard />}
 
       <div className={s.card}>
         <div className={s.cardHead}>

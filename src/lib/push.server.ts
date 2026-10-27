@@ -4,8 +4,9 @@ import { createAdminClient } from "@/lib/supabase/admin";
 import { SITE_URL } from "@/lib/seo";
 import { APP_VERSION, CHANGELOG } from "@/data/changelog";
 
-// Пуш-сповіщення персоналу (PWA «SS Адмінка»). Підписки — staff_push_subscriptions (вмикає
-// сам співробітник у меню адмінки). Без VAPID-ключів у env — тихо нічого не робимо.
+// Пуш-сповіщення. Персонал (PWA «SS Адмінка») — staff_push_subscriptions, вмикає сам співробітник
+// в адмінці. Клієнти сайту — customer_push_subscriptions, вмикає клієнт у кабінеті (статус замовлення,
+// окремо — акції). Без VAPID-ключів у env — тихо нічого не робимо.
 
 export type PushPayload = {
   title: string;
@@ -31,8 +32,10 @@ export function pushConfigured(): boolean {
   return (configured = true);
 }
 
+type PushTable = "staff_push_subscriptions" | "customer_push_subscriptions";
+
 /** Надсилає на пристрої; мертві endpoint'и (404/410 — застосунок видалено/вимкнено) прибирає з БД. */
-export async function sendPush(rows: SubscriptionRow[], payload: PushPayload) {
+export async function sendPush(rows: SubscriptionRow[], payload: PushPayload, table: PushTable = "staff_push_subscriptions") {
   const result = { sent: 0, removed: 0, failed: 0 };
   if (!pushConfigured() || rows.length === 0) return result;
   const admin = createAdminClient();
@@ -45,12 +48,12 @@ export async function sendPush(rows: SubscriptionRow[], payload: PushPayload) {
           urgency: "high",
         });
         result.sent++;
-        await admin.from("staff_push_subscriptions").update({ last_sent_at: new Date().toISOString() }).eq("id", r.id);
+        await admin.from(table).update({ last_sent_at: new Date().toISOString() }).eq("id", r.id);
       } catch (e) {
         const status = (e as { statusCode?: number }).statusCode;
         if (status === 404 || status === 410) {
           result.removed++;
-          await admin.from("staff_push_subscriptions").delete().eq("id", r.id);
+          await admin.from(table).delete().eq("id", r.id);
         } else {
           result.failed++;
           console.error("push send failed:", status, (e as Error).message);
@@ -165,4 +168,57 @@ export async function notifyStaffRelease() {
   } catch (e) {
     console.error("notifyStaffRelease failed:", (e as Error).message);
   }
+}
+
+// ---------- Клієнти сайту ----------
+
+const ORDER_STATUS_PUSH: Record<string, { title: string; body: (total: number) => string }> = {
+  confirmed: { title: "✅ Замовлення прийнято", body: (t) => `Готуємо ваше замовлення на ${t} грн 🍣` },
+  done: { title: "🍣 Замовлення виконано", body: () => "Дякуємо, що обрали нас! Смачного." },
+  canceled: { title: "Замовлення скасовано", body: () => "Якщо це помилка — зателефонуйте нам, усе виправимо." },
+};
+
+/** Статус замовлення змінено в адмінці → пуш клієнту, якщо замовлення з його акаунта й він погодився. */
+export async function notifyCustomerOrderStatus(orderId: string) {
+  try {
+    if (!pushConfigured()) return { sent: 0 };
+    const admin = createAdminClient();
+    const { data: order } = await admin.from("orders").select("id, user_id, status, total").eq("id", orderId).maybeSingle();
+    const text = order && ORDER_STATUS_PUSH[order.status];
+    if (!order?.user_id || !text) return { sent: 0 };
+    const { data: rows } = await admin
+      .from("customer_push_subscriptions")
+      .select("id, endpoint, p256dh, auth")
+      .eq("user_id", order.user_id)
+      .eq("notify_orders", true);
+    if (!rows?.length) return { sent: 0 };
+    return sendPush(rows, { title: text.title, body: text.body(order.total), url: "/account?tab=orders", tag: `order-${order.id}` }, "customer_push_subscriptions");
+  } catch (e) {
+    console.error("notifyCustomerOrderStatus failed:", (e as Error).message);
+    return { sent: 0 };
+  }
+}
+
+/** Скільки пристроїв отримає рекламну розсилку (погодились на акції). */
+export async function customerPromoAudience(): Promise<number> {
+  const { count } = await createAdminClient()
+    .from("customer_push_subscriptions")
+    .select("id", { count: "exact", head: true })
+    .eq("notify_promos", true);
+  return count ?? 0;
+}
+
+/** Рекламна розсилка (акції/новинки) усім, хто погодився. Пише в журнал push_broadcasts. */
+export async function sendCustomerPromo(p: { title: string; body: string; url: string | null; sentBy: string }) {
+  const admin = createAdminClient();
+  const { data: rows } = await admin.from("customer_push_subscriptions").select("id, endpoint, p256dh, auth").eq("notify_promos", true);
+  const all = rows ?? [];
+  const total = { sent: 0, removed: 0, failed: 0 };
+  // пачками, щоб не відкривати сотні з'єднань одночасно
+  for (let i = 0; i < all.length; i += 50) {
+    const r = await sendPush(all.slice(i, i + 50), { title: p.title, body: p.body, url: p.url || "/", tag: "promo" }, "customer_push_subscriptions");
+    total.sent += r.sent; total.removed += r.removed; total.failed += r.failed;
+  }
+  await admin.from("push_broadcasts").insert({ sent_by: p.sentBy, title: p.title, body: p.body, url: p.url, recipients: all.length, sent: total.sent });
+  return { recipients: all.length, ...total };
 }

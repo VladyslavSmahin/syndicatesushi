@@ -9,6 +9,7 @@ import {
 } from "@/features/admin/db";
 import { useAdminAuth } from "@/features/admin/AdminAuthContext";
 import OrderHandle from "@/components/admin/OrderHandle";
+import { PushQuickRow } from "@/components/admin/PushSettings";
 import { useDragOrder } from "@/components/admin/useDragOrder";
 import s from "@/components/admin/admin.module.css";
 
@@ -48,6 +49,8 @@ export default function DashboardPage() {
             : "Ви маєте повний доступ."}
         </p>
       </div>
+
+      <PushQuickRow />
 
       {/* один ряд компактних плиток — на будь-якій ширині */}
       <div className={`${s.statGridCompact} ${s.statRow}`} style={{ gridTemplateColumns: `repeat(${stats.length}, minmax(0, 1fr))` }}>

@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useState } from "react";
 import { usePathname } from "next/navigation";
 import Modal from "./Modal";
+import PushSwitch from "@/components/PushSwitch";
 import {
   disablePush, enablePush, getPushState, pushAvailable, registerAdminServiceWorker, sendTestPush, syncSeen, type PushState,
 } from "@/lib/pushClient";
@@ -99,5 +100,48 @@ export function PushMenuItem() {
         </Modal>
       )}
     </>
+  );
+}
+
+const SHORT_STATE: Partial<Record<PushState, string>> = {
+  "install-first": "Встановіть «SS Адмінка» на екран «Додому»",
+  unsupported: "Браузер не підтримує",
+  denied: "Заборонено в налаштуваннях телефону",
+};
+
+/** Компактний рядок на «Огляді»: перемикач сповіщень цього пристрою + «Тест». */
+export function PushQuickRow() {
+  const [state, setState] = useState<PushState | null>(null);
+  const [busy, setBusy] = useState(false);
+  const [msg, setMsg] = useState("");
+  useEffect(() => { getPushState().then(setState).catch(() => setState("unsupported")); }, []);
+  if (!pushAvailable() || !state) return null;
+
+  const toggle = async (on: boolean) => {
+    setBusy(true); setMsg("");
+    try { setState(on ? await enablePush() : await disablePush()); }
+    catch { setMsg("Не вдалося"); }
+    finally { setBusy(false); }
+  };
+  const test = async () => {
+    setBusy(true); setMsg("");
+    try { await sendTestPush(); setMsg("Надіслано ✓"); }
+    catch { setMsg("Не вдалося"); }
+    finally { setBusy(false); }
+  };
+
+  return (
+    <div className={s.card} style={{ display: "flex", alignItems: "center", gap: 10, padding: "10px 14px", flexWrap: "wrap" }}>
+      <span style={{ fontSize: 14, color: "var(--text-primary)" }}>🔔 Сповіщення</span>
+      <span className={s.hint} style={{ fontSize: 12, flex: "1 1 auto", minWidth: 0 }}>
+        {msg || SHORT_STATE[state] || (state === "on" ? "замовлення й оновлення" : "вимкнено на цьому пристрої")}
+      </span>
+      {state === "on" && (
+        <button type="button" className={`${s.btn} ${s.btnGhost} ${s.btnSmall}`} disabled={busy} onClick={test}>Тест</button>
+      )}
+      {(state === "on" || state === "off") && (
+        <PushSwitch label="Сповіщення на цьому пристрої" checked={state === "on"} disabled={busy} onChange={toggle} />
+      )}
+    </div>
   );
 }

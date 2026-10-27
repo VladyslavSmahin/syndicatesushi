@@ -559,7 +559,14 @@ export function useDbOrders() {
 }
 
 export async function dbSetOrderStatus(id: string, status: OrderStatus) {
-  await createClient().from("orders").update({ status }).eq("id", id);
+  const { error } = await createClient().from("orders").update({ status }).eq("id", id);
+  if (error) throw error;
+  // клієнту — пуш «прийнято / виконано / скасовано», якщо він увімкнув сповіщення (не чекаємо)
+  void fetch("/api/admin/push", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ action: "order-status", orderId: id }),
+  }).catch(() => {});
 }
 
 // ---------- Клієнти (акаунти на сайті) ----------

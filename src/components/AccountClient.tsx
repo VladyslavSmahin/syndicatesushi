@@ -15,6 +15,7 @@ import ProfileHero from "./ProfileHero";
 import ProfileBgLayer from "./ProfileBgLayer";
 import PasswordInput from "./PasswordInput";
 import ThumbImg from "./ThumbImg";
+import CustomerPushSettings from "./CustomerPushSettings";
 
 const card: CSSProperties = {
   border: "1px solid var(--border-light)", background: "var(--bg-card)", borderRadius: 10, padding: "clamp(14px, 4vw, 20px)",
@@ -109,6 +110,9 @@ export default function AccountClient() {
               <Stat label="Середній чек" value={active.length ? `${Math.round(sum / active.length)} грн` : "—"} />
               <Stat label="Останнє" value={orders[0] ? new Date(orders[0].createdAt).toLocaleDateString("uk-UA", { timeZone: "Europe/Kyiv" }) : "—"} />
             </div>
+          </Section>
+          <Section title="Сповіщення" storageKey={`acc-collapse:${profile.id}:push`}>
+            <CustomerPushSettings />
           </Section>
         </>
       ) : tab === "favorites" ? (
