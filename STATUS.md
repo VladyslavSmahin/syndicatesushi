@@ -126,6 +126,7 @@
 - **Два застосунки на екрані «Додому»**: магазин (`/manifest.webmanifest`, scope `/`) і «SS Адмінка» (`/admin-manifest.webmanifest`, scope `/admin`, іконка з плашкою «АДМІН»). Маніфести — роутами (файловий `manifest.ts` не дає адмінці підставити свій). Іконки — `scripts/gen-pwa-icons.mjs` з `src/app/icon.png`. Chrome (CDP): обидва встановлювані, без помилок.
 - iOS: `appleWebApp`, `apple-mobile-web-app-capable`, `viewport-fit=cover` + бокові safe-area. Вхід Google у застосунку на iPhone — `window.open` (`lib/pwa.ts`, `/auth/popup-done`); **перевірити на реальному iPhone**.
 - **Пуші персоналу про нові замовлення**: `public/sw.js` (лише push, без кешу сторінок, scope `/admin`), таблиця `staff_push_subscriptions` (міграція `20261026120000`), `/api/admin/push` (subscribe/unsubscribe/test), відправка `lib/push.server.ts` через `after()` у `/api/order`; число нових замовлень на іконці. Вмикає кожен співробітник: меню адмінки → «Сповіщення». На iPhone — лише в установленому застосунку (iOS 16.4+).
+- **Застосовано на проді 2026-10-27**: міграція `20261026120000` (через session pooler; RLS увімкнено, 3 політики, anon — без прав), `NEXT_PUBLIC_VAPID_PUBLIC_KEY` / `VAPID_PRIVATE_KEY` / `VAPID_SUBJECT` у Vercel Production. Після додавання змінних потрібен Redeploy.
 - Перевірено: міграція на локальному Postgres (RLS: лише свої пристрої, не-staff/anon — ні), шифрування пушу (aes128gcm + VAPID) на локальному «пуш-сервісі», 410 → підписка видаляється; приватний VAPID-ключ не потрапляє в клієнтський бандл.
 
 ## 🔑 Переменные окружения

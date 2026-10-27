@@ -27,3 +27,5 @@ supabase/.env
 
 # сирі картинки для тем фону кабінету (конвертуються в public/profile-bg)
 profile-bg-incoming/
+.vercel
+.env*
