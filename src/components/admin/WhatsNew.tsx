@@ -4,23 +4,40 @@ import { useEffect, useState } from "react";
 import { createPortal } from "react-dom";
 import Modal from "./Modal";
 import { CHANGELOG, APP_VERSION, type ChangeItem } from "@/data/changelog";
+import { syncSeen } from "@/lib/pushClient";
 import s from "./admin.module.css";
 
 const seenKey = (uid: string) => `admin-seen-version:${uid}`;
 const fmtDate = (d: string) => `${d.slice(8, 10)}.${d.slice(5, 7)}.${d.slice(0, 4)}`;
 
-/** Дзвіночок «Що нового»: крапка — є версія, яку цей співробітник ще не відкривав; клік — патчноути. */
+/**
+ * Дзвіночок «Що нового»: крапка — є версія, яку цей співробітник ще не відкривав; клік — патчноути.
+ * Перегляд версії йде й на сервер — від нього залежить число на іконці застосунку.
+ * ?whatsnew=1 (тап по пушу «Оновлення адмінки») — відкрити одразу.
+ */
 export function WhatsNewBell({ uid }: { uid: string }) {
   const [open, setOpen] = useState(false);
   const [unseen, setUnseen] = useState(false);
-  useEffect(() => {
-    try { setUnseen(localStorage.getItem(seenKey(uid)) !== APP_VERSION); } catch { /* без сховища — без крапки */ }
-  }, [uid]);
   const show = () => {
     setOpen(true);
     setUnseen(false);
     try { localStorage.setItem(seenKey(uid), APP_VERSION); } catch { /* ignore */ }
+    void syncSeen({ version: true });
   };
+  useEffect(() => {
+    const url = new URL(window.location.href);
+    if (url.searchParams.get("whatsnew") === "1") {
+      url.searchParams.delete("whatsnew");
+      window.history.replaceState(null, "", url.pathname + url.search + url.hash);
+      show();
+      return;
+    }
+    let seen = false;
+    try { seen = localStorage.getItem(seenKey(uid)) === APP_VERSION; } catch { /* без сховища — без крапки */ }
+    setUnseen(!seen);
+    if (seen) void syncSeen({ version: true }); // бачив до появи серверного обліку — переносимо
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [uid]);
   return (
     <>
       <button type="button" onClick={show} className={`${s.btn} ${s.btnGhost} ${s.btnSmall} ${s.bellBtn}`}

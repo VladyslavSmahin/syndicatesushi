@@ -1,27 +1,29 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
+import { usePathname } from "next/navigation";
 import Modal from "./Modal";
-import { createClient } from "@/lib/supabase/client";
 import {
-  disablePush, enablePush, getPushState, pushAvailable, registerAdminServiceWorker, sendTestPush, setAppBadge, type PushState,
+  disablePush, enablePush, getPushState, pushAvailable, registerAdminServiceWorker, sendTestPush, syncSeen, type PushState,
 } from "@/lib/pushClient";
 import s from "./admin.module.css";
 
-/** При старті адмінки: service worker для сповіщень + число нових замовлень на іконці застосунку. */
+/**
+ * Service worker для сповіщень + число непереглянутого на іконці застосунку. Відкрита дошка
+ * замовлень = усі замовлення до цього моменту переглянуті.
+ */
 export function AdminPwaBoot() {
+  const pathname = usePathname();
+  useEffect(() => { registerAdminServiceWorker(); }, []);
   useEffect(() => {
-    registerAdminServiceWorker();
-    const supabase = createClient();
-    const syncBadge = async () => {
-      if (document.visibilityState !== "visible") return;
-      const { count } = await supabase.from("orders").select("id", { count: "exact", head: true }).eq("status", "new");
-      if (typeof count === "number") setAppBadge(count);
+    const onOrders = pathname.startsWith("/admin/orders");
+    const sync = () => {
+      if (document.visibilityState === "visible") void syncSeen(onOrders ? { orders: true } : {});
     };
-    void syncBadge();
-    document.addEventListener("visibilitychange", syncBadge);
-    return () => document.removeEventListener("visibilitychange", syncBadge);
-  }, []);
+    sync();
+    document.addEventListener("visibilitychange", sync);
+    return () => document.removeEventListener("visibilitychange", sync);
+  }, [pathname]);
   return null;
 }
 
@@ -30,8 +32,8 @@ const STATE_TEXT: Record<PushState, string> = {
     "На iPhone сповіщення працюють лише в застосунку. У Safari натисніть «Поділитися» → «На екран „Додому“», відкрийте «SS Адмінка» з екрана телефону і ввімкніть сповіщення тут.",
   unsupported: "Цей браузер не підтримує сповіщення. Спробуйте Chrome або застосунок «SS Адмінка» на iPhone.",
   denied: "Сповіщення заборонені в налаштуваннях телефону. Увімкніть їх: Налаштування → Сповіщення → SS Адмінка (або налаштування сайту в браузері).",
-  off: "Нове замовлення — сповіщення на цей телефон чи компʼютер, як у месенджері. Тап відкриває дошку замовлень, на іконці — кількість нових.",
-  on: "Сповіщення про нові замовлення увімкнені на цьому пристрої.",
+  off: "Нове замовлення чи оновлення адмінки — сповіщення на цей телефон чи компʼютер, як у месенджері. Тап відкриває дошку замовлень або «Що нового», на іконці — кількість непереглянутого.",
+  on: "Сповіщення про нові замовлення й оновлення адмінки увімкнені на цьому пристрої.",
 };
 
 /** Пункт меню «Сповіщення» + вікно налаштування для цього пристрою. */

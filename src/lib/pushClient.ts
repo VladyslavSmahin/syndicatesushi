@@ -87,3 +87,19 @@ export function setAppBadge(count: number) {
   if (!nav.setAppBadge) return;
   (count > 0 ? nav.setAppBadge(count) : nav.clearAppBadge?.())?.catch(() => {});
 }
+
+/**
+ * Позначити переглянуте ({ orders } — відкрив дошку, { version } — відкрив «Що нового», {} — лише
+ * прочитати) і оновити число на іконці застосунку. Помилки мовчки ігноруємо.
+ */
+export async function syncSeen(what: { orders?: true; version?: true } = {}) {
+  try {
+    const res = await fetch("/api/admin/seen", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(what),
+    });
+    const data = (await res.json()) as { ok?: boolean; badge?: number };
+    if (data.ok && typeof data.badge === "number") setAppBadge(data.badge);
+  } catch { /* офлайн / розлогінений — число лишається як було */ }
+}
