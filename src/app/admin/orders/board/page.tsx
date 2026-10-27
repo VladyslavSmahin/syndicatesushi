@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useState, type CSSProperties } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useDbOrders, dbSetOrderStatus, orderScheduleLabel, type DbOrder, type OrderStatus } from "@/features/admin/db";
 import s from "@/components/admin/admin.module.css";
 
@@ -20,6 +20,17 @@ export default function OrdersBoardPage() {
   const [dragId, setDragId] = useState<string | null>(null);
   const [overCol, setOverCol] = useState<OrderStatus | null>(null);
   const pending = useRef<Set<string>>(new Set());
+  // телефон: колонки гортаються по одній, вкладка підсвічує видиму
+  const boardRef = useRef<HTMLDivElement>(null);
+  const [visibleCol, setVisibleCol] = useState(0);
+  const onBoardScroll = () => {
+    const el = boardRef.current;
+    if (el && el.clientWidth) setVisibleCol(Math.round(el.scrollLeft / el.clientWidth));
+  };
+  const showCol = (i: number) => {
+    const el = boardRef.current;
+    el?.scrollTo({ left: (el.children[i] as HTMLElement | undefined)?.offsetLeft ?? 0, behavior: "smooth" });
+  };
   // фільтр за датою; дефолт — сьогодні (виставляємо на клієнті, щоб не ламати гідрацію)
   const [dateFilter, setDateFilter] = useState<string>("");
   // ?date=YYYY-MM-DD — перехід зі статистики за конкретний день
@@ -71,12 +82,22 @@ export default function OrdersBoardPage() {
         </div>
       </div>
 
-      <div style={{ display: "grid", gridTemplateColumns: `repeat(${COLUMNS.length}, minmax(240px, 1fr))`, gap: 12, alignItems: "start", overflowX: "auto", paddingBottom: 8 }}>
+      <div className={s.boardTabs} role="tablist">
+        {COLUMNS.map((col, i) => (
+          <button key={col.value} type="button" role="tab" aria-selected={visibleCol === i}
+            className={`${s.boardTab} ${visibleCol === i ? s.boardTabActive : ""}`} onClick={() => showCol(i)}>
+            <span style={{ width: 8, height: 8, borderRadius: 8, background: col.accent }} />
+            {col.label} · {byCol[col.value].length}
+          </button>
+        ))}
+      </div>
+
+      <div ref={boardRef} className={s.board} onScroll={onBoardScroll}>
         {COLUMNS.map((col) => {
           const list = byCol[col.value];
           const isOver = overCol === col.value;
           return (
-            <div key={col.value}
+            <div key={col.value} className={s.boardCol}
               onDragOver={(e) => { e.preventDefault(); setOverCol(col.value); }}
               onDragLeave={(e) => { if (e.currentTarget === e.target) setOverCol(null); }}
               onDrop={() => onDrop(col.value)}
@@ -100,7 +121,8 @@ export default function OrdersBoardPage() {
                     <BoardCard key={o.id} order={o} accent={col.accent}
                       onDragStart={() => setDragId(o.id)} onDragEnd={() => { setDragId(null); setOverCol(null); }}
                       onPrev={prevOf(o.status) ? () => move(o.id, prevOf(o.status)!) : undefined}
-                      onNext={nextOf(o.status) ? () => move(o.id, nextOf(o.status)!) : undefined} />
+                      onNext={nextOf(o.status) ? () => move(o.id, nextOf(o.status)!) : undefined}
+                      nextLabel={COLUMNS.find((c) => c.value === nextOf(o.status))?.label} />
                   ))
                 )}
               </div>
@@ -115,17 +137,13 @@ export default function OrdersBoardPage() {
 const prevOf = (st: OrderStatus): OrderStatus | null => { const i = ORDER.indexOf(st); return i > 0 ? ORDER[i - 1] : null; };
 const nextOf = (st: OrderStatus): OrderStatus | null => { const i = ORDER.indexOf(st); return i >= 0 && i < ORDER.length - 1 ? ORDER[i + 1] : null; };
 
-function BoardCard({ order, accent, onDragStart, onDragEnd, onPrev, onNext }: {
+function BoardCard({ order, accent, onDragStart, onDragEnd, onPrev, onNext, nextLabel }: {
   order: DbOrder; accent: string;
   onDragStart: () => void; onDragEnd: () => void;
-  onPrev?: () => void; onNext?: () => void;
+  onPrev?: () => void; onNext?: () => void; nextLabel?: string;
 }) {
   const time = new Date(order.createdAt).toLocaleString("uk-UA", { day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit" });
   const qty = order.items.reduce((n, it) => n + it.quantity, 0);
-  const arrowBtn: CSSProperties = {
-    width: 26, height: 26, borderRadius: 6, border: "1px solid var(--border-light)", background: "transparent",
-    color: "var(--text-primary)", cursor: "pointer", fontSize: 14, lineHeight: 1, display: "flex", alignItems: "center", justifyContent: "center",
-  };
   return (
     <div draggable onDragStart={onDragStart} onDragEnd={onDragEnd}
       style={{
@@ -162,10 +180,11 @@ function BoardCard({ order, accent, onDragStart, onDragEnd, onPrev, onNext }: {
       <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 8, marginTop: 2 }}>
         <span className={s.hint} style={{ fontSize: 10 }}>{time}</span>
         <div style={{ display: "flex", gap: 6 }}>
-          <button style={{ ...arrowBtn, opacity: onPrev ? 1 : 0.3, cursor: onPrev ? "pointer" : "default" }}
-            disabled={!onPrev} onClick={onPrev} aria-label="Назад за статусом">‹</button>
-          <button style={{ ...arrowBtn, opacity: onNext ? 1 : 0.3, cursor: onNext ? "pointer" : "default" }}
-            disabled={!onNext} onClick={onNext} aria-label="Далі за статусом">›</button>
+          <button type="button" className={s.boardMoveBtn} disabled={!onPrev} onClick={onPrev} aria-label="Назад за статусом">‹</button>
+          <button type="button" className={`${s.boardMoveBtn} ${s.boardMoveBtnNext}`} disabled={!onNext} onClick={onNext}
+            aria-label={nextLabel ? `Перемістити: ${nextLabel}` : "Далі за статусом"}>
+            {nextLabel && <span className={s.boardMoveLabel}>{nextLabel}</span>}›
+          </button>
         </div>
       </div>
     </div>
