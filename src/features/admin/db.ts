@@ -520,6 +520,8 @@ export interface DbOrder {
   scheduledDate: string | null; scheduledTime: string | null;
   /** замовлено з акаунта клієнта */
   userId: string | null;
+  /** клієнт просить не дзвонити для підтвердження */
+  noCall: boolean;
 }
 
 /** «на коли» для замовлення: «сьогодні о 18:30», «08.10, по готовності». null — не вказано. */
@@ -540,7 +542,7 @@ export function useDbOrders() {
     setLoading(true);
     const { data, error } = await supabase
       .from("orders")
-      .select("id, customer_name, phone, delivery_type, address, comment, status, subtotal, discount, delivery_cost, total, created_at, scheduled_date, scheduled_time, user_id, items:order_items(product_name, price, quantity)")
+      .select("id, customer_name, phone, delivery_type, address, comment, status, subtotal, discount, delivery_cost, total, created_at, scheduled_date, scheduled_time, user_id, no_call, items:order_items(product_name, price, quantity)")
       .order("created_at", { ascending: false });
     if (error) console.error("orders:", error.message);
     else setOrders((data ?? []).map((o) => ({
@@ -549,6 +551,7 @@ export function useDbOrders() {
       subtotal: Number(o.subtotal), discount: Number(o.discount), deliveryCost: Number(o.delivery_cost), total: Number(o.total),
       createdAt: o.created_at,
       scheduledDate: o.scheduled_date, scheduledTime: o.scheduled_time?.slice(0, 5) ?? null, userId: o.user_id,
+      noCall: o.no_call === true,
       items: ((o.items ?? []) as { product_name: string; price: number; quantity: number }[])
         .map((it) => ({ name: it.product_name, price: Number(it.price), quantity: it.quantity })),
     })));

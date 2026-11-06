@@ -160,6 +160,9 @@ function BoardCard({ order, accent, onDragStart, onDragEnd, onPrev, onNext, next
         <span>· {order.deliveryType === "delivery" ? "🛵 Доставка" : "🏠 Самовивіз"}</span>
         <span>· {qty} шт</span>
       </div>
+      {order.noCall && (
+        <p style={{ fontSize: 11, margin: 0, fontWeight: 700, color: "var(--gold)" }}>📵 Не телефонувати — клієнт просить не дзвонити для підтвердження</p>
+      )}
       {orderScheduleLabel(order) && (
         <p className={s.hint} style={{ fontSize: 11, margin: 0, color: order.scheduledTime ? "var(--accent)" : undefined }}>
           🕒 {order.deliveryType === "delivery" ? "Доставити" : "Забрати"}: {orderScheduleLabel(order)}

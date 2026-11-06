@@ -13,7 +13,7 @@ export const MIN_PASSWORD = 8;
  *  без листа підтвердження реєстрація обривається. Увімкнути назад: true. Вхід паролем для вже зареєстрованих лишається. */
 const EMAIL_SIGNUP_ENABLED = true;
 
-const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+export const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
 type AuthMode = "login" | "register" | "forgot";
 
@@ -30,7 +30,7 @@ const ERROR_TEXT: Record<Exclude<AuthErrorCode, null>, string> = {
 };
 
 /** Зрозуміла причина невдалої реєстрації (коди Supabase Auth); решта — загальний текст. */
-function signUpErrorText(error: { message: string; code?: string; status?: number }): string {
+export function signUpErrorText(error: { message: string; code?: string; status?: number }): string {
   const m = `${error.code ?? ""} ${error.message}`;
   if (/already|registered|user_already_exists|email_exists/i.test(m)) return "Ця пошта вже зареєстрована — увійдіть.";
   if (/rate.?limit|over_email_send_rate_limit|too many/i.test(m) || error.status === 429)

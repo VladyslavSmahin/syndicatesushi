@@ -38,6 +38,8 @@ interface OrderBody {
   /** списати сертифікат «Приведи друга» (лише для залогіненого, не разом із промокодом) */
   useCertificate?: boolean;
   consent?: boolean;
+  /** «Не телефонуйте мені для підтвердження замовлення» */
+  noCall?: boolean;
   items: IncomingItem[];
 }
 
@@ -86,6 +88,7 @@ export async function POST(req: Request) {
     return NextResponse.json({ ok: false, error: "bad_json" }, { status: 400 });
   }
   const { delivery, name, phone, address, comment, cutlery, cutleryTraining, cutleryKind, promo, consent, items } = body;
+  const noCall = body.noCall === true;
   const scheduleDate = body.scheduleDate ?? body.pickupDate;
   const scheduleTime = body.scheduleTime ?? body.pickupTime;
 
@@ -327,6 +330,7 @@ export async function POST(req: Request) {
         delivery_cost: deliveryCost,
         total,
         pd_consent_at: new Date().toISOString(),
+        no_call: noCall,
       })
       .select("id, phone_norm, created_at")
       .single();
@@ -408,6 +412,7 @@ export async function POST(req: Request) {
     "",
     `👤 <b>Ім'я:</b> ${esc(name)}`,
     `📞 <b>Телефон:</b> ${esc(phone)}`,
+    noCall ? "📵 <b>НЕ ТЕЛЕФОНУВАТИ</b> — клієнт просить не дзвонити для підтвердження" : null,
     accountLine,
     personalLine,
     `🚚 <b>Спосіб:</b> ${delivery === "delivery" ? "Доставка" : "Самовивіз"}`,

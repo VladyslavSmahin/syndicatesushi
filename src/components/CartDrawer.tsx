@@ -12,7 +12,9 @@ import type { Product, CartItem } from "@/lib/types";
 import { useScrollLock } from "@/lib/scrollLock";
 import ThumbImg from "./ThumbImg";
 import { formatPhone, isPhoneValid, phoneDigits } from "@/lib/phone";
-import { useCustomerProfile, updateCustomerPhone, useIsSignedIn, fetchActiveCertificates, type MyCertificate } from "@/features/account";
+import { useCustomerProfile, updateCustomerPhone, useIsSignedIn, fetchActiveCertificates, signUpCustomer, type MyCertificate } from "@/features/account";
+import { EMAIL_RE, MIN_PASSWORD, signUpErrorText } from "./AuthForm";
+import PasswordInput from "./PasswordInput";
 import { readRef, clearRef } from "@/lib/referral";
 
 const EXTRAS_CATEGORY = "додатково";
@@ -84,13 +86,26 @@ export default function CartDrawer({ isOpen, onClose }: { isOpen: boolean; onClo
   const profile = useCustomerProfile(isOpen);
   // гість (точно без входу, не «ще перевіряємо») — показуємо запрошення створити акаунт
   const signedIn = useIsSignedIn();
-  const [promoToast, setPromoToast] = useState(false);
-  // підказка сама ховається — не заважає оформленню
-  useEffect(() => { if (!promoToast) return; const t = setTimeout(() => setPromoToast(false), 9000); return () => clearTimeout(t); }, [promoToast]);
-  const hidePromo = () => { setPromoToast(false); setPromoHidden(true); try { sessionStorage.setItem("ss_acc_promo_hidden", "1"); } catch { /* ignore */ } };
-  const [promoHidden, setPromoHidden] = useState(() => {
+  // Гостю при «Підтвердити» — маленьке вікно: «Бонуси для своїх — створити акаунт на ці дані?».
+  // Так → лише пошта й пароль (ім'я й телефон — із замовлення), акаунт → далі замовлення.
+  // Ні → замовлення одразу; у цій сесії більше не питаємо.
+  const [accOffer, setAccOffer] = useState<"closed" | "ask" | "form">("closed");
+  const [accEmail, setAccEmail] = useState("");
+  const [accPassword, setAccPassword] = useState("");
+  const [accBusy, setAccBusy] = useState(false);
+  const [accError, setAccError] = useState("");
+  // створений під час оформлення акаунт — для тексту на екрані «Дякуємо»
+  const [accCreated, setAccCreated] = useState<{ email: string; needsConfirmation: boolean } | null>(null);
+  const [offerDeclined, setOfferDeclined] = useState(() => {
     try { return sessionStorage.getItem("ss_acc_promo_hidden") === "1"; } catch { return false; }
   });
+  const declineOffer = () => {
+    setOfferDeclined(true);
+    try { sessionStorage.setItem("ss_acc_promo_hidden", "1"); } catch { /* ignore */ }
+  };
+  // «Не телефонуйте мені для підтвердження замовлення»
+  const [noCall, setNoCall] = useState(false);
+  const [doneNoCall, setDoneNoCall] = useState(false);
   const phoneFromProfile = useRef<string | null>(null);
   useEffect(() => {
     if (!profile) return;
@@ -236,7 +251,6 @@ export default function CartDrawer({ isOpen, onClose }: { isOpen: boolean; onClo
   const goCheckout = () => {
     setCutleryAsk(false);
     setStep("checkout");
-    if (signedIn === false && !promoHidden) setPromoToast(true);
   };
   // кількість паличок не обрано — не пускаємо далі, поки клієнт не підтвердить, що вони не потрібні
   const onCheckout = () => { if (needsCutlery && cutlery === null) setCutleryAsk(true); else goCheckout(); };
@@ -259,9 +273,49 @@ export default function CartDrawer({ isOpen, onClose }: { isOpen: boolean; onClo
     : !consent ? "Поставте згоду ✓"
     : "";
 
-  const handleSubmit = async (e: React.FormEvent) => {
+  const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (!canSubmit || submitting) return;
+    // гість — спершу пропонуємо акаунт (раз за сесію), потім замовлення
+    if (signedIn === false && !offerDeclined && !accCreated) {
+      setAccError("");
+      setAccOffer("ask");
+      return;
+    }
+    void placeOrder();
+  };
+
+  /** «Ні» — оформлюємо без акаунта */
+  const skipAccount = () => {
+    declineOffer();
+    setAccOffer("closed");
+    void placeOrder();
+  };
+
+  /** «Так» → пошта + пароль: створюємо акаунт на дані із замовлення, потім оформлюємо замовлення */
+  const createAccountAndOrder = async () => {
+    const em = accEmail.trim().toLowerCase();
+    if (!EMAIL_RE.test(em)) { setAccError("Вкажіть коректну пошту."); return; }
+    if (accPassword.length < MIN_PASSWORD) { setAccError(`Пароль — щонайменше ${MIN_PASSWORD} символів.`); return; }
+    setAccBusy(true);
+    setAccError("");
+    try {
+      const { error: suError, needsConfirmation } = await signUpCustomer({ email: em, password: accPassword, name: name.trim(), phone: phone.trim() });
+      if (suError) { setAccError(signUpErrorText(suError)); return; }
+      setAccCreated({ email: em, needsConfirmation });
+      setAccOffer("closed");
+      setAccPassword("");
+      // замовлення прив'яжеться до кабінету за номером телефону (і за сесією, якщо пошту не треба підтверджувати)
+      void placeOrder();
+    } catch {
+      setAccError("Не вдалося створити акаунт. Спробуйте ще раз або оформіть без акаунта.");
+    } finally {
+      setAccBusy(false);
+    }
+  };
+
+  const placeOrder = async () => {
+    if (submitting) return;
     setError("");
     // слот міг минути, поки клієнт заповнював форму — просимо обрати знову
     if (revalidatePickup()) {
@@ -280,7 +334,7 @@ export default function CartDrawer({ isOpen, onClose }: { isOpen: boolean; onClo
           scheduleTime: pickupTime,
           cutlery: needsCutlery ? cutleryQty : undefined,
           cutleryTraining: needsCutlery ? Math.min(cutleryTraining, cutleryQty) : undefined,
-          promo: promoInfo?.code ?? "", useCertificate: useCert && certOk, consent, items,
+          promo: promoInfo?.code ?? "", useCertificate: useCert && certOk, consent, noCall, items,
         }),
       });
       const j = (await res.json().catch(() => ({}))) as { ok?: boolean; error?: string; badIds?: unknown; total?: unknown };
@@ -300,6 +354,8 @@ export default function CartDrawer({ isOpen, onClose }: { isOpen: boolean; onClo
       }
       // показуємо серверну суму, якщо вона відрізняється від тієї, що бачив клієнт
       setServerTotal(typeof j.total === "number" && j.total !== payable ? j.total : null);
+      setDoneNoCall(noCall);
+      setNoCall(false);
       setStep("done");
       // клієнт погодився оновити номер у профілі (тихо: замовлення вже прийняте)
       if (phoneDiffers && savePhoneToProfile && profile) updateCustomerPhone(profile.id, phone.trim()).catch(() => {});
@@ -324,19 +380,6 @@ export default function CartDrawer({ isOpen, onClose }: { isOpen: boolean; onClo
         style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.7)", backdropFilter: "blur(4px)", zIndex: 900 }} />
       <aside className="slide-in"
         style={{ position: "fixed", top: 0, right: 0, bottom: 0, width: "min(440px, 100%)", background: "var(--bg-card)", borderLeft: "1px solid var(--border)", zIndex: 950, display: "flex", flexDirection: "column" }}>
-        {/* бонуси для гостя — спливаюча підказка поверх, не блокує форму; ховається сама */}
-        {promoToast && step === "checkout" && (
-          <div className="acc-promo acc-toast" role="status">
-            <span className="acc-promo-gift" aria-hidden>🎁</span>
-            <div style={{ flex: 1, minWidth: 0 }}>
-              <b>Бонуси й подарунки — для своїх</b>
-              <span>Скоро — бали й призи для гостей з акаунтом.</span>
-              {/* кошик лежить у браузері — після входу через Google нікуди не зникне */}
-              <a href="/?login=1" className="acc-promo-btn">Створити акаунт</a>
-            </div>
-            <button type="button" className="acc-promo-x" aria-label="Сховати" onClick={hidePromo}>×</button>
-          </div>
-        )}
         <div className="cd-head" style={{ padding: "16px 24px", borderBottom: "1px solid var(--border)", display: "flex", alignItems: "center", justifyContent: "space-between", gap: 10 }}>
           <div style={{ display: "flex", alignItems: "center", gap: 10, minWidth: 0 }}>
             {/* eslint-disable-next-line @next/next/no-img-element */}
@@ -355,8 +398,18 @@ export default function CartDrawer({ isOpen, onClose }: { isOpen: boolean; onClo
           <div style={{ flex: 1, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", padding: "40px 32px", textAlign: "center" }}>
             <div style={{ fontFamily: "var(--font-display)", fontSize: 30, fontWeight: 700, color: "var(--accent)", marginBottom: 14 }}>Дякуємо!</div>
             <p style={{ fontSize: 13, color: "var(--text-primary)", lineHeight: 1.7, maxWidth: 280 }}>
-              Замовлення прийнято. Найближчим часом ми зв&apos;яжемося з вами для підтвердження.
+              {doneNoCall
+                ? <>Замовлення прийнято. Як ви просили, телефонувати для підтвердження не будемо.</>
+                : <>Замовлення прийнято. Найближчим часом ми зв&apos;яжемося з вами для підтвердження.</>}
             </p>
+            {accCreated && (
+              <p style={{ fontSize: 12, color: "var(--text-secondary)", lineHeight: 1.6, maxWidth: 300, marginTop: 10 }}>
+                🎁 Акаунт створено.{" "}
+                {accCreated.needsConfirmation
+                  ? <>Підтвердіть пошту — лист уже на <b style={{ color: "var(--text-primary)" }}>{accCreated.email}</b>. Після цього замовлення з&apos;явиться в кабінеті.</>
+                  : <>Замовлення — у вашому кабінеті.</>}
+              </p>
+            )}
             {serverTotal != null && (
               <p style={{ fontSize: 13, color: "var(--text-secondary)", lineHeight: 1.6, maxWidth: 280, marginTop: 12 }}>
                 Сума замовлення за актуальними цінами: <b style={{ color: "var(--text-primary)" }}>{serverTotal} грн</b>
@@ -607,6 +660,12 @@ export default function CartDrawer({ isOpen, onClose }: { isOpen: boolean; onClo
                 </span>
                 <span style={{ fontFamily: "var(--font-display)", fontSize: 28, fontWeight: 700, color: "var(--text-primary)" }}>{payable} грн</span>
               </div>
+              {/* прохання не дзвонити — менеджер бачить у Telegram і на дошці замовлень */}
+              <label style={{ display: "flex", gap: 8, alignItems: "center", marginBottom: 8, cursor: "pointer", fontSize: 11, lineHeight: 1.3, color: "var(--text-secondary)" }}>
+                <input type="checkbox" checked={noCall} onChange={(e) => setNoCall(e.target.checked)}
+                  style={{ width: 16, height: 16, flexShrink: 0, accentColor: "var(--accent)", cursor: "pointer" }} />
+                <span>Не телефонуйте мені для підтвердження замовлення</span>
+              </label>
               {/* згода — в один рядок; повні тексти — за посиланнями */}
               <label style={{ display: "flex", gap: 8, alignItems: "center", marginBottom: 12, cursor: "pointer", fontSize: 11, lineHeight: 1.3, color: "var(--text-secondary)" }}>
                 <input type="checkbox" checked={consent} onChange={(e) => setConsent(e.target.checked)}
@@ -627,6 +686,41 @@ export default function CartDrawer({ isOpen, onClose }: { isOpen: boolean; onClo
               </div>
             </div>
           </form>
+        )}
+
+        {/* Гість натиснув «Підтвердити» — пропозиція створити акаунт на дані із замовлення */}
+        {accOffer !== "closed" && step === "checkout" && (
+          <div className="acc-offer-backdrop" onClick={() => !accBusy && skipAccount()}>
+            <div className="acc-promo acc-offer" role="dialog" aria-modal="true" aria-labelledby="acc-offer-title" onClick={(e) => e.stopPropagation()}>
+              <span className="acc-promo-gift" aria-hidden>🎁</span>
+              <div style={{ flex: 1, minWidth: 0 }}>
+                <b id="acc-offer-title">Бонуси й подарунки — для своїх</b>
+                {accOffer === "ask" ? (
+                  <>
+                    <span>Скоро — бали й призи для гостей з акаунтом. Створити акаунт на ці дані — {name.trim()}, {phone.trim()}? Знадобляться лише пошта й пароль.</span>
+                    <div className="acc-offer-actions">
+                      <button type="button" className="acc-promo-btn" onClick={() => { setAccOffer("form"); setAccError(""); }}>Так, створити</button>
+                      <button type="button" className="acc-offer-skip" onClick={skipAccount}>Ні, оформити без акаунта</button>
+                    </div>
+                  </>
+                ) : (
+                  <form className="acc-offer-form" onSubmit={(e) => { e.preventDefault(); void createAccountAndOrder(); }}>
+                    <span>Ім&apos;я й телефон візьмемо із замовлення. Після реєстрації надішлемо лист — підтвердіть пошту.</span>
+                    <input className="form-input" type="email" placeholder="Пошта *" value={accEmail} maxLength={200} autoComplete="email"
+                      onChange={(e) => setAccEmail(e.target.value)} disabled={accBusy} autoFocus required />
+                    <PasswordInput className="form-input" placeholder={`Пароль (від ${MIN_PASSWORD} символів) *`} value={accPassword} maxLength={72}
+                      autoComplete="new-password" onChange={(e) => setAccPassword(e.target.value)} disabled={accBusy} required />
+                    {accError && <span className="acc-offer-error" role="alert">{accError}</span>}
+                    <div className="acc-offer-actions">
+                      <button type="submit" className="acc-promo-btn" disabled={accBusy}>{accBusy ? "Створюємо…" : "Створити й оформити"}</button>
+                      <button type="button" className="acc-offer-skip" onClick={skipAccount} disabled={accBusy}>Без акаунта</button>
+                    </div>
+                  </form>
+                )}
+              </div>
+              <button type="button" className="acc-promo-x" aria-label="Закрити й оформити без акаунта" onClick={skipAccount} disabled={accBusy}>×</button>
+            </div>
+          </div>
         )}
       </aside>
 
