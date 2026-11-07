@@ -21,11 +21,13 @@ const TRASH = { href: "/admin/deleted", label: "Кошик" };
 // групи меню за замовчуванням згорнуті; стан запамʼятовуємо для кожного співробітника (localStorage, ключ з id)
 const collapsedKey = (uid: string) => `admin-nav-collapsed:${uid}`;
 
-// «Огляд» + «Клієнти» + «Статистика» — одна сторінка з табами (пункт меню — лише «Огляд»)
-const OVERVIEW_TABS = [
+// «Огляд» + «Клієнти» + «Статистика» + «Лояльність» — одна сторінка з табами (пункт меню — лише «Огляд»).
+// adminOnly — таб бачить лише admin (у «Лояльності» фінанси бізнесу)
+const OVERVIEW_TABS: { href: string; label: string; adminOnly?: boolean }[] = [
   { href: "/admin", label: "Огляд" },
   { href: "/admin/customers", label: "Клієнти" },
   { href: "/admin/stats", label: "Статистика" },
+  { href: "/admin/loyalty", label: "Лояльність", adminOnly: true },
 ];
 const isOverview = (p: string) => OVERVIEW_TABS.some((t) => t.href === p);
 /** Пункт меню, що відповідає сторінці (таби огляду → «Огляд»). */
@@ -76,6 +78,7 @@ const NAV_KEYWORDS: Record<string, string> = {
   "/admin": "огляд обзор дашборд головна",
   "/admin/customers": "клієнти клиенты покупці користувачі бали реферали друзі",
   "/admin/stats": "статистика графік продажі виручка аналітика выручка",
+  "/admin/loyalty": "лояльність лояльность бонуси бонусы рівні уровни vip подарунки подарки досягнення",
   "/admin/categories": "категорії категории розділи меню",
   "/admin/subcategories": "підкатегорії подкатегории",
   "/admin/products": "товари товары страви блюда меню роли сети ціна цена бейдж хіт нове фото склад наявність",
@@ -391,7 +394,7 @@ export default function AdminShell({ children }: { children: React.ReactNode }) 
         )}
         {isOverview(pathname) && (
           <nav className={s.ovTabs} aria-label="Розділи огляду">
-            {OVERVIEW_TABS.map((t) => (
+            {OVERVIEW_TABS.filter((t) => !t.adminOnly || user.role === "admin").map((t) => (
               <Link key={t.href} href={t.href} aria-current={pathname === t.href ? "page" : undefined}
                 onClick={() => { if (pathname !== t.href) setPendingHref(t.href); }}
                 className={`${s.ovTab} ${pathname === t.href || pendingHref === t.href ? s.ovTabOn : ""}`}>
