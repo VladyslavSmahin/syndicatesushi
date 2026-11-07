@@ -1,5 +1,5 @@
 import { createClient } from "@/lib/supabase/server";
-import { LOYALTY_SECTIONS, LOYALTY_VERSION } from "@/lib/loyaltyProgram";
+import { LOYALTY_CHECK, LOYALTY_SECTIONS } from "@/lib/loyaltyProgram";
 import LoyaltyClient from "./LoyaltyClient";
 import s from "@/components/admin/admin.module.css";
 
@@ -20,5 +20,5 @@ export default async function LoyaltyPage() {
     );
   }
 
-  return <LoyaltyClient sections={LOYALTY_SECTIONS} version={LOYALTY_VERSION} uid={user!.id} />;
+  return <LoyaltyClient sections={LOYALTY_SECTIONS} check={LOYALTY_CHECK} uid={user!.id} />;
 }
