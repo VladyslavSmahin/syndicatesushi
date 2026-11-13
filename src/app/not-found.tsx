@@ -7,7 +7,7 @@ export const metadata: Metadata = { title: "Сторінку не знайден
 // 404: шапка з логотипом (як на інфо-сторінках) + чорний екран з піксельною анімацією
 export default function NotFound() {
   return (
-    <main style={{ minHeight: "100vh", background: "#000" }}>
+    <main className="nf404" style={{ height: "100svh", overflow: "hidden", background: "#000" }}>
       <header
         style={{
           position: "sticky", top: 0, zIndex: 10, height: "var(--header-h)",

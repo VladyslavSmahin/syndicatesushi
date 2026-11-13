@@ -1,9 +1,9 @@
-/* 404: чорний екран на всю ширину, піксельні текст і кнопки поверх анімації (золото бренду) */
+/* 404: чорний екран на всю ширину, піксельні текст і кнопки поверх анімації (золото бренду).
+   Сторінка рівно в екран і не прокручується (globals.css → .nf404) — на телефоні не ховається адресний рядок. */
 .hero {
   position: relative;
   width: 100%;
   height: calc(100svh - var(--header-h, 64px));
-  min-height: 520px;
   background: #000;
   color: #fff;
   overflow: hidden;
@@ -22,7 +22,8 @@
 .text {
   position: absolute;
   z-index: 1;
-  top: 16%;
+  top: 50%;
+  transform: translateY(-50%);
   left: max(24px, calc((100vw - 1200px) / 2 + 24px));
   max-width: min(560px, 46vw);
   display: flex;
@@ -36,7 +37,7 @@
 .code {
   margin: 0;
   font-family: inherit;
-  font-size: clamp(64px, 11vw, 168px);
+  font-size: clamp(44px, min(11vw, 18svh), 168px);
   font-weight: 400;
   line-height: 1;
   color: #c9a84c;
@@ -77,9 +78,9 @@
 .btn:focus-visible { outline: 3px solid #fff; outline-offset: 4px; }
 
 @media (max-width: 1023px) {
-  .hero { height: min(calc(100svh - var(--header-h, 64px)), 860px); }
   .text {
     top: 28px;
+    transform: none;
     left: 18px;
     right: 18px;
     max-width: none;

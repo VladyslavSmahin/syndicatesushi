@@ -77,13 +77,16 @@ export default function Cat404() {
       return f
     }
 
+    // Пересобираем сетку, только если она реально изменилась (иначе canvas очищается — чёрная вспышка)
     const layout = () => {
       const box = canvas.getBoundingClientRect()
-      if (!box.width || !box.height) return
+      if (!box.width || !box.height) return false
       const mobile = box.width < 1024
-      H = CAT_H + (mobile ? MOBILE_TOP : 0)
-      const cell = box.height / H
-      W = Math.max(60, Math.round(box.width / cell))
+      const nextH = CAT_H + (mobile ? MOBILE_TOP : 0)
+      const nextW = Math.max(60, Math.round(box.width / (box.height / nextH)))
+      if (nextW === W && nextH === H) return false
+      H = nextH
+      W = nextW
       // ПК: кот справа с отступом; телефон: снизу, чуть правее центра — чтобы плащ (слева) влез
       ox = mobile ? Math.round((W - CAT_W) / 2 + 6) : W - CAT_W - Math.round(W * 0.06)
       oy = H - CAT_H
@@ -111,6 +114,7 @@ export default function Cat404() {
       flakes.length = 0
       for (let i = 0; i < count; i++) flakes.push(spawn({ x: 0, y: 0, v: 0, len: 0, a: 0 }, true))
       puffs.length = 0
+      return true
     }
 
     const splash = (x: number, y: number, speed: number) => {
@@ -221,9 +225,8 @@ export default function Cat404() {
     const io = new IntersectionObserver(([entry]) => { visible = entry.isIntersecting })
     io.observe(canvas)
     const ro = new ResizeObserver(() => {
-      if (!ready) return
-      layout()
-      if (reduce) draw(0)
+      // после пересборки сразу рисуем кадр — без пустого холста
+      if (ready && layout()) draw(reduce ? 0 : performance.now())
     })
     ro.observe(canvas)
 
@@ -245,8 +248,8 @@ export default function Cat404() {
       }
       ready = true
       layout()
-      if (reduce) draw(0)
-      else raf = requestAnimationFrame(loop)
+      draw(reduce ? 0 : performance.now())
+      if (!reduce) raf = requestAnimationFrame(loop)
     }
 
     return () => {

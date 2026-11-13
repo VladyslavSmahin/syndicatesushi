@@ -990,3 +990,6 @@ body {
 .acc-offer-form .form-input { width: 100%; }
 .acc-offer-error { color: #E0726A !important; }
 @media (prefers-reduced-motion: reduce) { .acc-offer-backdrop, .acc-offer { animation: none; } }
+
+/* 404 (not-found.tsx): сторінка рівно в екран, без прокрутки — інакше на телефоні стрибає висота і блимає анімація */
+html:has(.nf404), body:has(.nf404) { overflow: hidden; }
