@@ -7,6 +7,7 @@
   background: #000;
   color: #fff;
   overflow: hidden;
+  container-type: size;
 }
 
 .canvas {
@@ -22,8 +23,7 @@
 .text {
   position: absolute;
   z-index: 1;
-  top: 50%;
-  transform: translateY(-50%);
+  top: clamp(24px, 8%, 72px);
   left: max(24px, calc((100vw - 1200px) / 2 + 24px));
   max-width: min(560px, 46vw);
   display: flex;
@@ -88,4 +88,57 @@
     text-align: center;
     gap: 16px;
   }
+}
+
+/* «Можливо, ви шукали»: ПК — картка внизу ліворуч, телефон — рядок під кнопкою; на низькому екрані картка ховається */
+.maybe {
+  position: absolute;
+  z-index: 1;
+  left: max(24px, calc((100vw - 1200px) / 2 + 24px));
+  bottom: 28px;
+  display: flex;
+  align-items: center;
+  gap: 20px;
+  width: min(560px, 46vw);
+  box-sizing: border-box;
+  padding: 20px 26px;
+  color: #fff;
+  background: rgba(14, 14, 14, 0.88);
+  border: 1px solid #3a3a3a;
+  border-radius: 16px;
+  backdrop-filter: blur(4px);
+  font-family: var(--font-body, system-ui), sans-serif;
+}
+.maybeBulb { align-self: flex-start; flex-shrink: 0; line-height: 0; }
+.maybeBody { flex: 1; min-width: 0; }
+.maybeTitle { margin: 0 0 10px; font-size: 18px; font-weight: 700; }
+.maybeList { margin: 0; padding: 0; list-style: none; display: flex; flex-direction: column; gap: 6px; }
+.maybeList a { display: inline-flex; gap: 12px; color: #d6d6d6; font-size: 15px; text-decoration: none; }
+.maybeList a::before { content: '>'; color: #c9a84c; font-weight: 700; }
+.maybeList a:hover { color: #fff; text-decoration: underline; }
+.maybeList a:focus-visible { outline: 2px solid #fff; outline-offset: 3px; }
+.maybeArt { flex-shrink: 0; padding-left: 22px; border-left: 1px solid #3a3a3a; line-height: 0; }
+
+.maybeInline { display: none; }
+
+@container (min-width: 1024px) and (max-height: 430px) {
+  .maybe { display: none; }
+}
+
+@media (max-width: 1023px) {
+  .maybe { display: none; }
+  .maybeInline {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: center;
+    gap: 6px 14px;
+    font-family: var(--font-body, system-ui), sans-serif;
+    font-size: 13px;
+    color: #b0b0b0;
+    text-shadow: 1px 1px 0 #000;
+  }
+  .maybeInline span { width: 100%; }
+  .maybeInline a { color: #fff; text-decoration: none; }
+  .maybeInline a::before { content: '> '; color: #c9a84c; font-weight: 700; }
+  .maybeInline a:hover { text-decoration: underline; }
 }

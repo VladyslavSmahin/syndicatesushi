@@ -5,6 +5,7 @@ import Link from 'next/link'
 import '@fontsource/press-start-2p/latin-400.css'
 import '@fontsource/press-start-2p/cyrillic-400.css'
 import s from './Cat404.module.css'
+import { PixelIcon, PIXEL_BULB, PIXEL_MAGNIFIER } from './PixelIcon'
 
 // 404: чорний екран на всю ширину, піксельна хуртовина — сніг косими штрихами б'ється об кота з мечем, плащ
 // шарпає вітер. Поверх — «404», текст і кнопка піксельним шрифтом (Press Start 2P, OFL, роздається з нашого домену).
@@ -267,7 +268,26 @@ export default function Cat404() {
         <h1 className={s.code}>404</h1>
         <p className={s.title}>Сторінку не знайдено або її видалено.</p>
         <Link href="/" className={s.btn}>На головну &gt;</Link>
+        {/* Телефон: «Можливо, ви шукали» рядком — велика картка закрила б кота */}
+        <nav className={s.maybeInline} aria-label="Можливо, ви шукали">
+          <span>Можливо, ви шукали:</span>
+          <Link href="/">Головна</Link>
+          <Link href="/#menu">Меню</Link>
+          <Link href="/#hits">Хіти</Link>
+        </nav>
       </div>
+      <nav className={s.maybe} aria-label="Можливо, ви шукали">
+        <span className={s.maybeBulb}><PixelIcon rows={PIXEL_BULB} color="#c9a84c" size={30} /></span>
+        <div className={s.maybeBody}>
+          <p className={s.maybeTitle}>Можливо, ви шукали:</p>
+          <ul className={s.maybeList}>
+            <li><Link href="/">Головну сторінку</Link></li>
+            <li><Link href="/#menu">Усе меню</Link></li>
+            <li><Link href="/#hits">Хіти продажу</Link></li>
+          </ul>
+        </div>
+        <span className={s.maybeArt}><PixelIcon rows={PIXEL_MAGNIFIER} color="#c8c8c8" accent="#c9a84c" size={92} /></span>
+      </nav>
     </section>
   )
 }
