@@ -163,6 +163,12 @@
   обидва сценарії, `noCall: true` у запиті, тексти «Дякуємо», без помилок JS.
 - ⚠️ **Спершу міграція, потім деплой**: без колонки `no_call` запис замовлення й дошка впадуть.
 
+## 👾 Сторінка 404 (2026-11-13)
+- `src/app/not-found.tsx` + `src/components/Cat404.tsx`: чорний екран на всю ширину, піксельна хуртовина — сніг б'ється об
+  кота з мечем, плащ шарпає вітер; «404», текст і кнопка «На головну» шрифтом Press Start 2P (OFL, `@fontsource`, свій домен).
+  Золото бренду (#C9A84C). Та сама анімація, що на Accent; «карта» кадру `public/404/cat-field.png` (генерується в KP/Accent →
+  `scripts/gen-404-field.mjs`). Пауза поза екраном, статичний кадр при «зменшити рух».
+
 ## 🔑 Переменные окружения
 Локально (`.env.local`, gitignored): `TELEGRAM_BOT_TOKEN`, `TELEGRAM_CHAT_ID`, `NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_ANON_KEY`, `SUPABASE_SERVICE_ROLE_KEY`, `SUPABASE_DB_PASSWORD`, `SUPABASE_DB_URL_SP` (session pooler), `R2_ACCOUNT_ID`, `R2_ACCESS_KEY_ID`, `R2_SECRET_ACCESS_KEY`, `R2_BUCKET`, `R2_PUBLIC_URL` (Cloudflare R2 для фото/баннеров).
 В Vercel (Production) обязательны: `NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_ANON_KEY`, `SUPABASE_SERVICE_ROLE_KEY` (заказы/отзывы), `TELEGRAM_*`, **`R2_*` (5 шт — иначе загрузка/показ фото и баннеров не работают)**.
